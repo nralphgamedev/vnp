@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
@@ -13,6 +13,8 @@
 [ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
 [ext_resource type="Script" path="res://scripts/ProbeSwarm.cs" id="12_probes"]
 [ext_resource type="Script" path="res://scripts/VnpHarvester.cs" id="13_harvester"]
+[ext_resource type="Script" path="res://scripts/ExperienceBar.cs" id="14_xpbar"]
+[ext_resource type="Script" path="res://scripts/LevelUpMenu.cs" id="15_levelup"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -108,3 +110,24 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 46
 horizontal_alignment = 1
+
+[node name="ExperienceBar" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("14_xpbar")
+
+[node name="LevelUpMenu" type="Control" parent="Hud"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("15_levelup")

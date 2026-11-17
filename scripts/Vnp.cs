@@ -14,6 +14,9 @@ public partial class Vnp : Node3D
 	public float Health { get; private set; } = Tuning.VnpMaxHealth;
 	public bool IsDestroyed { get; private set; }
 
+	/// <summary>Top speed. Starts from Tuning; upgrades raise it for this fight.</summary>
+	public float MoveSpeed = Tuning.VnpMoveSpeed;
+
 	/// <summary>Raised once, when health reaches zero.</summary>
 	public event Action Destroyed;
 
@@ -34,6 +37,13 @@ public partial class Vnp : Node3D
 		PlanePosition = planePosition;
 		Velocity = Vector2.Zero;
 		Position = PlaneMath.ToWorld(PlanePosition);
+	}
+
+	/// <summary>Raises maximum health and heals by the same amount.</summary>
+	public void RaiseMaxHealth(float amount)
+	{
+		MaxHealth += amount;
+		Health = Mathf.Min(MaxHealth, Health + amount);
 	}
 
 	public void TakeDamage(float amount)
@@ -61,7 +71,7 @@ public partial class Vnp : Node3D
 		// GetVector never returns more than length 1, so diagonals are not faster,
 		// and a partly tilted stick gives a partial speed.
 		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.StickDeadzone);
-		Vector2 wantedVelocity = input * Tuning.VnpMoveSpeed;
+		Vector2 wantedVelocity = input * MoveSpeed;
 		float rate = input == Vector2.Zero ? Tuning.VnpDeceleration : Tuning.VnpAcceleration;
 
 		Velocity = Velocity.MoveToward(wantedVelocity, rate * dt);

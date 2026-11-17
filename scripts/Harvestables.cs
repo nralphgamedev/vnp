@@ -57,12 +57,14 @@ public partial class Harvestables : Node3D
 
 	public int AsteroidCount { get; private set; }
 	public int DebrisCount { get; private set; }
-	public int FieldCount => _fields.Length;
+	public int FieldCount => _fieldCount;
 	public Field GetField(int index) => _fields[index];
 
 	private Item[] _items = new Item[512];
 	private int _count;
-	private Field[] _fields = Array.Empty<Field>();
+	private Field[] _fields = new Field[16];
+	private int _fieldCount;
+	private readonly HashSet<(int X, int Y)> _filledCells = new();
 	private int _lastId;
 	private float _maxRadius;
 	private readonly SpatialGrid _grid = new(8f);
@@ -88,7 +90,7 @@ public partial class Harvestables : Node3D
 			AsteroidShapeRadius * Tuning.AsteroidSize * Mathf.Sqrt(Tuning.AsteroidMassMax),
 			DebrisShapeRadius * Tuning.DebrisSize * Mathf.Sqrt(Tuning.DebrisMassMax));
 
-		CreateFields();
+		FillStartingArea();
 	}
 
 	/// <summary>Leaves a piece of debris at a point on the plane.</summary>
@@ -165,7 +167,10 @@ public partial class Harvestables : Node3D
 	{
 		float dt = (float)delta;
 
-		for (int f = 0; f < _fields.Length; f++)
+		if (Fight != null)
+			FillArenaAround(Fight.Vnp.PlanePosition);
+
+		for (int f = 0; f < _fieldCount; f++)
 		{
 			_fields[f].Center += _fields[f].Velocity * dt;
 			_fields[f].Angle += _fields[f].TurnSpeed * dt;
@@ -238,63 +243,133 @@ public partial class Harvestables : Node3D
 		_debrisBatch.Commit(debris);
 	}
 
-	// ───────────── Building the fields ─────────────
+	// ───────────── Filling the arena ─────────────
+	// The area around the gateway is filled when the fight starts. Beyond it, the arena is filled
+	// in square cells as the VNP comes within reach of each one, long before it is on screen.
+	// Once placed, nothing moves to follow the VNP and nothing respawns.
 
-	/// <summary>Places the asteroid fields at random spots around the gateway, keeping them apart.</summary>
-	private void CreateFields()
+	/// <summary>Radius of the area around the gateway that is filled when the fight starts.</summary>
+	private static float StartingAreaRadius => Mathf.Max(Tuning.AsteroidFieldDistanceMax, Tuning.LoneAsteroidDistanceMax);
+
+	/// <summary>Places fields and lone asteroids at random spots around the gateway.</summary>
+	private void FillStartingArea()
 	{
-		int wanted = Rng.Int(Tuning.AsteroidFieldsMin, Tuning.AsteroidFieldsMax);
-		var fields = new List<Field>();
-
-		for (int attempt = 0; fields.Count < wanted && attempt < wanted * 50; attempt++)
-		{
-			Vector2 center = Tuning.GatewayPosition
-				+ Rng.Direction() * Rng.Range(Tuning.AsteroidFieldDistanceMin, Tuning.AsteroidFieldDistanceMax);
-
-			bool tooClose = false;
-			foreach (Field other in fields)
-				tooClose |= other.Center.DistanceTo(center) < Tuning.AsteroidFieldSpacing;
-			if (tooClose)
-				continue;
-
-			var field = new Field { Center = center, IsRing = Rng.Value() < Tuning.AsteroidRingChance };
-			float motion = Rng.Value();
-			if (motion < Tuning.AsteroidFieldMovingChance)
-				field.Velocity = Rng.Direction() * Tuning.AsteroidFieldDriftSpeed;
-			else if (motion < Tuning.AsteroidFieldMovingChance + Tuning.AsteroidFieldTurningChance)
-				field.TurnSpeed = Mathf.DegToRad(Tuning.AsteroidFieldTurnSpeed) * Rng.Sign();
-
-			fields.Add(field);
-			FillField(fields.Count - 1, field);
-		}
-
-		_fields = fields.ToArray();
-		CreateLoneAsteroids();
+		Vector2 gateway = Tuning.GatewayPosition;
+		PlaceFields(Rng.Int(Tuning.AsteroidFieldsMin, Tuning.AsteroidFieldsMax),
+			() => gateway + Rng.Direction() * Rng.Range(Tuning.AsteroidFieldDistanceMin, Tuning.AsteroidFieldDistanceMax),
+			_ => true);
+		PlaceLoneAsteroids(Tuning.LoneAsteroidCount,
+			() => gateway + Rng.Direction() * Rng.Range(Tuning.LoneAsteroidDistanceMin, Tuning.LoneAsteroidDistanceMax),
+			_ => true);
 	}
 
-	/// <summary>Scatters single asteroids around the gateway, clear of the fields and of each other.</summary>
-	private void CreateLoneAsteroids()
+	/// <summary>Fills every cell within reach of a point that has not been filled yet.</summary>
+	private void FillArenaAround(Vector2 point)
+	{
+		float size = Tuning.AsteroidCellSize;
+		float reach = Tuning.AsteroidFillDistance;
+		int minX = Mathf.FloorToInt((point.X - reach) / size);
+		int maxX = Mathf.FloorToInt((point.X + reach) / size);
+		int minY = Mathf.FloorToInt((point.Y - reach) / size);
+		int maxY = Mathf.FloorToInt((point.Y + reach) / size);
+
+		for (int y = minY; y <= maxY; y++)
+		{
+			for (int x = minX; x <= maxX; x++)
+			{
+				if (_filledCells.Add((x, y)))
+					FillCell(x, y);
+			}
+		}
+	}
+
+	/// <summary>Places fields and lone asteroids in one cell, leaving out any part inside the starting area.</summary>
+	private void FillCell(int cellX, int cellY)
+	{
+		float size = Tuning.AsteroidCellSize;
+		Vector2 corner = new(cellX * size, cellY * size);
+		float startingArea = StartingAreaRadius;
+
+		Vector2 Pick() => corner + new Vector2(Rng.Value(), Rng.Value()) * size;
+		bool OutsideStartingArea(Vector2 spot) => spot.DistanceTo(Tuning.GatewayPosition) > startingArea;
+
+		PlaceFields(Rng.Int(Tuning.AsteroidFieldsPerCellMin, Tuning.AsteroidFieldsPerCellMax), Pick, OutsideStartingArea);
+		PlaceLoneAsteroids(Tuning.LoneAsteroidsPerCell, Pick, OutsideStartingArea);
+	}
+
+	/// <summary>
+	/// Tries to place <paramref name="wanted"/> fields at spots from <paramref name="pick"/>, keeping them apart.
+	/// A spot that <paramref name="allowed"/> rejects is skipped rather than retried, so a cell that is
+	/// partly inside the starting area gets fewer fields, not the same number squeezed into less space.
+	/// </summary>
+	private void PlaceFields(int wanted, Func<Vector2> pick, Func<Vector2, bool> allowed)
+	{
+		for (int n = 0; n < wanted; n++)
+		{
+			for (int attempt = 0; attempt < 30; attempt++)
+			{
+				Vector2 center = pick();
+				if (!allowed(center))
+					break;
+				if (NearAField(center, Tuning.AsteroidFieldSpacing))
+					continue;
+				AddField(center);
+				break;
+			}
+		}
+	}
+
+	/// <summary>Like PlaceFields, for lone asteroids: clear of fields and of each other.</summary>
+	private void PlaceLoneAsteroids(int wanted, Func<Vector2> pick, Func<Vector2, bool> allowed)
 	{
 		int first = _count;
-		int placed = 0;
-		for (int attempt = 0; placed < Tuning.LoneAsteroidCount && attempt < Tuning.LoneAsteroidCount * 50; attempt++)
+		for (int n = 0; n < wanted; n++)
 		{
-			Vector2 position = Tuning.GatewayPosition
-				+ Rng.Direction() * Rng.Range(Tuning.LoneAsteroidDistanceMin, Tuning.LoneAsteroidDistanceMax);
+			for (int attempt = 0; attempt < 30; attempt++)
+			{
+				Vector2 position = pick();
+				if (!allowed(position))
+					break;
 
-			bool blocked = false;
-			foreach (Field field in _fields)
-				blocked |= field.Center.DistanceTo(position) < Tuning.LoneAsteroidFieldClearance;
-			for (int i = first; i < _count && !blocked; i++)
-				blocked |= _items[i].Position.DistanceTo(position) < Tuning.LoneAsteroidSpacing;
-			if (blocked)
-				continue;
+				bool blocked = NearAField(position, Tuning.LoneAsteroidFieldClearance);
+				for (int i = first; i < _count && !blocked; i++)
+					blocked = _items[i].Position.DistanceTo(position) < Tuning.LoneAsteroidSpacing;
+				if (blocked)
+					continue;
 
-			float mass = Tuning.LoneAsteroidMassMin
-				+ (Tuning.LoneAsteroidMassMax - Tuning.LoneAsteroidMassMin) * Mathf.Pow(Rng.Value(), Tuning.AsteroidSmallBias);
-			Add(position, mass, isAsteroid: true, field: -1, offset: default);
-			placed++;
+				float mass = Tuning.LoneAsteroidMassMin
+					+ (Tuning.LoneAsteroidMassMax - Tuning.LoneAsteroidMassMin) * Mathf.Pow(Rng.Value(), Tuning.AsteroidSmallBias);
+				Add(position, mass, isAsteroid: true, field: -1, offset: default);
+				break;
+			}
 		}
+	}
+
+	private bool NearAField(Vector2 point, float distance)
+	{
+		for (int f = 0; f < _fieldCount; f++)
+		{
+			if (_fields[f].Center.DistanceTo(point) < distance)
+				return true;
+		}
+		return false;
+	}
+
+	/// <summary>Creates a cluster or ring at a point, chooses how it moves, and fills it with asteroids.</summary>
+	private void AddField(Vector2 center)
+	{
+		var field = new Field { Center = center, IsRing = Rng.Value() < Tuning.AsteroidRingChance };
+		float motion = Rng.Value();
+		if (motion < Tuning.AsteroidFieldMovingChance)
+			field.Velocity = Rng.Direction() * Tuning.AsteroidFieldDriftSpeed;
+		else if (motion < Tuning.AsteroidFieldMovingChance + Tuning.AsteroidFieldTurningChance)
+			field.TurnSpeed = Mathf.DegToRad(Tuning.AsteroidFieldTurnSpeed) * Rng.Sign();
+
+		if (_fieldCount == _fields.Length)
+			Array.Resize(ref _fields, _fields.Length * 2);
+		_fields[_fieldCount] = field;
+		FillField(_fieldCount, field);
+		_fieldCount++;
 	}
 
 	private void FillField(int fieldIndex, Field field)

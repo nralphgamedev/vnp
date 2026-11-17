@@ -74,8 +74,24 @@ public partial class ProbeSwarm : Node3D
 	public float WeaponCooldown = Tuning.ProbeProjectileCooldown;
 	public float WeaponRange = Tuning.ProbeProjectileRange;
 
+	/// <summary>True once the Beam upgrade has replaced the Projectile.</summary>
+	public bool UsesBeam { get; private set; }
+
+	/// <summary>How far from its target a probe sits while surrounding it. Depends on the weapon.</summary>
+	public float AttackDistance = Tuning.ProbeAttackDistance;
+
 	/// <summary>Mass each probe's harvest beam draws out per second.</summary>
 	public float HarvestRate = Tuning.ProbeHarvestRate;
+
+	/// <summary>Switches every probe from the Projectile to the Beam: short range, never misses.</summary>
+	public void SwitchToBeam()
+	{
+		UsesBeam = true;
+		WeaponDamage = Tuning.ProbeBeamDamage;
+		WeaponCooldown = Tuning.ProbeBeamCooldown;
+		WeaponRange = Tuning.ProbeBeamRange;
+		AttackDistance = Tuning.ProbeBeamAttackDistance;
+	}
 
 	private Probe[] _probes = new Probe[64];
 	private Wreck[] _wrecks = new Wreck[16];
@@ -88,7 +104,9 @@ public partial class ProbeSwarm : Node3D
 	private readonly int[] _harvestTargets = new int[512];
 	private Vector2[] _beamFrom = new Vector2[64];
 	private Vector2[] _beamTo = new Vector2[64];
+	private bool[] _beamIsAttack = new bool[64];
 	private int _beamCount;
+	private float _speed = Tuning.ProbeSpeed;
 	private InstanceBatch _batch;
 	private InstanceBatch _beamBatch;
 
@@ -242,12 +260,17 @@ public partial class ProbeSwarm : Node3D
 		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.ProbeEngageRange * KeepTargetFactor, _enemyTargets);
 		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.ProbeHarvestRange * KeepTargetFactor, _harvestTargets);
 
-		if (_beamFrom.Length < Count)
+		// Up to two beams per probe: one attacking, one harvesting.
+		if (_beamFrom.Length < Count * 2)
 		{
-			Array.Resize(ref _beamFrom, Count * 2);
-			Array.Resize(ref _beamTo, Count * 2);
+			Array.Resize(ref _beamFrom, Count * 4);
+			Array.Resize(ref _beamTo, Count * 4);
+			Array.Resize(ref _beamIsAttack, Count * 4);
 		}
 		_beamCount = 0;
+
+		// Probes speed up with the VNP's movement speed upgrades, so they keep up.
+		_speed = Tuning.ProbeSpeed * vnp.MoveSpeed / Tuning.VnpMoveSpeed;
 
 		float turnStep = Mathf.DegToRad(Tuning.ProbeTurnSpeed) * dt;
 		float reach = 0f;
@@ -271,7 +294,7 @@ public partial class ProbeSwarm : Node3D
 
 				Vector2 enemyPosition = enemies.PositionOf(enemy);
 				wantedVelocity = SteerToSlot(ref probe, enemyPosition, enemies.VelocityOf(enemy),
-					Tuning.ProbeAttackDistance, separation, dt);
+					AttackDistance, separation, dt);
 				Face(ref probe, enemyPosition, turnStep);
 				if (probe.Position.DistanceTo(enemyPosition) <= WeaponRange)
 					TryFire(ref probe, enemy);
@@ -315,7 +338,7 @@ public partial class ProbeSwarm : Node3D
 				}
 			}
 
-			wantedVelocity = wantedVelocity.LimitLength(Tuning.ProbeSpeed);
+			wantedVelocity = wantedVelocity.LimitLength(_speed);
 			probe.Velocity = probe.Velocity.MoveToward(wantedVelocity, Tuning.ProbeAcceleration * dt);
 			probe.Position += probe.Velocity * dt;
 
@@ -446,7 +469,7 @@ public partial class ProbeSwarm : Node3D
 	/// Heads for this probe's own spot on a ring around a point, so a group of probes surrounds it.
 	/// The spots slowly turn, so the ring circles.
 	/// </summary>
-	private static Vector2 SteerToSlot(ref Probe probe, Vector2 center, Vector2 centerVelocity, float distance,
+	private Vector2 SteerToSlot(ref Probe probe, Vector2 center, Vector2 centerVelocity, float distance,
 		Vector2 separation, float dt)
 	{
 		float circleSpeed = Mathf.DegToRad(Tuning.ProbeCircleSpeed) * probe.OrbitSign;
@@ -464,7 +487,7 @@ public partial class ProbeSwarm : Node3D
 		if (slotDistance > 0.001f)
 		{
 			float braking = Tuning.ProbeAcceleration * Tuning.ProbeArriveBraking;
-			float approach = Mathf.Min(Tuning.ProbeSpeed,
+			float approach = Mathf.Min(_speed,
 				Mathf.Min(Mathf.Sqrt(2f * braking * slotDistance), Mathf.Sqrt(braking) * slotDistance));
 			velocity += toSlot / slotDistance * approach;
 		}
@@ -473,7 +496,7 @@ public partial class ProbeSwarm : Node3D
 	}
 
 	/// <summary>Stay in a band around the VNP, circle it, keep clear of other probes, and keep pace.</summary>
-	private static Vector2 Flock(ref Probe probe, Vector2 vnpPosition, Vector2 vnpVelocity, Vector2 separation)
+	private Vector2 Flock(ref Probe probe, Vector2 vnpPosition, Vector2 vnpVelocity, Vector2 separation)
 	{
 		Vector2 toVnp = vnpPosition - probe.Position;
 		float vnpDistance = toVnp.Length();
@@ -481,7 +504,7 @@ public partial class ProbeSwarm : Node3D
 
 		// Far behind: sprint straight back.
 		if (vnpDistance > Tuning.ProbeSprintDistance)
-			return directionToVnp * Tuning.ProbeSpeed;
+			return directionToVnp * _speed;
 
 		float band = Tuning.ProbeFlockRadius;
 		float tooClose = band * 0.45f;
@@ -503,13 +526,25 @@ public partial class ProbeSwarm : Node3D
 			probe.Yaw = Mathf.RotateToward(probe.Yaw, PlaneMath.YawFacing(toward), turnStep);
 	}
 
-	/// <summary>Fires the Basic Probe Weapon at an enemy if it is off cooldown.</summary>
+	/// <summary>Fires the Basic Probe Weapon at an enemy within its range, if it is off cooldown.</summary>
 	private void TryFire(ref Probe probe, int enemy)
 	{
+		EnemySwarm enemies = Fight.Enemies;
+
+		if (UsesBeam)
+		{
+			// The beam shows the whole time it is on target, and deals damage in ticks.
+			AddBeam(probe.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
+			if (probe.FireTimer <= 0f)
+			{
+				enemies.Damage(enemy, WeaponDamage);
+				probe.FireTimer = WeaponCooldown;
+			}
+			return;
+		}
+
 		if (probe.FireTimer > 0f)
 			return;
-
-		EnemySwarm enemies = Fight.Enemies;
 
 		// Let the shot fly a little past the weapon's range before it fizzles out.
 		float lifetime = WeaponRange * 1.5f / Tuning.ProbeProjectileSpeed;
@@ -526,8 +561,8 @@ public partial class ProbeSwarm : Node3D
 		probe.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
 	}
 
-	/// <summary>Records a harvest beam to draw, ending just inside the edge of what it harvests.</summary>
-	private void AddBeam(Vector2 from, Vector2 to, float targetRadius)
+	/// <summary>Records a harvest or attack beam to draw, ending just inside the edge of its target.</summary>
+	private void AddBeam(Vector2 from, Vector2 to, float targetRadius, bool isAttack = false)
 	{
 		Vector2 along = to - from;
 		float distance = along.Length();
@@ -536,6 +571,7 @@ public partial class ProbeSwarm : Node3D
 
 		_beamFrom[_beamCount] = from;
 		_beamTo[_beamCount] = from + along / distance * Mathf.Max(0f, distance - targetRadius * 0.5f);
+		_beamIsAttack[_beamCount] = isAttack;
 		_beamCount++;
 	}
 
@@ -584,7 +620,12 @@ public partial class ProbeSwarm : Node3D
 
 		_beamBatch.Begin(_beamCount);
 		for (int b = 0; b < _beamCount; b++)
-			_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight, 0.12f, 0.06f, Tuning.ExperienceColor);
+		{
+			if (_beamIsAttack[b])
+				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight + 0.1f, 0.2f, 0.06f, Tuning.ProbeBeamColor);
+			else
+				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight, 0.12f, 0.06f, Tuning.ExperienceColor);
+		}
 		_beamBatch.Commit(_beamCount);
 	}
 }

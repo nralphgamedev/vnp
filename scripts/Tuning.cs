@@ -37,6 +37,36 @@ public static class Tuning
 	/// <summary>How close an enemy projectile must pass to the VNP's center to hit it.</summary>
 	public static float VnpHitRadius = 1.4f;
 
+	// ───────────── VNP weapons ─────────────
+
+	/// <summary>How many VNP Weapons the VNP can carry. The Pulse Laser takes the first slot.</summary>
+	public static int WeaponSlots = 2;
+
+	// ───────────── Orbital Shards ─────────────
+	// A VNP Weapon offered as a fight upgrade. Copied when equipped; after that the numbers belong to the weapon.
+
+	/// <summary>How many shards circle the VNP.</summary>
+	public static int ShardCount = 3;
+
+	/// <summary>Damage a shard deals when it touches an enemy.</summary>
+	public static float ShardDamage = 8f;
+
+	/// <summary>Seconds before a shard can hit the same enemy again. It only has to stop one pass
+	/// counting twice, so keep it below the time a shard takes to go round once (360 / orbit speed,
+	/// 1.8 seconds at 200). Above that, speed upgrades stop adding damage.</summary>
+	public static float ShardCooldown = 0.5f;
+
+	/// <summary>How far from the VNP the shards circle. Enemies hold about 11 units from their target,
+	/// so shards mostly hit when the VNP closes in on enemies.</summary>
+	public static float ShardOrbitRadius = 7f;
+
+	/// <summary>How fast the shards circle, in degrees per second. Faster shards pass each enemy more often,
+	/// so they deal more damage.</summary>
+	public static float ShardOrbitSpeed = 200f;
+
+	/// <summary>How close to a shard an enemy's edge must come to be hit.</summary>
+	public static float ShardHitRadius = 0.8f;
+
 	// ───────────── Pulse Laser ─────────────
 	// The laser copies these when the fight starts. After that the numbers belong to the weapon.
 
@@ -124,9 +154,26 @@ public static class Tuning
 	/// <summary>Speed of a probe projectile.</summary>
 	public static float ProbeProjectileSpeed = 30f;
 
+	// ───────────── Basic Probe Weapon: Beam ─────────────
+	// What every probe switches to when the Beam upgrade is taken.
+
+	/// <summary>Damage of one beam tick.</summary>
+	public static float ProbeBeamDamage = 1f;
+
+	/// <summary>Seconds between beam ticks.</summary>
+	public static float ProbeBeamCooldown = 0.25f;
+
+	/// <summary>How far the beam reaches.</summary>
+	public static float ProbeBeamRange = 5f;
+
+	/// <summary>How far from its target a probe sits while surrounding it with the beam.
+	/// Keep it below the beam's range.</summary>
+	public static float ProbeBeamAttackDistance = 3.5f;
+
 	// ───────────── Enemy ─────────────
 
-	/// <summary>How close a probe projectile must pass to an enemy's center to hit it.</summary>
+	/// <summary>How close a probe projectile must pass to an enemy's center to hit it.
+	/// Also how big an enemy is for Orbital Shards.</summary>
 	public static float EnemyHitRadius = 1.1f;
 
 	/// <summary>Health of an enemy spawned at the start of the fight.</summary>
@@ -282,8 +329,59 @@ public static class Tuning
 	/// <summary>How far beyond the edge of an asteroid a probe sits while harvesting it.</summary>
 	public static float ProbeHarvestStandoff = 2f;
 
+	// ───────────── Levels and fight upgrades ─────────────
+
+	/// <summary>Fight experience needed to go from level 1 to level 2.</summary>
+	public static float ExperienceForFirstLevel = 150f;
+
+	/// <summary>How much more each level after that needs than the one before.
+	/// At 150 and 75, level 5 takes 1050 in total and level 10 takes 4050.</summary>
+	public static float ExperienceIncreasePerLevel = 75f;
+
+	/// <summary>How many upgrades each level up offers.</summary>
+	public static int UpgradeOptionsPerOffer = 3;
+
+	/// <summary>Rerolls the player starts the fight with. They are not refreshed.</summary>
+	public static int FreeRerolls = 1;
+
+	// Upgrade amounts. Fractions are of the current value: 0.25 means +25% each time it is taken.
+
+	/// <summary>Pulse Laser damage upgrade.</summary>
+	public static float UpgradePulseLaserDamage = 0.25f;
+
+	/// <summary>Pulse Laser cooldown upgrade: the cooldown shrinks by this fraction.</summary>
+	public static float UpgradePulseLaserCooldown = 0.15f;
+
+	/// <summary>Orbital Shards damage upgrade.</summary>
+	public static float UpgradeShardDamage = 0.3f;
+
+	/// <summary>Orbital Shards area of effect upgrade: orbit size and shard size both grow by this fraction.</summary>
+	public static float UpgradeShardArea = 0.2f;
+
+	/// <summary>Orbital Shards speed upgrade: the shards circle this much faster.</summary>
+	public static float UpgradeShardSpeed = 0.25f;
+
+	/// <summary>Health upgrade: added to the VNP's maximum health, and healed.</summary>
+	public static float UpgradeHealth = 25f;
+
+	/// <summary>Movement speed upgrade. Probes speed up by the same fraction, so they keep up.</summary>
+	public static float UpgradeMoveSpeed = 0.1f;
+
+	/// <summary>Harvest rate upgrade: every harvest beam, the VNP's and the probes', works this much faster.</summary>
+	public static float UpgradeHarvestRate = 0.25f;
+
+	/// <summary>Harvest range upgrade: every harvest beam reaches this much farther.</summary>
+	public static float UpgradeHarvestRange = 0.25f;
+
+	/// <summary>Basic probe cap upgrade: added to the cap.</summary>
+	public static int UpgradeProbeCap = 5;
+
+	/// <summary>New basic probes upgrade: probes built at once, up to the cap.</summary>
+	public static int UpgradeNewProbes = 5;
+
 	// ───────────── Asteroid fields ─────────────
-	// Fields are placed at the start of the fight and never respawn.
+	// These place the fields around the gateway at the start of the fight. Farther out, the arena is
+	// filled as the VNP explores: see "Filling the arena" below.
 
 	/// <summary>Fewest asteroid fields in a fight.</summary>
 	public static int AsteroidFieldsMin = 5;
@@ -357,7 +455,7 @@ public static class Tuning
 	// Single asteroids scattered between the fields. Like the fields, they are placed at the start
 	// of the fight and stay put.
 
-	/// <summary>How many lone asteroids there are. At 30 there is roughly one every couple of screens.</summary>
+	/// <summary>How many lone asteroids there are around the gateway. At 30 there is roughly one every couple of screens.</summary>
 	public static int LoneAsteroidCount = 30;
 
 	/// <summary>Closest a lone asteroid can be to the gateway.</summary>
@@ -377,6 +475,28 @@ public static class Tuning
 
 	/// <summary>Mass of the largest lone asteroids.</summary>
 	public static float LoneAsteroidMassMax = 10f;
+
+	// ───────────── Filling the arena ─────────────
+	// Beyond the area around the gateway (300 units with the values above), the arena is filled in
+	// square cells as the VNP comes within reach of each one, long before it is on screen. Once
+	// placed, asteroids stay where they are: nothing follows the VNP and nothing respawns.
+	// Fields and lone asteroids keep the same spacing rules as around the gateway.
+
+	/// <summary>Width of one cell.</summary>
+	public static float AsteroidCellSize = 400f;
+
+	/// <summary>Cells this close to the VNP are filled. Keep it well beyond half the screen width (about 50),
+	/// so filling always happens off screen.</summary>
+	public static float AsteroidFillDistance = 500f;
+
+	/// <summary>Fewest fields in a cell. 4 to 7 matches the density around the gateway.</summary>
+	public static int AsteroidFieldsPerCellMin = 4;
+
+	/// <summary>Most fields in a cell.</summary>
+	public static int AsteroidFieldsPerCellMax = 7;
+
+	/// <summary>Lone asteroids in a cell. 17 matches the density around the gateway.</summary>
+	public static int LoneAsteroidsPerCell = 17;
 
 	// ───────────── Camera ─────────────
 
@@ -447,6 +567,11 @@ public static class Tuning
 
 	public static Color ProbeColor = new(0.45f, 0.8f, 1.0f);
 	public static Color ProbeProjectileColor = new(0.7f, 1.0f, 0.45f);
+	public static Color ProbeBeamColor = new(0.8f, 0.97f, 1.0f);
+	public static Color ShardColor = new(0.95f, 0.95f, 1.0f);
+
+	/// <summary>Scale of an Orbital Shard. 1 is 2 units long.</summary>
+	public static float ShardSize = 0.8f;
 	public static Color EnemyColor = new(0.95f, 0.22f, 0.25f);
 	public static Color EnemyProjectileColor = new(1.0f, 0.55f, 0.15f);
 	public static Color PulseLaserColor = new(0.55f, 0.95f, 1.0f);

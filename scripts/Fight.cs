@@ -1,8 +1,9 @@
 using Godot;
+using System.Collections.Generic;
 
 /// <summary>
 /// Root of the fight scene. Connects the pieces to each other, starts the fight at the gateway,
-/// and keeps the fight-wide numbers: time, kills and fight experience.
+/// and keeps the fight-wide numbers: time, kills, fight experience, level and upgrades.
 /// </summary>
 public partial class Fight : Node3D
 {
@@ -13,6 +14,14 @@ public partial class Fight : Node3D
 	public ProbeSwarm Probes { get; private set; }
 	public Projectiles Projectiles { get; private set; }
 	public Harvestables Harvestables { get; private set; }
+	public PulseLaser PulseLaser { get; private set; }
+	public VnpHarvester VnpHarvester { get; private set; }
+
+	/// <summary>The second VNP Weapon, once the Orbital Shards upgrade is taken. Null until then.</summary>
+	public OrbitalShards OrbitalShards { get; private set; }
+
+	/// <summary>VNP Weapons equipped, out of Tuning.WeaponSlots.</summary>
+	public int WeaponCount => 1 + (OrbitalShards != null ? 1 : 0);
 
 	/// <summary>Seconds since the fight started.</summary>
 	public double Elapsed { get; private set; }
@@ -26,13 +35,30 @@ public partial class Fight : Node3D
 	/// <summary>Fight experience harvested so far.</summary>
 	public float Experience { get; private set; }
 
+	public int Level { get; private set; } = 1;
+
+	/// <summary>Fight experience gathered since the last level up.</summary>
+	public float ExperienceIntoLevel => Experience - _levelStartExperience;
+
+	/// <summary>Fight experience the current level needs before the next level up.</summary>
+	public float ExperienceForNextLevel => Tuning.ExperienceForFirstLevel + Tuning.ExperienceIncreasePerLevel * (Level - 1);
+
+	/// <summary>Rerolls left for the rest of the fight.</summary>
+	public int Rerolls = Tuning.FreeRerolls;
+
+	/// <summary>Every fight upgrade taken, in order. The pause menu (stage 6) will list these.</summary>
+	public readonly List<string> TakenUpgrades = new();
+
 	/// <summary>How far along the next temporary probe is, from 0 to 1.</summary>
 	public float ProbeBuildProgress => _harvestTowardProbe / Tuning.HarvestPerProbe;
 
 	private float _harvestTowardProbe;
+	private float _levelStartExperience;
+	private int _pendingLevelUps;
 	private Label _debugLabel;
 	private Label _message;
 	private HealthBar _healthBar;
+	private LevelUpMenu _levelUpMenu;
 	private double _debugRefresh;
 
 	public override void _Ready()
@@ -46,6 +72,8 @@ public partial class Fight : Node3D
 		Probes = GetNode<ProbeSwarm>("Probes");
 		Projectiles = GetNode<Projectiles>("Projectiles");
 		Harvestables = GetNode<Harvestables>("Harvestables");
+		PulseLaser = GetNode<PulseLaser>("PulseLaser");
+		VnpHarvester = GetNode<VnpHarvester>("VnpHarvester");
 		_debugLabel = GetNode<Label>("Hud/DebugLabel");
 		_message = GetNode<Label>("Hud/Message");
 
@@ -66,10 +94,13 @@ public partial class Fight : Node3D
 		Probes.Fight = this;
 		Probes.Add(Tuning.StartingProbes, Vnp.PlanePosition);
 		Projectiles.Fight = this;
-		GetNode<PulseLaser>("PulseLaser").Fight = this;
-		GetNode<VnpHarvester>("VnpHarvester").Fight = this;
+		PulseLaser.Fight = this;
+		VnpHarvester.Fight = this;
 		_healthBar = GetNode<HealthBar>("Hud/HealthBar");
 		_healthBar.Fight = this;
+		GetNode<ExperienceBar>("Hud/ExperienceBar").Fight = this;
+		_levelUpMenu = GetNode<LevelUpMenu>("Hud/LevelUpMenu");
+		_levelUpMenu.Fight = this;
 	}
 
 	/// <summary>
@@ -79,6 +110,14 @@ public partial class Fight : Node3D
 	public void AddHarvest(float mass)
 	{
 		Experience += mass * Tuning.ExperiencePerMass;
+
+		// Several level ups can arrive at once. Each gets its own offer, one after another.
+		while (ExperienceIntoLevel >= ExperienceForNextLevel)
+		{
+			_levelStartExperience += ExperienceForNextLevel;
+			Level++;
+			_pendingLevelUps++;
+		}
 
 		if (Probes.CountWithBuilds >= Probes.Cap)
 			return;
@@ -91,6 +130,28 @@ public partial class Fight : Node3D
 		}
 	}
 
+	public void ApplyUpgrade(Upgrade upgrade)
+	{
+		upgrade.Apply(this);
+		TakenUpgrades.Add(upgrade.Name);
+	}
+
+	/// <summary>Puts the Orbital Shards in the second weapon slot.</summary>
+	public void EquipOrbitalShards()
+	{
+		if (OrbitalShards != null)
+			return;
+		OrbitalShards = new OrbitalShards { Name = "OrbitalShards", Fight = this };
+		AddChild(OrbitalShards);
+	}
+
+	/// <summary>Builds up to <paramref name="count"/> probes at once, stopping at the cap.</summary>
+	public void BuildProbesNow(int count)
+	{
+		for (int i = 0; i < count && Probes.CountWithBuilds < Probes.Cap; i++)
+			Probes.Build();
+	}
+
 	public override void _UnhandledInput(InputEvent @event)
 	{
 		// Playtest shortcut: switch between the perspective and orthographic cameras.
@@ -101,6 +162,13 @@ public partial class Fight : Node3D
 	public override void _Process(double delta)
 	{
 		Elapsed += delta;
+
+		// Offer the next waiting level up. The offer pauses the fight until a choice is made.
+		if (_pendingLevelUps > 0 && !_levelUpMenu.IsOpen && !Vnp.IsDestroyed)
+		{
+			_pendingLevelUps--;
+			_levelUpMenu.Open(Level - _pendingLevelUps);
+		}
 
 		_debugRefresh -= delta;
 		if (_debugRefresh > 0)
@@ -118,6 +186,7 @@ public partial class Fight : Node3D
 			$"{Engine.GetFramesPerSecond():0} fps    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
+			$"level {Level}    " +
 			$"xp {Experience:0}    " +
 			$"probes {Probes.Count}/{Probes.Cap} ({nextProbe})    " +
 			$"kills {Kills}    " +
