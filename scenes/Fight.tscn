@@ -1,0 +1,59 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
+[ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
+[ext_resource type="Script" path="res://scripts/Gateway.cs" id="3_gateway"]
+[ext_resource type="Script" path="res://scripts/GroundGrid.cs" id="4_ground"]
+[ext_resource type="Script" path="res://scripts/CameraRig.cs" id="5_camera"]
+[ext_resource type="Script" path="res://scripts/GatewayIndicator.cs" id="6_indicator"]
+
+[sub_resource type="Environment" id="Environment_space"]
+background_mode = 1
+background_color = Color(0.008, 0.012, 0.028, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.68, 0.85, 1)
+ambient_light_energy = 0.35
+
+[node name="Fight" type="Node3D"]
+script = ExtResource("1_fight")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_space")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 50, 0)
+light_energy = 1.1
+
+[node name="Vnp" type="Node3D" parent="."]
+script = ExtResource("2_vnp")
+
+[node name="Gateway" type="Node3D" parent="."]
+script = ExtResource("3_gateway")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+script = ExtResource("4_ground")
+
+[node name="Camera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 0, 120, 32.1539)
+fov = 20.0
+script = ExtResource("5_camera")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="GatewayIndicator" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_indicator")
+
+[node name="DebugLabel" type="Label" parent="Hud"]
+modulate = Color(1, 1, 1, 0.6)
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 800.0
+offset_bottom = 31.0
+theme_override_font_sizes/font_size = 13
