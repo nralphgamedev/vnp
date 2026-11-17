@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// Root of the fight scene. Connects the pieces to each other, starts the fight at the gateway,
-/// and keeps the fight-wide numbers: time and kills.
+/// and keeps the fight-wide numbers: time, kills and fight experience.
 /// </summary>
 public partial class Fight : Node3D
 {
@@ -12,7 +12,7 @@ public partial class Fight : Node3D
 	public EnemySwarm Enemies { get; private set; }
 	public ProbeSwarm Probes { get; private set; }
 	public Projectiles Projectiles { get; private set; }
-	public Debris Debris { get; private set; }
+	public Harvestables Harvestables { get; private set; }
 
 	/// <summary>Seconds since the fight started.</summary>
 	public double Elapsed { get; private set; }
@@ -23,6 +23,13 @@ public partial class Fight : Node3D
 	/// <summary>Enemies destroyed so far.</summary>
 	public int Kills;
 
+	/// <summary>Fight experience harvested so far.</summary>
+	public float Experience { get; private set; }
+
+	/// <summary>How far along the next temporary probe is, from 0 to 1.</summary>
+	public float ProbeBuildProgress => _harvestTowardProbe / Tuning.HarvestPerProbe;
+
+	private float _harvestTowardProbe;
 	private Label _debugLabel;
 	private Label _message;
 	private HealthBar _healthBar;
@@ -38,7 +45,7 @@ public partial class Fight : Node3D
 		Enemies = GetNode<EnemySwarm>("Enemies");
 		Probes = GetNode<ProbeSwarm>("Probes");
 		Projectiles = GetNode<Projectiles>("Projectiles");
-		Debris = GetNode<Debris>("Debris");
+		Harvestables = GetNode<Harvestables>("Harvestables");
 		_debugLabel = GetNode<Label>("Hud/DebugLabel");
 		_message = GetNode<Label>("Hud/Message");
 
@@ -54,13 +61,34 @@ public partial class Fight : Node3D
 		indicator.Camera = Camera;
 		indicator.Gateway = Gateway;
 
+		Harvestables.Fight = this;
 		Enemies.Fight = this;
 		Probes.Fight = this;
 		Probes.Add(Tuning.StartingProbes, Vnp.PlanePosition);
 		Projectiles.Fight = this;
 		GetNode<PulseLaser>("PulseLaser").Fight = this;
+		GetNode<VnpHarvester>("VnpHarvester").Fight = this;
 		_healthBar = GetNode<HealthBar>("Hud/HealthBar");
 		_healthBar.Fight = this;
+	}
+
+	/// <summary>
+	/// Called by harvest beams with the mass they drew out. Turns it into fight experience, and
+	/// builds temporary probes until the cap is reached. At the cap it gives only fight experience.
+	/// </summary>
+	public void AddHarvest(float mass)
+	{
+		Experience += mass * Tuning.ExperiencePerMass;
+
+		if (Probes.CountWithBuilds >= Probes.Cap)
+			return;
+
+		_harvestTowardProbe += mass;
+		while (_harvestTowardProbe >= Tuning.HarvestPerProbe && Probes.CountWithBuilds < Probes.Cap)
+		{
+			_harvestTowardProbe -= Tuning.HarvestPerProbe;
+			Probes.Build();
+		}
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -85,16 +113,19 @@ public partial class Fight : Node3D
 	{
 		int seconds = (int)Elapsed;
 		string cameraMode = Tuning.CameraOrthographic ? "orthographic" : "perspective";
+		string nextProbe = Probes.Count >= Probes.Cap ? "at cap" : $"next {ProbeBuildProgress * 100f:0}%";
 		_debugLabel.Text =
 			$"{Engine.GetFramesPerSecond():0} fps    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
-			$"probes {Probes.Count}    " +
+			$"xp {Experience:0}    " +
+			$"probes {Probes.Count}/{Probes.Cap} ({nextProbe})    " +
 			$"kills {Kills}    " +
 			$"enemies {Enemies.Count}    " +
-			$"debris {Debris.Count}    " +
+			$"asteroids {Harvestables.AsteroidCount}    " +
+			$"debris {Harvestables.DebrisCount}    " +
 			$"gateway {Vnp.PlanePosition.DistanceTo(Gateway.PlanePosition):0} away    " +
-			$"camera: {cameraMode} (F1 switches)";
+			$"camera: {cameraMode} (F1)";
 	}
 
 	/// <summary>

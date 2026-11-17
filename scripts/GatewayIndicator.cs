@@ -77,6 +77,6 @@ public partial class GatewayIndicator : Control
 		// A notched arrowhead, drawn as two halves, so the pointing end is unmistakable.
 		DrawColoredPolygon(new[] { _tip, back + side * size * 0.5f, notch }, color);
 		DrawColoredPolygon(new[] { _tip, notch, back - side * size * 0.5f }, color);
-		DrawArc(_tip - _direction * size * 1.75f, size * 0.5f, 0f, Mathf.Tau, 32, color, 3f, true);
+		DrawArc(_tip - _direction * size * 1.75f, size * 0.5f, 0f, Mathf.Tau, 32, color, size * 0.14f, true);
 	}
 }

@@ -161,7 +161,7 @@ public partial class EnemySwarm : Node3D
 		if (enemy.Health <= 0f)
 		{
 			Fight.Kills++;
-			Fight.Debris.Add(enemy.Position, Rng.Range(Tuning.DebrisMassMin, Tuning.DebrisMassMax));
+			Fight.Harvestables.AddDebris(enemy.Position, Rng.Range(Tuning.DebrisMassMin, Tuning.DebrisMassMax));
 			// The enemy itself is cleared away at the start of the next update.
 		}
 	}

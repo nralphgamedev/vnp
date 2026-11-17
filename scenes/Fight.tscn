@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
@@ -8,10 +8,11 @@
 [ext_resource type="Script" path="res://scripts/GatewayIndicator.cs" id="6_indicator"]
 [ext_resource type="Script" path="res://scripts/EnemySwarm.cs" id="7_enemies"]
 [ext_resource type="Script" path="res://scripts/Projectiles.cs" id="8_projectiles"]
-[ext_resource type="Script" path="res://scripts/Debris.cs" id="9_debris"]
+[ext_resource type="Script" path="res://scripts/Harvestables.cs" id="9_harvestables"]
 [ext_resource type="Script" path="res://scripts/PulseLaser.cs" id="10_laser"]
 [ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
 [ext_resource type="Script" path="res://scripts/ProbeSwarm.cs" id="12_probes"]
+[ext_resource type="Script" path="res://scripts/VnpHarvester.cs" id="13_harvester"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -33,8 +34,8 @@ light_energy = 1.1
 [node name="Gateway" type="Node3D" parent="."]
 script = ExtResource("3_gateway")
 
-[node name="Debris" type="Node3D" parent="."]
-script = ExtResource("9_debris")
+[node name="Harvestables" type="Node3D" parent="."]
+script = ExtResource("9_harvestables")
 
 [node name="Vnp" type="Node3D" parent="."]
 script = ExtResource("2_vnp")
@@ -50,6 +51,9 @@ script = ExtResource("8_projectiles")
 
 [node name="PulseLaser" type="Node3D" parent="."]
 script = ExtResource("10_laser")
+
+[node name="VnpHarvester" type="Node3D" parent="."]
+script = ExtResource("13_harvester")
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("4_ground")
@@ -83,11 +87,11 @@ script = ExtResource("6_indicator")
 
 [node name="DebugLabel" type="Label" parent="Hud"]
 modulate = Color(1, 1, 1, 0.6)
-offset_left = 12.0
-offset_top = 8.0
-offset_right = 800.0
-offset_bottom = 31.0
-theme_override_font_sizes/font_size = 13
+offset_left = 20.0
+offset_top = 13.0
+offset_right = 1900.0
+offset_bottom = 51.0
+theme_override_font_sizes/font_size = 21
 
 [node name="Message" type="Label" parent="Hud"]
 visible = false
@@ -96,11 +100,11 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -110.0
-offset_right = 300.0
-offset_bottom = -70.0
+offset_left = -500.0
+offset_top = -184.0
+offset_right = 500.0
+offset_bottom = -117.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 46
 horizontal_alignment = 1

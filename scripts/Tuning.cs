@@ -91,11 +91,20 @@ public static class Tuning
 	public static float ProbeSeparation = 1.5f;
 
 	/// <summary>Probes attack enemies that come this close to the VNP. An enemy that ends up farther
-	/// away than this, because it fled or the VNP moved off, is dropped and the probes return.</summary>
+	/// away than this, because it fled or the VNP moved off, is dropped and the probes return.
+	/// While any enemy is in this range, attacking comes before harvesting.</summary>
 	public static float ProbeEngageRange = 20f;
 
 	/// <summary>How far from its target a probe sits while surrounding it.</summary>
 	public static float ProbeAttackDistance = 5f;
+
+	/// <summary>How fast probes circle whatever they surround, in degrees per second.</summary>
+	public static float ProbeCircleSpeed = 46f;
+
+	/// <summary>How hard probes brake as they reach their spot around a target, as a fraction of
+	/// their acceleration. Lower starts braking earlier and arrives more gently; higher arrives
+	/// faster but closer to overshooting. Keep it at or below 0.5 to avoid bouncing.</summary>
+	public static float ProbeArriveBraking = 0.5f;
 
 	/// <summary>How close an enemy projectile must pass to a probe's center to hit it.</summary>
 	public static float ProbeHitRadius = 0.7f;
@@ -240,6 +249,135 @@ public static class Tuning
 	/// <summary>Largest mass of the debris an enemy leaves.</summary>
 	public static float DebrisMassMax = 2f;
 
+	// ───────────── Harvesting ─────────────
+	// Harvest beams draw mass out of asteroids and debris gradually, and experience and
+	// probe-building progress arrive as it comes. Harvest time is the mass divided by the total
+	// rate of the beams on it: the VNP alone takes 1 second per unit of mass.
+
+	/// <summary>Mass the VNP's harvest beam draws out per second.</summary>
+	public static float VnpHarvestRate = 1f;
+
+	/// <summary>Mass one probe's harvest beam draws out per second.
+	/// More probes on the same asteroid harvest it faster.</summary>
+	public static float ProbeHarvestRate = 0.4f;
+
+	/// <summary>How far a harvest beam reaches past the edge of an asteroid or piece of debris.
+	/// Used by the VNP and the probes.</summary>
+	public static float HarvestBeamRange = 8f;
+
+	/// <summary>Fight experience gained per unit of mass harvested.</summary>
+	public static float ExperiencePerMass = 10f;
+
+	/// <summary>Mass that must be harvested to build one temporary probe.</summary>
+	public static float HarvestPerProbe = 8f;
+
+	/// <summary>Most probes the VNP can have. Harvesting builds probes up to this,
+	/// and gives only fight experience once it is reached.</summary>
+	public static int ProbeCap = 20;
+
+	/// <summary>Probes go to harvest asteroids and debris whose edge comes within this distance
+	/// of the VNP, once there is no enemy to attack.</summary>
+	public static float ProbeHarvestRange = 20f;
+
+	/// <summary>How far beyond the edge of an asteroid a probe sits while harvesting it.</summary>
+	public static float ProbeHarvestStandoff = 2f;
+
+	// ───────────── Asteroid fields ─────────────
+	// Fields are placed at the start of the fight and never respawn.
+
+	/// <summary>Fewest asteroid fields in a fight.</summary>
+	public static int AsteroidFieldsMin = 5;
+
+	/// <summary>Most asteroid fields in a fight.</summary>
+	public static int AsteroidFieldsMax = 9;
+
+	/// <summary>Closest a field's center can be to the gateway.</summary>
+	public static float AsteroidFieldDistanceMin = 70f;
+
+	/// <summary>Farthest a field's center can be from the gateway.</summary>
+	public static float AsteroidFieldDistanceMax = 260f;
+
+	/// <summary>Closest two fields' centers can be to each other.</summary>
+	public static float AsteroidFieldSpacing = 70f;
+
+	/// <summary>Chance that a field is a ring. The rest are clusters.</summary>
+	public static float AsteroidRingChance = 0.4f;
+
+	/// <summary>Chance that a field drifts in a straight line.</summary>
+	public static float AsteroidFieldMovingChance = 0.3f;
+
+	/// <summary>Chance that a field turns around its center. Fields that neither drift nor turn stay put.</summary>
+	public static float AsteroidFieldTurningChance = 0.3f;
+
+	/// <summary>Speed of a drifting field, in units per second.</summary>
+	public static float AsteroidFieldDriftSpeed = 0.6f;
+
+	/// <summary>Speed of a turning field, in degrees per second.</summary>
+	public static float AsteroidFieldTurnSpeed = 5f;
+
+	/// <summary>Fewest asteroids in a cluster.</summary>
+	public static int AsteroidsPerClusterMin = 12;
+
+	/// <summary>Most asteroids in a cluster.</summary>
+	public static int AsteroidsPerClusterMax = 24;
+
+	/// <summary>Smallest radius of a cluster.</summary>
+	public static float AsteroidClusterRadiusMin = 10f;
+
+	/// <summary>Largest radius of a cluster.</summary>
+	public static float AsteroidClusterRadiusMax = 18f;
+
+	/// <summary>Fewest asteroids in a ring.</summary>
+	public static int AsteroidsPerRingMin = 22;
+
+	/// <summary>Most asteroids in a ring.</summary>
+	public static int AsteroidsPerRingMax = 36;
+
+	/// <summary>Smallest radius of a ring.</summary>
+	public static float AsteroidRingRadiusMin = 16f;
+
+	/// <summary>Largest radius of a ring.</summary>
+	public static float AsteroidRingRadiusMax = 26f;
+
+	/// <summary>How wide the band of a ring is.</summary>
+	public static float AsteroidRingWidth = 5f;
+
+	/// <summary>Mass of the smallest asteroids. Harvest time scales with mass.</summary>
+	public static float AsteroidMassMin = 1f;
+
+	/// <summary>Mass of the largest asteroids.</summary>
+	public static float AsteroidMassMax = 10f;
+
+	/// <summary>How strongly asteroid masses lean toward small. 1 spreads them evenly;
+	/// 2 makes small asteroids common and large ones rare; higher leans further.
+	/// Applies to lone asteroids too.</summary>
+	public static float AsteroidSmallBias = 2f;
+
+	// ───────────── Lone asteroids ─────────────
+	// Single asteroids scattered between the fields. Like the fields, they are placed at the start
+	// of the fight and stay put.
+
+	/// <summary>How many lone asteroids there are. At 30 there is roughly one every couple of screens.</summary>
+	public static int LoneAsteroidCount = 30;
+
+	/// <summary>Closest a lone asteroid can be to the gateway.</summary>
+	public static float LoneAsteroidDistanceMin = 20f;
+
+	/// <summary>Farthest a lone asteroid can be from the gateway.</summary>
+	public static float LoneAsteroidDistanceMax = 300f;
+
+	/// <summary>Closest a lone asteroid can be to a field's center, so it does not look like part of the field.</summary>
+	public static float LoneAsteroidFieldClearance = 45f;
+
+	/// <summary>Closest two lone asteroids can be to each other.</summary>
+	public static float LoneAsteroidSpacing = 25f;
+
+	/// <summary>Mass of the smallest lone asteroids. Above the field minimum, so a lone asteroid is worth a detour.</summary>
+	public static float LoneAsteroidMassMin = 3f;
+
+	/// <summary>Mass of the largest lone asteroids.</summary>
+	public static float LoneAsteroidMassMax = 10f;
+
 	// ───────────── Camera ─────────────
 
 	/// <summary>False is perspective, true is orthographic. F1 switches while playing.</summary>
@@ -269,11 +407,11 @@ public static class Tuning
 
 	// ───────────── Gateway indicator ─────────────
 
-	/// <summary>Gap in pixels between the edge of the screen and the tip of the arrow.</summary>
-	public static float IndicatorEdgeMargin = 28f;
+	/// <summary>Gap in pixels at 1920 by 1080 between the edge of the screen and the tip of the arrow.</summary>
+	public static float IndicatorEdgeMargin = 46f;
 
-	/// <summary>Length of the arrow in pixels.</summary>
-	public static float IndicatorSize = 22f;
+	/// <summary>Length of the arrow in pixels at 1920 by 1080.</summary>
+	public static float IndicatorSize = 36f;
 
 	/// <summary>False hides the arrow while the gateway itself is on screen.
 	/// True keeps it at the screen edge at all times.</summary>
@@ -293,8 +431,13 @@ public static class Tuning
 	/// <summary>Scale of the enemy model. 1 is about 2.5 units across.</summary>
 	public static float EnemySize = 1f;
 
-	/// <summary>Scale of a piece of debris with mass 1. Heavier pieces are drawn larger.</summary>
+	/// <summary>Scale of a piece of debris with mass 1. Heavier pieces are drawn larger,
+	/// and every piece shrinks as it is harvested.</summary>
 	public static float DebrisSize = 0.8f;
+
+	/// <summary>Scale of an asteroid with mass 1, about 1.8 units across. Heavier asteroids are
+	/// drawn larger, and every asteroid shrinks as it is harvested.</summary>
+	public static float AsteroidSize = 1f;
 
 	/// <summary>Seconds an enemy or the VNP flashes after being hit.</summary>
 	public static float HitFlashTime = 0.12f;
@@ -307,7 +450,11 @@ public static class Tuning
 	public static Color EnemyColor = new(0.95f, 0.22f, 0.25f);
 	public static Color EnemyProjectileColor = new(1.0f, 0.55f, 0.15f);
 	public static Color PulseLaserColor = new(0.55f, 0.95f, 1.0f);
-	public static Color DebrisColor = new(0.5f, 0.42f, 0.36f);
+	public static Color DebrisColor = new(0.55f, 0.3f, 0.24f);
+	public static Color AsteroidColor = new(0.46f, 0.47f, 0.52f);
+
+	/// <summary>Colour of fight experience: harvest beams, and the tint on whatever they are harvesting.</summary>
+	public static Color ExperienceColor = new(0.72f, 0.45f, 1.0f);
 
 	public static Color VnpHullColor = new(0.62f, 0.7f, 0.9f);
 	public static Color VnpCoreColor = new(1.0f, 0.72f, 0.2f);

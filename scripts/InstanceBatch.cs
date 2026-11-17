@@ -68,6 +68,42 @@ public sealed class InstanceBatch
 		_buffer[o + 15] = color.A;
 	}
 
+	/// <summary>
+	/// Places copy number <paramref name="index"/> as a bar stretched between two points on the plane.
+	/// Use it with a 1 by 1 by 1 box: the box is scaled to <paramref name="width"/> across,
+	/// <paramref name="thickness"/> high, and the length of the gap.
+	/// </summary>
+	public void SetBeam(int index, Vector2 from, Vector2 to, float height, float width, float thickness, Color color)
+	{
+		Vector2 along = to - from;
+		float length = along.Length();
+		float yaw = length > 0.0001f ? PlaneMath.YawFacing(along) : 0f;
+		float cos = Mathf.Cos(yaw);
+		float sin = Mathf.Sin(yaw);
+		Vector2 middle = (from + to) * 0.5f;
+
+		int o = index * Stride;
+		_buffer[o + 0] = cos * width;
+		_buffer[o + 1] = 0f;
+		_buffer[o + 2] = sin * length;
+		_buffer[o + 3] = middle.X;
+
+		_buffer[o + 4] = 0f;
+		_buffer[o + 5] = thickness;
+		_buffer[o + 6] = 0f;
+		_buffer[o + 7] = height;
+
+		_buffer[o + 8] = -sin * width;
+		_buffer[o + 9] = 0f;
+		_buffer[o + 10] = cos * length;
+		_buffer[o + 11] = middle.Y;
+
+		_buffer[o + 12] = color.R;
+		_buffer[o + 13] = color.G;
+		_buffer[o + 14] = color.B;
+		_buffer[o + 15] = color.A;
+	}
+
 	/// <summary>Sends the copies to the renderer and shows the first <paramref name="count"/> of them.</summary>
 	public void Commit(int count)
 	{

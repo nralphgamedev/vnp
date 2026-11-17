@@ -3,8 +3,9 @@ using Godot;
 /// <summary>A small health bar drawn just below the VNP on screen.</summary>
 public partial class HealthBar : Control
 {
-	private static readonly Vector2 BarSize = new(64f, 7f);
-	private const float BelowVnp = 34f; // Pixels from the VNP's center down to the bar.
+	// Sizes in pixels at 1920 by 1080.
+	private static readonly Vector2 BarSize = new(106f, 12f);
+	private const float BelowVnp = 56f; // From the VNP's center down to the bar.
 
 	public Fight Fight;
 
@@ -32,7 +33,7 @@ public partial class HealthBar : Control
 			? new Color(0.9f, 0.85f, 0.2f).Lerp(new Color(0.3f, 0.9f, 0.4f), (filled - 0.5f) * 2f)
 			: new Color(0.95f, 0.25f, 0.2f).Lerp(new Color(0.9f, 0.85f, 0.2f), filled * 2f);
 
-		DrawRect(bar.Grow(1.5f), new Color(0f, 0f, 0f, 0.7f));
+		DrawRect(bar.Grow(2.5f), new Color(0f, 0f, 0f, 0.7f));
 		DrawRect(new Rect2(bar.Position, new Vector2(bar.Size.X * filled, bar.Size.Y)), fill);
 	}
 }

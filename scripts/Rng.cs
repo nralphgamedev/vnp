@@ -6,8 +6,14 @@ public static class Rng
 {
 	private static readonly Random Random = new();
 
+	/// <summary>A random number from 0 up to 1.</summary>
+	public static float Value() => Random.NextSingle();
+
 	/// <summary>A random number from min up to max.</summary>
 	public static float Range(float min, float max) => min + (max - min) * Random.NextSingle();
+
+	/// <summary>A random whole number from min to max, both included.</summary>
+	public static int Int(int min, int max) => Random.Next(min, max + 1);
 
 	/// <summary>A random direction of length 1.</summary>
 	public static Vector2 Direction()
