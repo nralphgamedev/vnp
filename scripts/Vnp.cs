@@ -1,6 +1,7 @@
 using Godot;
+using System;
 
-/// <summary>The player's ship. Moves on the plane from WASD or the left stick.</summary>
+/// <summary>The player's ship. Moves on the plane from WASD or the left stick, and has health.</summary>
 public partial class Vnp : Node3D
 {
 	/// <summary>Position on the gameplay plane.</summary>
@@ -9,10 +10,20 @@ public partial class Vnp : Node3D
 	/// <summary>Current velocity on the gameplay plane, in units per second.</summary>
 	public Vector2 Velocity { get; private set; }
 
+	public float MaxHealth { get; private set; } = Tuning.VnpMaxHealth;
+	public float Health { get; private set; } = Tuning.VnpMaxHealth;
+	public bool IsDestroyed { get; private set; }
+
+	/// <summary>Raised once, when health reaches zero.</summary>
+	public event Action Destroyed;
+
 	private Node3D _model;
+	private StandardMaterial3D _hullMaterial;
+	private float _flash;
 
 	public override void _Ready()
 	{
+		ProcessPriority = UpdateOrder.Vnp;
 		PlanePosition = PlaneMath.ToPlane(Position);
 		BuildModel();
 	}
@@ -25,9 +36,27 @@ public partial class Vnp : Node3D
 		Position = PlaneMath.ToWorld(PlanePosition);
 	}
 
+	public void TakeDamage(float amount)
+	{
+		if (IsDestroyed)
+			return;
+
+		Health = Mathf.Max(0f, Health - amount);
+		_flash = Tuning.HitFlashTime;
+		if (Health <= 0f)
+		{
+			IsDestroyed = true;
+			_model.Visible = false;
+			Destroyed?.Invoke();
+		}
+	}
+
 	public override void _Process(double delta)
 	{
 		float dt = (float)delta;
+		UpdateHitFlash(dt);
+		if (IsDestroyed)
+			return;
 
 		// GetVector never returns more than length 1, so diagonals are not faster,
 		// and a partly tilted stick gives a partial speed.
@@ -48,22 +77,31 @@ public partial class Vnp : Node3D
 		}
 	}
 
+	/// <summary>The hull glows red for a moment after a hit.</summary>
+	private void UpdateHitFlash(float dt)
+	{
+		_flash = Mathf.Max(0f, _flash - dt);
+		float strength = _flash / Tuning.HitFlashTime;
+		_hullMaterial.Emission = Tuning.VnpHullColor.Lerp(new Color(1f, 0.15f, 0.1f), strength);
+		_hullMaterial.EmissionEnergyMultiplier = Mathf.Lerp(0.1f, 2.5f, strength);
+	}
+
 	/// <summary>Placeholder: an arrowhead hull with two side pods and a glowing core.</summary>
 	private void BuildModel()
 	{
 		_model = new Node3D { Name = "Model", Scale = Vector3.One * Tuning.VnpSize };
 		AddChild(_model);
 
-		StandardMaterial3D hull = Placeholder.Material(Tuning.VnpHullColor);
+		_hullMaterial = Placeholder.Material(Tuning.VnpHullColor);
 		StandardMaterial3D core = Placeholder.Material(Tuning.VnpCoreColor, glow: 0.8f);
 
 		// A prism stands upright by default, so tip it forward to make the point face -Z.
-		Placeholder.AddShape(_model, new PrismMesh { Size = new Vector3(2.2f, 3.0f, 0.8f) }, hull,
+		Placeholder.AddShape(_model, new PrismMesh { Size = new Vector3(2.2f, 3.0f, 0.8f) }, _hullMaterial,
 			rotationDegrees: new Vector3(-90f, 0f, 0f));
 
 		var pod = new BoxMesh { Size = new Vector3(0.5f, 0.6f, 1.5f) };
-		Placeholder.AddShape(_model, pod, hull, new Vector3(-1.25f, 0f, 1.0f));
-		Placeholder.AddShape(_model, pod, hull, new Vector3(1.25f, 0f, 1.0f));
+		Placeholder.AddShape(_model, pod, _hullMaterial, new Vector3(-1.25f, 0f, 1.0f));
+		Placeholder.AddShape(_model, pod, _hullMaterial, new Vector3(1.25f, 0f, 1.0f));
 
 		Placeholder.AddShape(_model, new SphereMesh { Radius = 0.45f, Height = 0.9f }, core,
 			new Vector3(0f, 0.45f, 0.55f));

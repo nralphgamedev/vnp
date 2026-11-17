@@ -16,7 +16,7 @@ public partial class GroundGrid : MeshInstance3D
 
 	public override void _Ready()
 	{
-		ProcessPriority = 15;
+		ProcessPriority = UpdateOrder.Ground;
 
 		Mesh = new PlaneMesh { Size = new Vector2(SheetSize, SheetSize) };
 		CastShadow = ShadowCastingSetting.Off;

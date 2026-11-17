@@ -16,7 +16,7 @@ public partial class GatewayIndicator : Control
 	public override void _Ready()
 	{
 		// Run after the camera has moved this frame.
-		ProcessPriority = 20;
+		ProcessPriority = UpdateOrder.Hud;
 		MouseFilter = MouseFilterEnum.Ignore;
 		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 	}

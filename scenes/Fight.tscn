@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
@@ -6,6 +6,11 @@
 [ext_resource type="Script" path="res://scripts/GroundGrid.cs" id="4_ground"]
 [ext_resource type="Script" path="res://scripts/CameraRig.cs" id="5_camera"]
 [ext_resource type="Script" path="res://scripts/GatewayIndicator.cs" id="6_indicator"]
+[ext_resource type="Script" path="res://scripts/EnemySwarm.cs" id="7_enemies"]
+[ext_resource type="Script" path="res://scripts/Projectiles.cs" id="8_projectiles"]
+[ext_resource type="Script" path="res://scripts/Debris.cs" id="9_debris"]
+[ext_resource type="Script" path="res://scripts/PulseLaser.cs" id="10_laser"]
+[ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -24,11 +29,23 @@ environment = SubResource("Environment_space")
 transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 50, 0)
 light_energy = 1.1
 
+[node name="Gateway" type="Node3D" parent="."]
+script = ExtResource("3_gateway")
+
+[node name="Debris" type="Node3D" parent="."]
+script = ExtResource("9_debris")
+
 [node name="Vnp" type="Node3D" parent="."]
 script = ExtResource("2_vnp")
 
-[node name="Gateway" type="Node3D" parent="."]
-script = ExtResource("3_gateway")
+[node name="Enemies" type="Node3D" parent="."]
+script = ExtResource("7_enemies")
+
+[node name="Projectiles" type="Node3D" parent="."]
+script = ExtResource("8_projectiles")
+
+[node name="PulseLaser" type="Node3D" parent="."]
+script = ExtResource("10_laser")
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("4_ground")
@@ -39,6 +56,16 @@ fov = 20.0
 script = ExtResource("5_camera")
 
 [node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="HealthBar" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11_healthbar")
 
 [node name="GatewayIndicator" type="Control" parent="Hud"]
 layout_mode = 3
@@ -57,3 +84,19 @@ offset_top = 8.0
 offset_right = 800.0
 offset_bottom = 31.0
 theme_override_font_sizes/font_size = 13
+
+[node name="Message" type="Label" parent="Hud"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -110.0
+offset_right = 300.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1

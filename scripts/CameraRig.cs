@@ -15,7 +15,7 @@ public partial class CameraRig : Camera3D
 	public override void _Ready()
 	{
 		// Run after the VNP has moved this frame, so the camera never trails a frame behind.
-		ProcessPriority = 10;
+		ProcessPriority = UpdateOrder.Camera;
 		Current = true;
 	}
 

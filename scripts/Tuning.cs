@@ -29,6 +29,143 @@ public static class Tuning
 	/// <summary>Joystick movement below this fraction of full tilt is ignored.</summary>
 	public static float StickDeadzone = 0.2f;
 
+	// ───────────── VNP health ─────────────
+
+	/// <summary>Health the VNP starts the fight with.</summary>
+	public static float VnpMaxHealth = 100f;
+
+	/// <summary>How close an enemy projectile must pass to the VNP's center to hit it.</summary>
+	public static float VnpHitRadius = 1.4f;
+
+	// ───────────── Pulse Laser ─────────────
+	// The laser copies these when the fight starts. After that the numbers belong to the weapon.
+
+	/// <summary>Damage of one shot.</summary>
+	public static float PulseLaserDamage = 10f;
+
+	/// <summary>Seconds between shots.</summary>
+	public static float PulseLaserCooldown = 0.6f;
+
+	/// <summary>How far away an enemy can be and still be shot.</summary>
+	public static float PulseLaserRange = 22f;
+
+	/// <summary>Seconds the beam stays visible after a shot. Cosmetic.</summary>
+	public static float PulseLaserBeamTime = 0.12f;
+
+	/// <summary>Thickness of the drawn beam. Cosmetic, because the beam only hits the enemy it aimed at.</summary>
+	public static float PulseLaserBeamWidth = 0.45f;
+
+	// ───────────── Enemy ─────────────
+
+	/// <summary>Health of an enemy spawned at the start of the fight.</summary>
+	public static float EnemyHealth = 30f;
+
+	/// <summary>Speed while chasing the VNP. Below the VNP's speed, so the player can get away.</summary>
+	public static float EnemySpeed = 13f;
+
+	/// <summary>Speed while roaming with nothing to chase.</summary>
+	public static float EnemyWanderSpeed = 4f;
+
+	/// <summary>How quickly an enemy changes speed or direction, in units per second squared.</summary>
+	public static float EnemyAcceleration = 30f;
+
+	/// <summary>How fast an enemy turns to face where it is going or shooting, in degrees per second.</summary>
+	public static float EnemyTurnSpeed = 360f;
+
+	/// <summary>An idle enemy notices the VNP when it comes this close, then chases and attacks.</summary>
+	public static float EnemyAggroRange = 28f;
+
+	/// <summary>A chasing enemy gives up once the VNP is this far away. Keep it above the aggro range.</summary>
+	public static float EnemyLoseAggroRange = 45f;
+
+	/// <summary>An enemy fires once the VNP is this close.</summary>
+	public static float EnemyAttackRange = 16f;
+
+	/// <summary>A chasing enemy stops closing in at this distance and circles the VNP instead.
+	/// 0 makes it keep charging.</summary>
+	public static float EnemyHoldDistance = 11f;
+
+	/// <summary>How far an idle enemy strays from its home point before turning back.</summary>
+	public static float EnemyWanderRadius = 12f;
+
+	/// <summary>Seconds between shots from one enemy.</summary>
+	public static float EnemyFireCooldown = 1.5f;
+
+	/// <summary>Damage of one enemy projectile at the start of the fight.</summary>
+	public static float EnemyProjectileDamage = 4f;
+
+	/// <summary>Speed of an enemy projectile. Above the VNP's speed, so it must be sidestepped, not outrun.</summary>
+	public static float EnemyProjectileSpeed = 24f;
+
+	/// <summary>Seconds an enemy projectile flies before it fizzles out. Speed times this is its reach.</summary>
+	public static float EnemyProjectileLifetime = 1.2f;
+
+	// ───────────── Enemy flocking ─────────────
+
+	/// <summary>Enemies this close to each other count as flockmates.</summary>
+	public static float EnemyNeighborRadius = 8f;
+
+	/// <summary>Enemies closer than this push apart.</summary>
+	public static float EnemySeparationRadius = 3.2f;
+
+	/// <summary>Strength of the push apart. Higher gives looser groups.</summary>
+	public static float EnemySeparation = 1.6f;
+
+	/// <summary>How strongly an enemy matches its flockmates' heading.</summary>
+	public static float EnemyAlignment = 1.0f;
+
+	/// <summary>How strongly an enemy is pulled toward the middle of its flockmates.</summary>
+	public static float EnemyCohesion = 0.6f;
+
+	/// <summary>How strongly an idle enemy follows its own random heading instead of its flock.
+	/// Lower gives tighter groups that move as one. Higher scatters them.</summary>
+	public static float EnemyWanderWeight = 0.5f;
+
+	// ───────────── Enemy spawning ─────────────
+
+	/// <summary>Groups already roaming, off screen, when the fight starts.</summary>
+	public static int EnemyStartingGroups = 5;
+
+	/// <summary>Enemies in each spawned group.</summary>
+	public static int EnemyGroupSize = 4;
+
+	/// <summary>Seconds between spawned groups at the start of the fight.</summary>
+	public static float EnemySpawnInterval = 4f;
+
+	/// <summary>A group spawns at least this far from the VNP. 50 is just off screen.</summary>
+	public static float EnemySpawnDistanceMin = 50f;
+
+	/// <summary>A group spawns at most this far from the VNP.</summary>
+	public static float EnemySpawnDistanceMax = 75f;
+
+	/// <summary>No group spawns while this many enemies are alive. Raise it to test performance.</summary>
+	public static int EnemyMaxAlive = 200;
+
+	/// <summary>An enemy this far from the VNP is removed without counting as a kill,
+	/// so enemies left behind do not use up the cap.</summary>
+	public static float EnemyDespawnDistance = 180f;
+
+	// ───────────── Difficulty ramp during the fight ─────────────
+	// Each value is the extra fraction added per minute of fight time. 0.2 means +20% a minute.
+	// An enemy keeps the strength it had when it spawned.
+
+	/// <summary>Extra enemy health per minute.</summary>
+	public static float RampEnemyHealthPerMinute = 0.2f;
+
+	/// <summary>Extra enemy projectile damage per minute.</summary>
+	public static float RampEnemyDamagePerMinute = 0.1f;
+
+	/// <summary>Extra spawn rate per minute.</summary>
+	public static float RampSpawnRatePerMinute = 0.25f;
+
+	// ───────────── Debris ─────────────
+
+	/// <summary>Smallest mass of the debris an enemy leaves.</summary>
+	public static float DebrisMassMin = 1f;
+
+	/// <summary>Largest mass of the debris an enemy leaves.</summary>
+	public static float DebrisMassMax = 2f;
+
 	// ───────────── Camera ─────────────
 
 	/// <summary>False is perspective, true is orthographic. F1 switches while playing.</summary>
@@ -71,8 +208,22 @@ public static class Tuning
 	/// <summary>Scale of the VNP model. 1 is about 3 units long.</summary>
 	public static float VnpSize = 1f;
 
+	/// <summary>Scale of the enemy model. 1 is about 2.5 units across.</summary>
+	public static float EnemySize = 1f;
+
+	/// <summary>Scale of a piece of debris with mass 1. Heavier pieces are drawn larger.</summary>
+	public static float DebrisSize = 0.8f;
+
+	/// <summary>Seconds an enemy or the VNP flashes after being hit.</summary>
+	public static float HitFlashTime = 0.12f;
+
 	/// <summary>Spacing of the background grid lines. Every fifth line is brighter.</summary>
 	public static float GridCellSize = 5f;
+
+	public static Color EnemyColor = new(0.95f, 0.22f, 0.25f);
+	public static Color EnemyProjectileColor = new(1.0f, 0.55f, 0.15f);
+	public static Color PulseLaserColor = new(0.55f, 0.95f, 1.0f);
+	public static Color DebrisColor = new(0.5f, 0.42f, 0.36f);
 
 	public static Color VnpHullColor = new(0.62f, 0.7f, 0.9f);
 	public static Color VnpCoreColor = new(1.0f, 0.72f, 0.2f);
