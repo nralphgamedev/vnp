@@ -5,10 +5,13 @@ using System;
 /// Every enemy in the fight. Enemies are kept as plain data in one array and drawn in one
 /// batch, so the count can be raised a long way before it costs much.
 ///
-/// Behaviour: an enemy roams with its flock around its home point. When the VNP or a probe
+/// Behaviour: an enemy roams with its flock around its home point. When the VNP or a drone
 /// comes inside its aggro range it chases whichever is nearest, holds at a distance, circles
 /// and fires. When everything gets far enough away it gives up and roams around wherever it
 /// ended up.
+///
+/// Waves: every so often several groups arrive at once from all around the VNP, already hunting
+/// it. They chase from any distance and do not give up.
 /// </summary>
 public partial class EnemySwarm : Node3D
 {
@@ -27,6 +30,7 @@ public partial class EnemySwarm : Node3D
 		public float OrbitSign;         // 1 or -1: which way it circles the VNP.
 		public float Flash;             // Seconds left of the hit flash.
 		public bool Aggro;
+		public bool Hunting;            // Part of a wave: chases from any distance and never gives up.
 	}
 
 	// Placeholder silhouette: two prongs forward, like a pincer. Forward is -y.
@@ -40,6 +44,12 @@ public partial class EnemySwarm : Node3D
 
 	/// <summary>Enemies currently alive.</summary>
 	public int Count { get; private set; }
+
+	/// <summary>Waves sent so far.</summary>
+	public int WavesSent { get; private set; }
+
+	/// <summary>Fight time, in seconds, when the next wave arrives.</summary>
+	public float NextWaveTime => Tuning.WaveFirstSeconds + WavesSent * Tuning.WaveIntervalSeconds;
 
 	private Enemy[] _enemies = new Enemy[256];
 	private readonly SpatialGrid _grid = new(Tuning.EnemyNeighborRadius);
@@ -189,24 +199,48 @@ public partial class EnemySwarm : Node3D
 				SpawnGroup(vnpPosition);
 		}
 
+		if (Fight.Elapsed >= NextWaveTime)
+			SpawnWave(vnpPosition);
+
 		_spawnTimer -= dt;
 		if (_spawnTimer > 0f)
 			return;
 
 		// The spawn rate climbs through the fight.
-		_spawnTimer = Tuning.EnemySpawnInterval / (1f + Tuning.RampSpawnRatePerMinute * Fight.Minutes);
+		_spawnTimer = Tuning.EnemySpawnInterval / Fight.EnemySpawnRateScale;
 		if (Count + Tuning.EnemyGroupSize <= Tuning.EnemyMaxAlive)
 			SpawnGroup(vnpPosition);
+	}
+
+	/// <summary>
+	/// Spawns a wave: groups spaced evenly on a ring just off screen, all hunting the VNP.
+	/// Each wave has more groups than the last. Waves ignore EnemyMaxAlive.
+	/// </summary>
+	private void SpawnWave(Vector2 vnpPosition)
+	{
+		int groups = Tuning.WaveGroups + Tuning.WaveGroupsAddedPerWave * WavesSent;
+		WavesSent++;
+		float startAngle = Rng.Range(0f, Mathf.Tau);
+		for (int g = 0; g < groups; g++)
+		{
+			float angle = startAngle + Mathf.Tau * g / groups;
+			Vector2 home = vnpPosition + Vector2.FromAngle(angle) * Tuning.EnemySpawnDistanceMin;
+			SpawnGroupAt(home, hunting: true);
+		}
 	}
 
 	/// <summary>Spawns one group at a random spot off screen around the VNP. That spot is the group's home.</summary>
 	private void SpawnGroup(Vector2 vnpPosition)
 	{
 		Vector2 home = vnpPosition + Rng.Direction() * Rng.Range(Tuning.EnemySpawnDistanceMin, Tuning.EnemySpawnDistanceMax);
+		SpawnGroupAt(home, hunting: false);
+	}
 
+	private void SpawnGroupAt(Vector2 home, bool hunting)
+	{
 		// Enemies spawned later in the fight are stronger, and keep that strength.
-		float health = Tuning.EnemyHealth * (1f + Tuning.RampEnemyHealthPerMinute * Fight.Minutes);
-		float damage = Tuning.EnemyProjectileDamage * (1f + Tuning.RampEnemyDamagePerMinute * Fight.Minutes);
+		float health = Tuning.EnemyHealth * Fight.EnemyHealthScale;
+		float damage = Tuning.EnemyProjectileDamage * Fight.EnemyDamageScale;
 
 		for (int i = 0; i < Tuning.EnemyGroupSize; i++)
 		{
@@ -226,6 +260,8 @@ public partial class EnemySwarm : Node3D
 				ProjectileDamage = damage,
 				FireTimer = Rng.Range(0f, Tuning.EnemyFireCooldown), // So a group does not fire in unison.
 				OrbitSign = Rng.Sign(),
+				Aggro = hunting,
+				Hunting = hunting,
 			};
 		}
 	}
@@ -240,28 +276,32 @@ public partial class EnemySwarm : Node3D
 		float neighborRadiusSquared = neighborRadius * neighborRadius;
 		float separationRadius = Tuning.EnemySeparationRadius;
 		float turnStep = Mathf.DegToRad(Tuning.EnemyTurnSpeed) * dt;
-		ProbeSwarm probes = Fight.Probes;
+		float idleTurnStep = Mathf.DegToRad(Tuning.EnemyIdleTurnSpeed) * dt;
+		DroneSwarm drones = Fight.Drones;
 
 		for (int i = 0; i < Count; i++)
 		{
 			ref Enemy enemy = ref _enemies[i];
 
 			// Notice things at the aggro range. Once chasing, keep chasing until everything is well clear.
-			float noticeRange = enemy.Aggro ? Tuning.EnemyLoseAggroRange : Tuning.EnemyAggroRange;
+			// Wave enemies hunt from any distance.
+			float noticeRange = enemy.Hunting
+				? float.MaxValue
+				: (enemy.Aggro ? Tuning.EnemyLoseAggroRange : Tuning.EnemyAggroRange) * Fight.EnemyAggroScale;
 
-			// Go after whichever is nearest: the VNP or one of its probes.
+			// Go after whichever is nearest: the VNP or one of its drones.
 			float vnpDistance = enemy.Position.DistanceTo(vnpPosition);
 			Vector2 targetPosition = vnpPosition;
 			Vector2 targetVelocity = vnpVelocity;
 			float distance = vnpAlive ? vnpDistance : float.MaxValue;
-			// Skip the probe search when even the farthest probe could not be near enough.
-			if (vnpDistance - probes.Reach <= noticeRange
-				&& probes.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
-					out Vector2 probePosition, out Vector2 probeVelocity, out float probeDistance))
+			// Skip the drone search when even the farthest drone could not be near enough.
+			if (vnpDistance - drones.Reach <= noticeRange
+				&& drones.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
+					out Vector2 dronePosition, out Vector2 droneVelocity, out float droneDistance))
 			{
-				targetPosition = probePosition;
-				targetVelocity = probeVelocity;
-				distance = probeDistance;
+				targetPosition = dronePosition;
+				targetVelocity = droneVelocity;
+				distance = droneDistance;
 			}
 
 			Vector2 toTarget = targetPosition - enemy.Position;
@@ -299,10 +339,15 @@ public partial class EnemySwarm : Node3D
 				}
 
 				// Its own whim counts for less than the flock's pull, so idle groups travel together.
+				// The pull back toward home builds up gradually past half the wander radius, rather than
+				// switching on at the edge, which made enemies sitting on the edge flip back and forth.
 				Vector2 fromHome = enemy.Position - enemy.Home;
-				goal = fromHome.Length() > Tuning.EnemyWanderRadius
-					? -fromHome.Normalized()
-					: enemy.WanderDirection * Tuning.EnemyWanderWeight;
+				float homeDistance = fromHome.Length();
+				float halfRadius = Tuning.EnemyWanderRadius * 0.5f;
+				float homePull = Mathf.Clamp((homeDistance - halfRadius) / halfRadius, 0f, 1.5f);
+				goal = enemy.WanderDirection * Tuning.EnemyWanderWeight;
+				if (homeDistance > 0.001f)
+					goal -= fromHome / homeDistance * homePull;
 			}
 
 			// Flocking: push away from close flockmates, match their heading, drift toward their middle.
@@ -350,8 +395,16 @@ public partial class EnemySwarm : Node3D
 			bool inAttackRange = aggro && distance <= Tuning.EnemyAttackRange;
 			if (inAttackRange)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(directionToTarget), turnStep);
-			else if (enemy.Velocity.LengthSquared() > 0.25f)
+			else if (aggro && enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
+			else if (!aggro && enemy.Velocity.Length() > Tuning.EnemyWanderSpeed * 0.5f)
+			{
+				// Idle: turn slowly, and ignore small changes of course, so nudges from flockmates
+				// do not show as twitching.
+				float heading = PlaneMath.YawFacing(enemy.Velocity);
+				if (Mathf.Abs(Mathf.AngleDifference(enemy.Yaw, heading)) > Mathf.DegToRad(Tuning.EnemyIdleTurnDeadband))
+					enemy.Yaw = Mathf.RotateToward(enemy.Yaw, heading, idleTurnStep);
+			}
 
 			enemy.FireTimer = Mathf.Max(0f, enemy.FireTimer - dt);
 			if (inAttackRange && enemy.FireTimer <= 0f)

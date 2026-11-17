@@ -68,6 +68,32 @@ public sealed class InstanceBatch
 		_buffer[o + 15] = color.A;
 	}
 
+	/// <summary>Places copy number <paramref name="index"/> with any orientation and size, given as a basis.</summary>
+	public void SetBasis(int index, Vector2 planePosition, float height, Basis basis, Color color)
+	{
+		int o = index * Stride;
+		// Each row holds one component of the three basis columns, then of the position.
+		_buffer[o + 0] = basis.X.X;
+		_buffer[o + 1] = basis.Y.X;
+		_buffer[o + 2] = basis.Z.X;
+		_buffer[o + 3] = planePosition.X;
+
+		_buffer[o + 4] = basis.X.Y;
+		_buffer[o + 5] = basis.Y.Y;
+		_buffer[o + 6] = basis.Z.Y;
+		_buffer[o + 7] = height;
+
+		_buffer[o + 8] = basis.X.Z;
+		_buffer[o + 9] = basis.Y.Z;
+		_buffer[o + 10] = basis.Z.Z;
+		_buffer[o + 11] = planePosition.Y;
+
+		_buffer[o + 12] = color.R;
+		_buffer[o + 13] = color.G;
+		_buffer[o + 14] = color.B;
+		_buffer[o + 15] = color.A;
+	}
+
 	/// <summary>
 	/// Places copy number <paramref name="index"/> as a bar stretched between two points on the plane.
 	/// Use it with a 1 by 1 by 1 box: the box is scaled to <paramref name="width"/> across,

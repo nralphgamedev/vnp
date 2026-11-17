@@ -46,9 +46,9 @@ public partial class GatewayIndicator : Control
 			float distance = toGateway.Length();
 			if (distance > 0.01f)
 			{
-				float probeDistance = Mathf.Min(distance, Tuning.CameraHeight * 0.25f);
-				Vector3 probe = Camera.Focus + PlaneMath.ToWorld(toGateway / distance) * probeDistance;
-				Vector2 onScreen = Camera.UnprojectPosition(probe) - center;
+				float droneDistance = Mathf.Min(distance, Tuning.CameraHeight * 0.25f);
+				Vector3 drone = Camera.Focus + PlaneMath.ToWorld(toGateway / distance) * droneDistance;
+				Vector2 onScreen = Camera.UnprojectPosition(drone) - center;
 				if (onScreen.LengthSquared() > 0.0001f)
 					_direction = onScreen.Normalized();
 			}

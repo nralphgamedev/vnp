@@ -8,7 +8,7 @@ public static class UpdateOrder
 	public const int Vnp = 0;
 	public const int Harvestables = 1;
 	public const int Enemies = 2;
-	public const int Probes = 3;
+	public const int Drones = 3;
 	public const int Projectiles = 4;
 	public const int Weapons = 5;
 	public const int Camera = 10;

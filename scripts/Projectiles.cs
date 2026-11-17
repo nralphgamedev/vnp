@@ -3,7 +3,7 @@ using System;
 
 /// <summary>
 /// Every projectile in flight, from both sides. Each flies straight until it hits something or
-/// fizzles out. Enemy shots hit the VNP or a probe. Probe shots hit enemies.
+/// fizzles out. Enemy shots hit the VNP or a drone. Drone shots hit enemies.
 /// </summary>
 public partial class Projectiles : Node3D
 {
@@ -74,15 +74,15 @@ public partial class Projectiles : Node3D
 		for (int i = 0; i < Count; i++)
 		{
 			ref Shot shot = ref _shots[i];
-			// Probe shots are smaller and a different colour, so the two sides are easy to tell apart.
+			// Drone shots are smaller and a different colour, so the two sides are easy to tell apart.
 			_batch.Set(i, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity),
 				shot.FromEnemy ? 1f : 0.6f,
-				shot.FromEnemy ? Tuning.EnemyProjectileColor : Tuning.ProbeProjectileColor);
+				shot.FromEnemy ? Tuning.EnemyProjectileColor : Tuning.DroneProjectileColor);
 		}
 		_batch.Commit(Count);
 	}
 
-	/// <summary>An enemy shot hits the VNP or the first probe on its path. Probes can shield the VNP this way.</summary>
+	/// <summary>An enemy shot hits the VNP or the first drone on its path. Drones can shield the VNP this way.</summary>
 	private bool HitPlayerSide(Vector2 from, Vector2 to, float damage)
 	{
 		Vnp vnp = Fight.Vnp;
@@ -92,10 +92,10 @@ public partial class Projectiles : Node3D
 			return true;
 		}
 
-		int probe = Fight.Probes.FindHit(from, to);
-		if (probe >= 0)
+		int drone = Fight.Drones.FindHit(from, to);
+		if (drone >= 0)
 		{
-			Fight.Probes.Damage(probe, damage);
+			Fight.Drones.Damage(drone, damage);
 			return true;
 		}
 		return false;

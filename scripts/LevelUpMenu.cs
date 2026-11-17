@@ -45,11 +45,14 @@ public partial class LevelUpMenu : Control
 		BuildLayout();
 	}
 
-	/// <summary>Pauses the fight and offers a fresh draw of upgrades.</summary>
+	/// <summary>Pauses the fight and offers a fresh draw of upgrades. If every upgrade is used up,
+	/// there is nothing to offer, so the level up passes without opening.</summary>
 	public void Open(int level)
 	{
-		_title.Text = $"LEVEL {level}";
 		_options = Upgrades.Draw(Fight, Tuning.UpgradeOptionsPerOffer);
+		if (_options.Count == 0)
+			return;
+		_title.Text = $"LEVEL {level}";
 		_selected = 0;
 		_lastOption = 0;
 		Visible = true;
@@ -127,7 +130,11 @@ public partial class LevelUpMenu : Control
 				continue;
 
 			Upgrade upgrade = _options[i];
-			_cardTags[i].Text = upgrade.IsWeapon ? "NEW WEAPON" : "UPGRADE";
+			_cardTags[i].Text = upgrade.IsWeapon
+				? "NEW WEAPON"
+				: upgrade.Limit != null
+					? $"UPGRADE   {Upgrades.TimesTaken(Fight, upgrade) + 1}/{upgrade.Limit()}"
+					: "UPGRADE";
 			_cardNames[i].Text = upgrade.Name;
 			_cardTexts[i].Text = upgrade.Describe();
 			_cards[i].AddThemeStyleboxOverride("panel", i == _selected ? _selectedStyle : _normalStyle);
@@ -216,35 +223,7 @@ public partial class LevelUpMenu : Control
 			new Color(1f, 1f, 1f, 0.5f)));
 	}
 
-	private static Label MakeLabel(string text, int size, Color color)
-	{
-		var label = new Label
-		{
-			Text = text,
-			HorizontalAlignment = HorizontalAlignment.Center,
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		label.AddThemeFontSizeOverride("font_size", size);
-		label.AddThemeColorOverride("font_color", color);
-		return label;
-	}
+	private static Label MakeLabel(string text, int size, Color color) => Ui.Label(text, size, color);
 
-	private static StyleBoxFlat MakeStyle(Color background, Color border)
-	{
-		var style = new StyleBoxFlat
-		{
-			BgColor = background,
-			BorderColor = border,
-			CornerRadiusTopLeft = 12,
-			CornerRadiusTopRight = 12,
-			CornerRadiusBottomLeft = 12,
-			CornerRadiusBottomRight = 12,
-			ContentMarginLeft = 24,
-			ContentMarginRight = 24,
-			ContentMarginTop = 22,
-			ContentMarginBottom = 22,
-		};
-		style.SetBorderWidthAll(3);
-		return style;
-	}
+	private static StyleBoxFlat MakeStyle(Color background, Color border) => Ui.Panel(background, border);
 }

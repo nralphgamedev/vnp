@@ -10,7 +10,7 @@ The prototype exists to find out whether the core fight is fun, and to answer qu
 
 - Is the 5-minute time limit the right length?
 - What kill targets and difficulty ramp feel right, both during the fight and after the limit?
-- How many units (basic probes and enemies) can be on screen at once while performance stays smooth?
+- How many units (drones and enemies) can be on screen at once while performance stays smooth?
 - Do the flocking, engage, and disengage behaviors feel good to control?
 - Do the fight upgrade choices lead to meaningfully different builds from one fight to the next?
 - Does harvesting with beams feel good alongside fighting?
@@ -27,14 +27,14 @@ Because the goal is answering these questions, fast iteration matters more than 
 ## Terms
 
 - **VNP:** the player's main ship. The one the player controls is the **primary VNP**.
-- **Basic probe:** a small combat unit that flocks around the VNP.
+- **Drone:** a small combat unit that flocks around the VNP.
 - **Gateway:** the fixed point where the fight starts, and the only place the player can retreat from.
 - **Debris:** what a destroyed enemy leaves behind. It can be harvested.
-- **Harvest beam:** the beam the VNP and its basic probes use to extract fight experience from asteroids and debris.
+- **Harvest beam:** the beam the VNP and its drones use to extract fight experience from asteroids and debris.
 - **Fight experience:** what harvesting produces. Enough of it levels the player up within the fight.
 - **Fight upgrade:** a temporary upgrade chosen on each level up. It lasts only for this fight.
 - **VNP Weapon:** a weapon in one of the VNP's weapon slots.
-- **Basic Probe Weapon:** the attack the basic probes use. All of a VNP's probes use the same one.
+- **Drone Weapon:** the attack the drones use. All of a VNP's drones use the same one.
 
 ## The fight
 
@@ -74,24 +74,24 @@ A perspective camera placed high above the plane, with a narrow field of view an
 
 ### Harvesting
 
-- The VNP and every basic probe harvest asteroids and debris with harvest beams. There are no pickups to collect.
+- The VNP and every drone harvest asteroids and debris with harvest beams. There are no pickups to collect.
 - Asteroids and debris can always be harvested once they are within harvest range.
 - Enemy debris never disappears.
 - Each asteroid and piece of debris has a **mass**. Mass sets the base harvest time: about 1 second for a small one, up to about 10 seconds for a large one.
 - Larger asteroids and debris also give more fight experience.
-- The base harvest time is shortened by harvesting upgrades and by the number of basic probes harvesting, so more probes means faster harvesting.
-- Harvesting gives fight experience. It also builds temporary basic probes, up to the basic probe cap. Once the cap is reached, harvesting gives only fight experience.
+- The base harvest time is shortened by harvesting upgrades and by the number of drones harvesting, so more drones means faster harvesting.
+- Harvesting gives fight experience. It also builds temporary drones, up to the drone cap. Once the cap is reached, harvesting gives only fight experience.
 
-### Basic probes
+### Drones
 
-- The VNP starts the fight with **10** basic probes.
-- Probes are smaller than the VNP and flock around it.
-- When asteroids or debris come in range, the probes surround and harvest them.
-- When enemies come in range, the probes surround and attack them.
-- Probes harvest and fight at the same time. Harvesting stays their priority whenever harvestable material is in range.
-- If the player moves away, the probes try to disengage and follow.
-- Probes can be destroyed. A destroyed probe's wreckage disintegrates and cannot be harvested.
-- Probes start with the **Projectile** weapon, which fires single projectiles.
+- The VNP starts the fight with **10** drones.
+- Drones are smaller than the VNP and flock around it.
+- When asteroids or debris come in range, the drones surround and harvest them.
+- When enemies come in range, the drones surround and attack them.
+- Drones harvest and fight at the same time. Harvesting stays their priority whenever harvestable material is in range.
+- If the player moves away, the drones try to disengage and follow.
+- Drones can be destroyed. A destroyed drone's wreckage disintegrates and cannot be harvested.
+- Drones start with the **Projectile** weapon, which fires single projectiles.
 
 ### Enemies
 
@@ -122,13 +122,13 @@ Twelve upgrades. This list is expected to change through playtesting, so keep up
 | Pulse Laser cooldown | Shortens Pulse Laser cooldown | |
 | Orbital Shards damage | Raises Orbital Shards damage | Orbital Shards equipped |
 | Orbital Shards area of effect | Raises Orbital Shards area of effect | Orbital Shards equipped |
-| Beam | Switches the basic probes from Projectile to Beam, a short-range beam attack | Probes not already using Beam |
+| Beam | Switches the drones from Projectile to Beam, a short-range beam attack | Drones not already using Beam |
 | Health | Raises the VNP's health | |
 | Movement speed | Raises the VNP's movement speed | |
 | Harvest rate | Fight experience is gathered faster | |
 | Harvest range | The harvest beam reaches farther | |
-| Basic probe cap | Raises the cap for the rest of the fight | |
-| New basic probes | Adds temporary basic probes right away, up to the cap | |
+| Drone cap | Raises the cap for the rest of the fight | |
+| New drones | Adds temporary drones right away, up to the cap | |
 
 The Pulse Laser is a straight beam that fires at the nearest enemy. Damage, cooldown, and area of effect belong to each weapon, not to the VNP.
 
@@ -152,7 +152,7 @@ Keep all of these in one place so they can be adjusted quickly without hunting t
 |---|---|
 | Time limit | 5 minutes |
 | Seconds on the gateway before retreat is offered | 10 |
-| Starting basic probes | 10 |
+| Starting drones | 10 |
 | Weapon slots | 2 |
 | Options per fight upgrade offer | 3 |
 | Free rerolls | 1 |
@@ -162,8 +162,8 @@ Keep all of these in one place so they can be adjusted quickly without hunting t
 | Difficulty ramp during the fight | placeholder |
 | Difficulty increase per minute past the limit | placeholder, but it should be large |
 | Fight experience needed per level | placeholder |
-| Basic probe cap | placeholder, above 10 |
-| Harvest needed per temporary basic probe | placeholder |
+| Drone cap | placeholder, above 10 |
+| Harvest needed per temporary drone | placeholder |
 | Fight experience by mass | placeholder |
 | Number of asteroid fields | placeholder, and it should vary |
 | Enemy aggro range, health, damage, and speed | placeholder |
@@ -175,7 +175,7 @@ Keep all of these in one place so they can be adjusted quickly without hunting t
 
 The designer has not settled these. Use the simplest reasonable behavior, say what you chose, and make it easy to change.
 
-- What probes do when an enemy and harvestable material are both in range but far apart from each other.
+- What drones do when an enemy and harvestable material are both in range but far apart from each other.
 - Whether the free reroll refreshes per offer, per fight, or not at all.
 - Where asteroid fields sit in relation to the gateway.
 - How enemies choose where to spawn in an infinite arena.
@@ -188,8 +188,8 @@ Build one stage at a time, and stop after each so the designer can play it.
 
 1. The plane, the camera, VNP movement, the gateway, and the gateway indicator.
 2. The enemy and the Pulse Laser, with enemies leaving debris.
-3. Basic probes: flocking, attacking, following, and being destroyed.
-4. Asteroid fields and harvesting, including mass, fight experience, and temporary probes.
+3. Drones: flocking, attacking, following, and being destroyed.
+4. Asteroid fields and harvesting, including mass, fight experience, and temporary drones.
 5. Level ups, the upgrade pool, and rerolls.
 6. The kill target, the time limit and escalation, retreat, the pause menu, and the result screen.
 
@@ -197,15 +197,15 @@ Build one stage at a time, and stop after each so the designer can play it.
 
 Do not build any of these. They belong to the full game.
 
-The galactic map, turns, the Zone Conquer sequence, empire experience, permanent Level Up Rewards, weapon storage, planets, empire resources, factions, the codex, meta progression, tutorials, saving, the upgrade for harvesting probe wreckage, and final art and audio.
+The galactic map, turns, the Zone Conquer sequence, empire experience, permanent Level Up Rewards, weapon storage, planets, empire resources, factions, the codex, meta progression, tutorials, saving, the upgrade for harvesting drone wreckage, and final art and audio.
 
 ## Stretch goals
 
 Add these only after the core fight feels good and the designer asks for them.
 
-- A second enemy type whose behavior calls for a different upgrade choice, such as an enemy that absorbs basic probes.
+- A second enemy type whose behavior calls for a different upgrade choice, such as an enemy that absorbs drones.
 - One weapon combo, where two weapons combine into a new one.
-- One escort VNP with its own flocking basic probes.
+- One escort VNP with its own flocking drones.
 - Three fights in a row, with one permanent upgrade chosen between each, to test whether starting from a growing loadout keeps repeated fights from feeling the same.
 
 ## Done when

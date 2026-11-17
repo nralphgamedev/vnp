@@ -11,7 +11,7 @@ public partial class Fight : Node3D
 	public Gateway Gateway { get; private set; }
 	public CameraRig Camera { get; private set; }
 	public EnemySwarm Enemies { get; private set; }
-	public ProbeSwarm Probes { get; private set; }
+	public DroneSwarm Drones { get; private set; }
 	public Projectiles Projectiles { get; private set; }
 	public Harvestables Harvestables { get; private set; }
 	public PulseLaser PulseLaser { get; private set; }
@@ -46,19 +46,49 @@ public partial class Fight : Node3D
 	/// <summary>Rerolls left for the rest of the fight.</summary>
 	public int Rerolls = Tuning.FreeRerolls;
 
-	/// <summary>Every fight upgrade taken, in order. The pause menu (stage 6) will list these.</summary>
+	/// <summary>Every fight upgrade taken, in order. The pause menu and result screen list these.</summary>
 	public readonly List<string> TakenUpgrades = new();
 
-	/// <summary>How far along the next temporary probe is, from 0 to 1.</summary>
-	public float ProbeBuildProgress => _harvestTowardProbe / Tuning.HarvestPerProbe;
+	/// <summary>How far along the next temporary drone is, from 0 to 1.</summary>
+	public float DroneBuildProgress => _harvestTowardDrone / Tuning.HarvestPerDrone;
 
-	private float _harvestTowardProbe;
+	public enum Outcome { Win, Loss, Retreat }
+
+	/// <summary>True once the fight has ended and the result screen is up.</summary>
+	public bool IsOver { get; private set; }
+
+	/// <summary>True while the VNP is on the gateway.</summary>
+	public bool OnGateway { get; private set; }
+
+	/// <summary>Seconds the VNP has stayed on the gateway without leaving.</summary>
+	public float GatewayTime { get; private set; }
+
+	/// <summary>True once the VNP has stayed on the gateway long enough to retreat.</summary>
+	public bool CanRetreat => OnGateway && GatewayTime >= Tuning.RetreatHoldSeconds;
+
+	/// <summary>The pause menu may open only during play, not over another menu or the result screen.</summary>
+	public bool CanPause => !IsOver && !_levelUpMenu.IsOpen;
+
+	/// <summary>Escalation steps reached: 0 before the time limit, 1 at it, 2 one step later, and so on.</summary>
+	public int EscalationSteps => Elapsed < Tuning.TimeLimitSeconds
+		? 0
+		: (int)((Elapsed - Tuning.TimeLimitSeconds) / Tuning.EscalationStepSeconds) + 1;
+
+	// Enemy strength now: the ramp during the fight, times escalation past the limit.
+	public float EnemyHealthScale => (1f + Tuning.RampEnemyHealthPerMinute * Minutes) * (1f + Tuning.EscalationEnemyHealthPerStep * EscalationSteps);
+	public float EnemyDamageScale => (1f + Tuning.RampEnemyDamagePerMinute * Minutes) * (1f + Tuning.EscalationEnemyDamagePerStep * EscalationSteps);
+	public float EnemySpawnRateScale => (1f + Tuning.RampSpawnRatePerMinute * Minutes) * (1f + Tuning.EscalationSpawnRatePerStep * EscalationSteps);
+	public float EnemyAggroScale => 1f + Tuning.EscalationAggroRangePerStep * EscalationSteps;
+
+	private float _harvestTowardDrone;
 	private float _levelStartExperience;
 	private int _pendingLevelUps;
+	private int _alertedSteps;
 	private Label _debugLabel;
-	private Label _message;
 	private HealthBar _healthBar;
 	private LevelUpMenu _levelUpMenu;
+	private FightHud _fightHud;
+	private ResultScreen _resultScreen;
 	private double _debugRefresh;
 
 	public override void _Ready()
@@ -69,13 +99,12 @@ public partial class Fight : Node3D
 		Gateway = GetNode<Gateway>("Gateway");
 		Camera = GetNode<CameraRig>("Camera");
 		Enemies = GetNode<EnemySwarm>("Enemies");
-		Probes = GetNode<ProbeSwarm>("Probes");
+		Drones = GetNode<DroneSwarm>("Drones");
 		Projectiles = GetNode<Projectiles>("Projectiles");
 		Harvestables = GetNode<Harvestables>("Harvestables");
 		PulseLaser = GetNode<PulseLaser>("PulseLaser");
 		VnpHarvester = GetNode<VnpHarvester>("VnpHarvester");
 		_debugLabel = GetNode<Label>("Hud/DebugLabel");
-		_message = GetNode<Label>("Hud/Message");
 
 		// The fight starts at the gateway.
 		Vnp.PlaceAt(Gateway.PlanePosition);
@@ -91,8 +120,8 @@ public partial class Fight : Node3D
 
 		Harvestables.Fight = this;
 		Enemies.Fight = this;
-		Probes.Fight = this;
-		Probes.Add(Tuning.StartingProbes, Vnp.PlanePosition);
+		Drones.Fight = this;
+		Drones.Add(Tuning.StartingDrones, Vnp.PlanePosition);
 		Projectiles.Fight = this;
 		PulseLaser.Fight = this;
 		VnpHarvester.Fight = this;
@@ -101,11 +130,32 @@ public partial class Fight : Node3D
 		GetNode<ExperienceBar>("Hud/ExperienceBar").Fight = this;
 		_levelUpMenu = GetNode<LevelUpMenu>("Hud/LevelUpMenu");
 		_levelUpMenu.Fight = this;
+		_fightHud = GetNode<FightHud>("Hud/FightHud");
+		_fightHud.Fight = this;
+		GetNode<PauseMenu>("Hud/PauseMenu").Fight = this;
+		_resultScreen = GetNode<ResultScreen>("Hud/ResultScreen");
+		_resultScreen.Fight = this;
+	}
+
+	/// <summary>Ends the fight: freezes it and shows the result screen.</summary>
+	public void End(Outcome outcome)
+	{
+		if (IsOver)
+			return;
+		IsOver = true;
+
+		// Nothing updates while frozen, so bring the readouts up to date first.
+		RefreshDebugLabel();
+		_healthBar.QueueRedraw();
+		_fightHud.QueueRedraw();
+
+		GetTree().Paused = true;
+		_resultScreen.Show(outcome);
 	}
 
 	/// <summary>
 	/// Called by harvest beams with the mass they drew out. Turns it into fight experience, and
-	/// builds temporary probes until the cap is reached. At the cap it gives only fight experience.
+	/// builds temporary drones until the cap is reached. At the cap it gives only fight experience.
 	/// </summary>
 	public void AddHarvest(float mass)
 	{
@@ -119,14 +169,14 @@ public partial class Fight : Node3D
 			_pendingLevelUps++;
 		}
 
-		if (Probes.CountWithBuilds >= Probes.Cap)
+		if (Drones.CountWithBuilds >= Drones.Cap)
 			return;
 
-		_harvestTowardProbe += mass;
-		while (_harvestTowardProbe >= Tuning.HarvestPerProbe && Probes.CountWithBuilds < Probes.Cap)
+		_harvestTowardDrone += mass;
+		while (_harvestTowardDrone >= Tuning.HarvestPerDrone && Drones.CountWithBuilds < Drones.Cap)
 		{
-			_harvestTowardProbe -= Tuning.HarvestPerProbe;
-			Probes.Build();
+			_harvestTowardDrone -= Tuning.HarvestPerDrone;
+			Drones.Build();
 		}
 	}
 
@@ -145,11 +195,11 @@ public partial class Fight : Node3D
 		AddChild(OrbitalShards);
 	}
 
-	/// <summary>Builds up to <paramref name="count"/> probes at once, stopping at the cap.</summary>
-	public void BuildProbesNow(int count)
+	/// <summary>Builds up to <paramref name="count"/> drones at once, stopping at the cap.</summary>
+	public void BuildDronesNow(int count)
 	{
-		for (int i = 0; i < count && Probes.CountWithBuilds < Probes.Cap; i++)
-			Probes.Build();
+		for (int i = 0; i < count && Drones.CountWithBuilds < Drones.Cap; i++)
+			Drones.Build();
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -162,6 +212,30 @@ public partial class Fight : Node3D
 	public override void _Process(double delta)
 	{
 		Elapsed += delta;
+		if (IsOver)
+			return;
+
+		// Past the time limit, each new escalation step flashes the screen.
+		if (EscalationSteps > _alertedSteps)
+		{
+			_alertedSteps = EscalationSteps;
+			_fightHud.ShowEscalationAlert();
+		}
+
+		// Retreat: stay on the gateway long enough and the option appears.
+		OnGateway = Vnp.PlanePosition.DistanceTo(Gateway.PlanePosition) <= Tuning.GatewayRadius;
+		GatewayTime = OnGateway ? GatewayTime + (float)delta : 0f;
+		if (CanRetreat && Input.IsActionJustPressed("menu_select"))
+		{
+			End(Outcome.Retreat);
+			return;
+		}
+
+		if (Kills >= Tuning.KillTarget)
+		{
+			End(Outcome.Win);
+			return;
+		}
 
 		// Offer the next waiting level up. The offer pauses the fight until a choice is made.
 		if (_pendingLevelUps > 0 && !_levelUpMenu.IsOpen && !Vnp.IsDestroyed)
@@ -181,14 +255,14 @@ public partial class Fight : Node3D
 	{
 		int seconds = (int)Elapsed;
 		string cameraMode = Tuning.CameraOrthographic ? "orthographic" : "perspective";
-		string nextProbe = Probes.Count >= Probes.Cap ? "at cap" : $"next {ProbeBuildProgress * 100f:0}%";
+		string nextDrone = Drones.Count >= Drones.Cap ? "at cap" : $"next {DroneBuildProgress * 100f:0}%";
 		_debugLabel.Text =
 			$"{Engine.GetFramesPerSecond():0} fps    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
 			$"level {Level}    " +
 			$"xp {Experience:0}    " +
-			$"probes {Probes.Count}/{Probes.Cap} ({nextProbe})    " +
+			$"drones {Drones.Count}/{Drones.Cap} ({nextDrone})    " +
 			$"kills {Kills}    " +
 			$"enemies {Enemies.Count}    " +
 			$"asteroids {Harvestables.AsteroidCount}    " +
@@ -197,23 +271,5 @@ public partial class Fight : Node3D
 			$"camera: {cameraMode} (F1)";
 	}
 
-	/// <summary>
-	/// Stand-in until the result screen exists (stage 6): freeze the fight, say what happened,
-	/// then start a new fight.
-	/// </summary>
-	private async void OnVnpDestroyed()
-	{
-		_message.Text = "VNP destroyed. Restarting...";
-		_message.Visible = true;
-
-		// Nothing updates while frozen, so bring the readouts up to date first.
-		RefreshDebugLabel();
-		_healthBar.QueueRedraw();
-
-		SceneTree tree = GetTree();
-		tree.Paused = true;
-		await ToSignal(tree.CreateTimer(2.0, processAlways: true), SceneTreeTimer.SignalName.Timeout);
-		tree.Paused = false;
-		tree.ReloadCurrentScene();
-	}
+	private void OnVnpDestroyed() => End(Outcome.Loss);
 }

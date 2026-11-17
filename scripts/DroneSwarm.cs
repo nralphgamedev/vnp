@@ -2,21 +2,21 @@ using Godot;
 using System;
 
 /// <summary>
-/// The VNP's basic probes. Like the enemies, they are plain data in one array, drawn in one batch.
+/// The VNP's drones. Like the enemies, they are plain data in one array, drawn in one batch.
 ///
-/// Each probe does the first of these that applies:
-/// 1. Attack. When an enemy is within engage range of the VNP, the probe heads for its own spot
-///    around it, so the probes surround it, and fires. While attacking it still harvests anything
+/// Each drone does the first of these that applies:
+/// 1. Attack. When an enemy is within engage range of the VNP, the drone heads for its own spot
+///    around it, so the drones surround it, and fires. While attacking it still harvests anything
 ///    already within reach of its harvest beam, but does not move for it.
-/// 2. Harvest. When an asteroid or piece of debris is within harvest range of the VNP, the probe
+/// 2. Harvest. When an asteroid or piece of debris is within harvest range of the VNP, the drone
 ///    surrounds it and draws mass out with its harvest beam.
 /// 3. Flock. Otherwise it flocks around the VNP and keeps pace with it.
-/// A probe drops its target once that target is no longer within range of the VNP, so when the
-/// player moves away, the probes break off and follow.
+/// A drone drops its target once that target is no longer within range of the VNP, so when the
+/// player moves away, the drones break off and follow.
 /// </summary>
-public partial class ProbeSwarm : Node3D
+public partial class DroneSwarm : Node3D
 {
-	private struct Probe
+	private struct Drone
 	{
 		public Vector2 Position;
 		public Vector2 Velocity;
@@ -31,7 +31,7 @@ public partial class ProbeSwarm : Node3D
 		public int HarvestId;     // The asteroid or debris it is harvesting, or 0.
 	}
 
-	/// <summary>A destroyed probe, shown briefly while it disintegrates. It cannot be harvested.</summary>
+	/// <summary>A destroyed drone, shown briefly while it disintegrates. It cannot be harvested.</summary>
 	private struct Wreck
 	{
 		public Vector2 Position;
@@ -45,55 +45,55 @@ public partial class ProbeSwarm : Node3D
 		new(0f, -0.75f), new(0.45f, 0.05f), new(0f, 0.55f), new(-0.45f, 0.05f),
 	};
 
-	// A probe already busy with a target keeps it a little past the range it would pick it up at,
+	// A drone already busy with a target keeps it a little past the range it would pick it up at,
 	// so it does not dither when a target sits right on the edge.
 	private const float KeepTargetFactor = 1.2f;
 
-	// Seconds a newly built probe takes to grow to full size.
+	// Seconds a newly built drone takes to grow to full size.
 	private const float BuildTime = 0.35f;
 
 	private const float BeamHeight = 0.2f;
 
 	public Fight Fight;
 
-	/// <summary>Probes currently alive.</summary>
+	/// <summary>Drones currently alive.</summary>
 	public int Count { get; private set; }
 
-	/// <summary>Probes alive plus those built this frame and not yet added.</summary>
+	/// <summary>Drones alive plus those built this frame and not yet added.</summary>
 	public int CountWithBuilds => Count + _pendingBuilds;
 
-	/// <summary>Distance from the VNP to its farthest probe.</summary>
+	/// <summary>Distance from the VNP to its farthest drone.</summary>
 	public float Reach { get; private set; }
 
-	/// <summary>Most probes the VNP can have. Harvesting builds probes up to this.</summary>
-	public int Cap = Tuning.ProbeCap;
+	/// <summary>Most drones the VNP can have. Harvesting builds drones up to this.</summary>
+	public int Cap = Tuning.DroneCap;
 
-	// The Basic Probe Weapon. One set of numbers shared by every probe,
+	// The Drone Weapon. One set of numbers shared by every drone,
 	// so an upgrade changes them all at once.
-	public float WeaponDamage = Tuning.ProbeProjectileDamage;
-	public float WeaponCooldown = Tuning.ProbeProjectileCooldown;
-	public float WeaponRange = Tuning.ProbeProjectileRange;
+	public float WeaponDamage = Tuning.DroneProjectileDamage;
+	public float WeaponCooldown = Tuning.DroneProjectileCooldown;
+	public float WeaponRange = Tuning.DroneProjectileRange;
 
 	/// <summary>True once the Beam upgrade has replaced the Projectile.</summary>
 	public bool UsesBeam { get; private set; }
 
-	/// <summary>How far from its target a probe sits while surrounding it. Depends on the weapon.</summary>
-	public float AttackDistance = Tuning.ProbeAttackDistance;
+	/// <summary>How far from its target a drone sits while surrounding it. Depends on the weapon.</summary>
+	public float AttackDistance = Tuning.DroneAttackDistance;
 
-	/// <summary>Mass each probe's harvest beam draws out per second.</summary>
-	public float HarvestRate = Tuning.ProbeHarvestRate;
+	/// <summary>Mass each drone's harvest beam draws out per second.</summary>
+	public float HarvestRate = Tuning.DroneHarvestRate;
 
-	/// <summary>Switches every probe from the Projectile to the Beam: short range, never misses.</summary>
+	/// <summary>Switches every drone from the Projectile to the Beam: short range, never misses.</summary>
 	public void SwitchToBeam()
 	{
 		UsesBeam = true;
-		WeaponDamage = Tuning.ProbeBeamDamage;
-		WeaponCooldown = Tuning.ProbeBeamCooldown;
-		WeaponRange = Tuning.ProbeBeamRange;
-		AttackDistance = Tuning.ProbeBeamAttackDistance;
+		WeaponDamage = Tuning.DroneBeamDamage;
+		WeaponCooldown = Tuning.DroneBeamCooldown;
+		WeaponRange = Tuning.DroneBeamRange;
+		AttackDistance = Tuning.DroneBeamAttackDistance;
 	}
 
-	private Probe[] _probes = new Probe[64];
+	private Drone[] _drones = new Drone[64];
 	private Wreck[] _wrecks = new Wreck[16];
 	private int _wreckCount;
 	private int _spawned;
@@ -106,35 +106,35 @@ public partial class ProbeSwarm : Node3D
 	private Vector2[] _beamTo = new Vector2[64];
 	private bool[] _beamIsAttack = new bool[64];
 	private int _beamCount;
-	private float _speed = Tuning.ProbeSpeed;
+	private float _speed = Tuning.DroneSpeed;
 	private InstanceBatch _batch;
 	private InstanceBatch _beamBatch;
 
 	public override void _Ready()
 	{
-		ProcessPriority = UpdateOrder.Probes;
-		_batch = new InstanceBatch(this, "ProbeShapes", Placeholder.ExtrudedShape(Outline, 0.45f), Placeholder.InstanceMaterial());
+		ProcessPriority = UpdateOrder.Drones;
+		_batch = new InstanceBatch(this, "DroneShapes", Placeholder.ExtrudedShape(Outline, 0.45f), Placeholder.InstanceMaterial());
 		_beamBatch = new InstanceBatch(this, "HarvestBeams", new BoxMesh { Size = Vector3.One }, Placeholder.InstanceMaterial(unshaded: true));
 	}
 
-	/// <summary>Adds probes in a ring around a point. Built probes start small and grow in.</summary>
+	/// <summary>Adds drones in a ring around a point. Built drones start small and grow in.</summary>
 	public void Add(int count, Vector2 around, bool built = false)
 	{
-		float spread = built ? 1f : Tuning.ProbeFlockRadius;
+		float spread = built ? 1f : Tuning.DroneFlockRadius;
 		for (int i = 0; i < count; i++)
 		{
-			if (Count == _probes.Length)
-				Array.Resize(ref _probes, _probes.Length * 2);
+			if (Count == _drones.Length)
+				Array.Resize(ref _drones, _drones.Length * 2);
 
-			// The golden angle spreads any number of probes evenly around a circle.
+			// The golden angle spreads any number of drones evenly around a circle.
 			float angle = _spawned++ * 2.39996f;
 			Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-			_probes[Count++] = new Probe
+			_drones[Count++] = new Drone
 			{
 				Position = around + offset * spread,
 				Yaw = PlaneMath.YawFacing(offset),
-				Health = Tuning.ProbeHealth,
-				FireTimer = Rng.Range(0f, WeaponCooldown), // So the probes do not fire in unison.
+				Health = Tuning.DroneHealth,
+				FireTimer = Rng.Range(0f, WeaponCooldown), // So the drones do not fire in unison.
 				SlotAngle = angle,
 				OrbitSign = Rng.Sign(),
 				Age = built ? 0f : BuildTime,
@@ -142,7 +142,7 @@ public partial class ProbeSwarm : Node3D
 		}
 	}
 
-	/// <summary>Builds one probe at the VNP. It appears at the start of the next probe update.</summary>
+	/// <summary>Builds one drone at the VNP. It appears at the start of the next drone update.</summary>
 	public void Build() => _pendingBuilds++;
 
 	public override void _Process(double delta)
@@ -164,16 +164,16 @@ public partial class ProbeSwarm : Node3D
 
 	// ───────────── Used by enemies and projectiles ─────────────
 
-	/// <summary>Finds the living probe closest to a point. False if none is within range.</summary>
+	/// <summary>Finds the living drone closest to a point. False if none is within range.</summary>
 	public bool FindNearest(Vector2 from, float range, out Vector2 position, out Vector2 velocity, out float distance)
 	{
 		int nearest = -1;
 		float nearestSquared = range * range;
 		for (int i = 0; i < Count; i++)
 		{
-			if (_probes[i].Health <= 0f)
+			if (_drones[i].Health <= 0f)
 				continue;
-			float distanceSquared = from.DistanceSquaredTo(_probes[i].Position);
+			float distanceSquared = from.DistanceSquaredTo(_drones[i].Position);
 			if (distanceSquared <= nearestSquared)
 			{
 				nearestSquared = distanceSquared;
@@ -181,18 +181,18 @@ public partial class ProbeSwarm : Node3D
 			}
 		}
 
-		position = nearest >= 0 ? _probes[nearest].Position : default;
-		velocity = nearest >= 0 ? _probes[nearest].Velocity : default;
+		position = nearest >= 0 ? _drones[nearest].Position : default;
+		velocity = nearest >= 0 ? _drones[nearest].Velocity : default;
 		distance = Mathf.Sqrt(nearestSquared);
 		return nearest >= 0;
 	}
 
-	/// <summary>The first living probe a shot travelling between two points would hit, or -1.</summary>
+	/// <summary>The first living drone a shot travelling between two points would hit, or -1.</summary>
 	public int FindHit(Vector2 from, Vector2 to)
 	{
-		// The grid is filled at the start of the probe update, so search a little wide to
-		// allow for how far probes have moved since.
-		float reach = from.DistanceTo(to) * 0.5f + Tuning.ProbeHitRadius + 1f;
+		// The grid is filled at the start of the drone update, so search a little wide to
+		// allow for how far drones have moved since.
+		float reach = from.DistanceTo(to) * 0.5f + Tuning.DroneHitRadius + 1f;
 		int candidates = _grid.Query((from + to) * 0.5f, reach, _nearby);
 
 		int hit = -1;
@@ -200,12 +200,12 @@ public partial class ProbeSwarm : Node3D
 		for (int c = 0; c < candidates; c++)
 		{
 			int i = _nearby[c];
-			if (_probes[i].Health <= 0f)
+			if (_drones[i].Health <= 0f)
 				continue;
-			if (PlaneMath.DistanceToSegment(_probes[i].Position, from, to) > Tuning.ProbeHitRadius)
+			if (PlaneMath.DistanceToSegment(_drones[i].Position, from, to) > Tuning.DroneHitRadius)
 				continue;
 
-			float distanceSquared = from.DistanceSquaredTo(_probes[i].Position);
+			float distanceSquared = from.DistanceSquaredTo(_drones[i].Position);
 			if (distanceSquared < hitDistanceSquared)
 			{
 				hitDistanceSquared = distanceSquared;
@@ -215,21 +215,21 @@ public partial class ProbeSwarm : Node3D
 		return hit;
 	}
 
-	/// <summary>Damages a probe. A destroyed probe leaves wreckage that disintegrates.</summary>
+	/// <summary>Damages a drone. A destroyed drone leaves wreckage that disintegrates.</summary>
 	public void Damage(int index, float amount)
 	{
-		ref Probe probe = ref _probes[index];
-		if (probe.Health <= 0f)
+		ref Drone drone = ref _drones[index];
+		if (drone.Health <= 0f)
 			return;
 
-		probe.Health -= amount;
-		probe.Flash = Tuning.HitFlashTime;
-		if (probe.Health <= 0f)
+		drone.Health -= amount;
+		drone.Flash = Tuning.HitFlashTime;
+		if (drone.Health <= 0f)
 		{
 			if (_wreckCount == _wrecks.Length)
 				Array.Resize(ref _wrecks, _wrecks.Length * 2);
-			_wrecks[_wreckCount++] = new Wreck { Position = probe.Position, Yaw = probe.Yaw };
-			// The probe itself is cleared away at the start of the next update.
+			_wrecks[_wreckCount++] = new Wreck { Position = drone.Position, Yaw = drone.Yaw };
+			// The drone itself is cleared away at the start of the next update.
 		}
 	}
 
@@ -239,8 +239,8 @@ public partial class ProbeSwarm : Node3D
 	{
 		for (int i = Count - 1; i >= 0; i--)
 		{
-			if (_probes[i].Health <= 0f)
-				_probes[i] = _probes[--Count]; // Fill the gap with the last probe.
+			if (_drones[i].Health <= 0f)
+				_drones[i] = _drones[--Count]; // Fill the gap with the last drone.
 		}
 	}
 
@@ -254,13 +254,13 @@ public partial class ProbeSwarm : Node3D
 
 		_grid.Clear();
 		for (int i = 0; i < Count; i++)
-			_grid.Insert(i, _probes[i].Position);
+			_grid.Insert(i, _drones[i].Position);
 
-		// Everything the probes could go after this frame: what is near enough to the VNP.
-		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.ProbeEngageRange * KeepTargetFactor, _enemyTargets);
-		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.ProbeHarvestRange * KeepTargetFactor, _harvestTargets);
+		// Everything the drones could go after this frame: what is near enough to the VNP.
+		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.DroneEngageRange * KeepTargetFactor, _enemyTargets);
+		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.DroneHarvestRange * KeepTargetFactor, _harvestTargets);
 
-		// Up to two beams per probe: one attacking, one harvesting.
+		// Up to two beams per drone: one attacking, one harvesting.
 		if (_beamFrom.Length < Count * 2)
 		{
 			Array.Resize(ref _beamFrom, Count * 4);
@@ -269,90 +269,90 @@ public partial class ProbeSwarm : Node3D
 		}
 		_beamCount = 0;
 
-		// Probes speed up with the VNP's movement speed upgrades, so they keep up.
-		_speed = Tuning.ProbeSpeed * vnp.MoveSpeed / Tuning.VnpMoveSpeed;
+		// Drones speed up with the VNP's movement speed upgrades, so they keep up.
+		_speed = Tuning.DroneSpeed * vnp.MoveSpeed / Tuning.VnpMoveSpeed;
 
-		float turnStep = Mathf.DegToRad(Tuning.ProbeTurnSpeed) * dt;
+		float turnStep = Mathf.DegToRad(Tuning.DroneTurnSpeed) * dt;
 		float reach = 0f;
 
 		for (int i = 0; i < Count; i++)
 		{
-			ref Probe probe = ref _probes[i];
-			probe.FireTimer = Mathf.Max(0f, probe.FireTimer - dt);
-			probe.Flash = Mathf.Max(0f, probe.Flash - dt);
-			probe.Age += dt;
+			ref Drone drone = ref _drones[i];
+			drone.FireTimer = Mathf.Max(0f, drone.FireTimer - dt);
+			drone.Flash = Mathf.Max(0f, drone.Flash - dt);
+			drone.Age += dt;
 
 			Vector2 separation = Separation(i);
 			Vector2 wantedVelocity;
 
-			int enemy = PickEnemyTarget(ref probe, enemyCount, vnpPosition);
+			int enemy = PickEnemyTarget(ref drone, enemyCount, vnpPosition);
 			if (enemy >= 0)
 			{
 				// 1. Attack, and harvest at the same time.
-				probe.TargetId = enemies.IdOf(enemy);
-				probe.HarvestId = 0;
+				drone.TargetId = enemies.IdOf(enemy);
+				drone.HarvestId = 0;
 
 				Vector2 enemyPosition = enemies.PositionOf(enemy);
-				wantedVelocity = SteerToSlot(ref probe, enemyPosition, enemies.VelocityOf(enemy),
+				wantedVelocity = SteerToSlot(ref drone, enemyPosition, enemies.VelocityOf(enemy),
 					AttackDistance, separation, dt);
-				Face(ref probe, enemyPosition, turnStep);
-				if (probe.Position.DistanceTo(enemyPosition) <= WeaponRange)
-					TryFire(ref probe, enemy);
+				Face(ref drone, enemyPosition, turnStep);
+				if (drone.Position.DistanceTo(enemyPosition) <= WeaponRange)
+					TryFire(ref drone, enemy);
 
 				// Beam whatever is already within reach, without moving for it.
-				int nearby = NearestHarvestInBeamRange(probe.Position, harvestCount);
+				int nearby = NearestHarvestInBeamRange(drone.Position, harvestCount);
 				if (nearby >= 0)
 				{
 					harvestables.Harvest(nearby, HarvestRate * dt);
-					AddBeam(probe.Position, harvestables.PositionOf(nearby), harvestables.RadiusOf(nearby));
+					AddBeam(drone.Position, harvestables.PositionOf(nearby), harvestables.RadiusOf(nearby));
 				}
 			}
 			else
 			{
-				probe.TargetId = 0;
-				int harvest = PickHarvestTarget(ref probe, harvestCount, vnpPosition);
+				drone.TargetId = 0;
+				int harvest = PickHarvestTarget(ref drone, harvestCount, vnpPosition);
 				if (harvest >= 0)
 				{
 					// 2. Harvest.
-					probe.HarvestId = harvestables.IdOf(harvest);
+					drone.HarvestId = harvestables.IdOf(harvest);
 
 					Vector2 itemPosition = harvestables.PositionOf(harvest);
 					float itemRadius = harvestables.RadiusOf(harvest);
-					wantedVelocity = SteerToSlot(ref probe, itemPosition, harvestables.VelocityOf(harvest),
-						itemRadius + Tuning.ProbeHarvestStandoff, separation, dt);
-					Face(ref probe, itemPosition, turnStep);
+					wantedVelocity = SteerToSlot(ref drone, itemPosition, harvestables.VelocityOf(harvest),
+						itemRadius + Tuning.DroneHarvestStandoff, separation, dt);
+					Face(ref drone, itemPosition, turnStep);
 
-					if (probe.Position.DistanceTo(itemPosition) - itemRadius <= harvestables.BeamRange)
+					if (drone.Position.DistanceTo(itemPosition) - itemRadius <= harvestables.BeamRange)
 					{
 						harvestables.Harvest(harvest, HarvestRate * dt);
-						AddBeam(probe.Position, itemPosition, itemRadius);
+						AddBeam(drone.Position, itemPosition, itemRadius);
 					}
 				}
 				else
 				{
 					// 3. Flock.
-					probe.HarvestId = 0;
-					wantedVelocity = Flock(ref probe, vnpPosition, vnpVelocity, separation);
-					if (probe.Velocity.LengthSquared() > 0.25f)
-						probe.Yaw = Mathf.RotateToward(probe.Yaw, PlaneMath.YawFacing(probe.Velocity), turnStep);
+					drone.HarvestId = 0;
+					wantedVelocity = Flock(ref drone, vnpPosition, vnpVelocity, separation);
+					if (drone.Velocity.LengthSquared() > 0.25f)
+						drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(drone.Velocity), turnStep);
 				}
 			}
 
 			wantedVelocity = wantedVelocity.LimitLength(_speed);
-			probe.Velocity = probe.Velocity.MoveToward(wantedVelocity, Tuning.ProbeAcceleration * dt);
-			probe.Position += probe.Velocity * dt;
+			drone.Velocity = drone.Velocity.MoveToward(wantedVelocity, Tuning.DroneAcceleration * dt);
+			drone.Position += drone.Velocity * dt;
 
-			reach = Mathf.Max(reach, probe.Position.DistanceTo(vnpPosition));
+			reach = Mathf.Max(reach, drone.Position.DistanceTo(vnpPosition));
 		}
 
 		Reach = reach;
 	}
 
-	/// <summary>Push away from probes that are too close.</summary>
+	/// <summary>Push away from drones that are too close.</summary>
 	private Vector2 Separation(int index)
 	{
-		Vector2 position = _probes[index].Position;
-		float radius = Tuning.ProbeSeparationRadius;
+		Vector2 position = _drones[index].Position;
+		float radius = Tuning.DroneSeparationRadius;
 		Vector2 separation = Vector2.Zero;
 
 		int nearbyCount = _grid.Query(position, radius, _nearby);
@@ -361,7 +361,7 @@ public partial class ProbeSwarm : Node3D
 			int other = _nearby[n];
 			if (other == index)
 				continue;
-			Vector2 away = position - _probes[other].Position;
+			Vector2 away = position - _drones[other].Position;
 			float gap = away.Length();
 			if (gap < radius)
 				separation += (gap > 0.001f ? away / gap : Rng.Direction()) * (1f - gap / radius);
@@ -370,19 +370,19 @@ public partial class ProbeSwarm : Node3D
 	}
 
 	/// <summary>
-	/// What this probe should harvest, or -1. It keeps its current target while that lasts and stays
+	/// What this drone should harvest, or -1. It keeps its current target while that lasts and stays
 	/// within range of the VNP. Otherwise it takes the closest to itself, out of those within range.
 	/// </summary>
-	private int PickHarvestTarget(ref Probe probe, int candidateCount, Vector2 vnpPosition)
+	private int PickHarvestTarget(ref Drone drone, int candidateCount, Vector2 vnpPosition)
 	{
 		Harvestables harvestables = Fight.Harvestables;
 
 		// The candidates were collected out to the wider keep range.
-		if (probe.HarvestId != 0)
+		if (drone.HarvestId != 0)
 		{
 			for (int c = 0; c < candidateCount; c++)
 			{
-				if (harvestables.IdOf(_harvestTargets[c]) == probe.HarvestId)
+				if (harvestables.IdOf(_harvestTargets[c]) == drone.HarvestId)
 					return _harvestTargets[c];
 			}
 		}
@@ -392,9 +392,9 @@ public partial class ProbeSwarm : Node3D
 		for (int c = 0; c < candidateCount; c++)
 		{
 			int i = _harvestTargets[c];
-			if (harvestables.EdgeDistance(i, vnpPosition) > Tuning.ProbeHarvestRange)
+			if (harvestables.EdgeDistance(i, vnpPosition) > Tuning.DroneHarvestRange)
 				continue;
-			float distanceSquared = harvestables.PositionOf(i).DistanceSquaredTo(probe.Position);
+			float distanceSquared = harvestables.PositionOf(i).DistanceSquaredTo(drone.Position);
 			if (distanceSquared < bestSquared)
 			{
 				bestSquared = distanceSquared;
@@ -405,21 +405,21 @@ public partial class ProbeSwarm : Node3D
 	}
 
 	/// <summary>
-	/// Which enemy this probe should attack, or -1. It stays on its current enemy while that enemy is
-	/// alive and within range of the VNP. Without this, probes in a crowd keep switching target and
+	/// Which enemy this drone should attack, or -1. It stays on its current enemy while that enemy is
+	/// alive and within range of the VNP. Without this, drones in a crowd keep switching target and
 	/// never finish anything off. Otherwise it takes the closest to itself, out of those within range.
 	/// </summary>
-	private int PickEnemyTarget(ref Probe probe, int candidateCount, Vector2 vnpPosition)
+	private int PickEnemyTarget(ref Drone drone, int candidateCount, Vector2 vnpPosition)
 	{
 		EnemySwarm enemies = Fight.Enemies;
 
-		if (probe.TargetId != 0)
+		if (drone.TargetId != 0)
 		{
-			float keepRange = Tuning.ProbeEngageRange * KeepTargetFactor;
+			float keepRange = Tuning.DroneEngageRange * KeepTargetFactor;
 			for (int c = 0; c < candidateCount; c++)
 			{
 				int i = _enemyTargets[c];
-				if (enemies.IdOf(i) != probe.TargetId)
+				if (enemies.IdOf(i) != drone.TargetId)
 					continue;
 				if (enemies.PositionOf(i).DistanceSquaredTo(vnpPosition) <= keepRange * keepRange)
 					return i;
@@ -427,7 +427,7 @@ public partial class ProbeSwarm : Node3D
 			}
 		}
 
-		float range = Tuning.ProbeEngageRange;
+		float range = Tuning.DroneEngageRange;
 		int best = -1;
 		float bestSquared = float.MaxValue;
 		for (int c = 0; c < candidateCount; c++)
@@ -436,7 +436,7 @@ public partial class ProbeSwarm : Node3D
 			Vector2 enemyPosition = enemies.PositionOf(i);
 			if (enemyPosition.DistanceSquaredTo(vnpPosition) > range * range)
 				continue;
-			float distanceSquared = enemyPosition.DistanceSquaredTo(probe.Position);
+			float distanceSquared = enemyPosition.DistanceSquaredTo(drone.Position);
 			if (distanceSquared < bestSquared)
 			{
 				bestSquared = distanceSquared;
@@ -446,7 +446,7 @@ public partial class ProbeSwarm : Node3D
 		return best;
 	}
 
-	/// <summary>The closest asteroid or debris within this probe's harvest beam reach, or -1.</summary>
+	/// <summary>The closest asteroid or debris within this drone's harvest beam reach, or -1.</summary>
 	private int NearestHarvestInBeamRange(Vector2 position, int candidateCount)
 	{
 		Harvestables harvestables = Fight.Harvestables;
@@ -466,15 +466,15 @@ public partial class ProbeSwarm : Node3D
 	}
 
 	/// <summary>
-	/// Heads for this probe's own spot on a ring around a point, so a group of probes surrounds it.
+	/// Heads for this drone's own spot on a ring around a point, so a group of drones surrounds it.
 	/// The spots slowly turn, so the ring circles.
 	/// </summary>
-	private Vector2 SteerToSlot(ref Probe probe, Vector2 center, Vector2 centerVelocity, float distance,
+	private Vector2 SteerToSlot(ref Drone drone, Vector2 center, Vector2 centerVelocity, float distance,
 		Vector2 separation, float dt)
 	{
-		float circleSpeed = Mathf.DegToRad(Tuning.ProbeCircleSpeed) * probe.OrbitSign;
-		probe.SlotAngle += circleSpeed * dt;
-		Vector2 around = new Vector2(Mathf.Cos(probe.SlotAngle), Mathf.Sin(probe.SlotAngle));
+		float circleSpeed = Mathf.DegToRad(Tuning.DroneCircleSpeed) * drone.OrbitSign;
+		drone.SlotAngle += circleSpeed * dt;
+		Vector2 around = new Vector2(Mathf.Cos(drone.SlotAngle), Mathf.Sin(drone.SlotAngle));
 		Vector2 slot = center + around * distance;
 
 		// Move with the slot: carried along by the target, and turning around it.
@@ -482,83 +482,83 @@ public partial class ProbeSwarm : Node3D
 
 		// On top of that, close in only as fast as it can still stop at the slot, so it arrives
 		// without overshooting and bouncing back. The last couple of units ease out smoothly.
-		Vector2 toSlot = slot - probe.Position;
+		Vector2 toSlot = slot - drone.Position;
 		float slotDistance = toSlot.Length();
 		if (slotDistance > 0.001f)
 		{
-			float braking = Tuning.ProbeAcceleration * Tuning.ProbeArriveBraking;
+			float braking = Tuning.DroneAcceleration * Tuning.DroneArriveBraking;
 			float approach = Mathf.Min(_speed,
 				Mathf.Min(Mathf.Sqrt(2f * braking * slotDistance), Mathf.Sqrt(braking) * slotDistance));
 			velocity += toSlot / slotDistance * approach;
 		}
 
-		return velocity + separation * Tuning.ProbeSeparation * Tuning.ProbeFlockSpeed;
+		return velocity + separation * Tuning.DroneSeparation * Tuning.DroneFlockSpeed;
 	}
 
-	/// <summary>Stay in a band around the VNP, circle it, keep clear of other probes, and keep pace.</summary>
-	private Vector2 Flock(ref Probe probe, Vector2 vnpPosition, Vector2 vnpVelocity, Vector2 separation)
+	/// <summary>Stay in a band around the VNP, circle it, keep clear of other drones, and keep pace.</summary>
+	private Vector2 Flock(ref Drone drone, Vector2 vnpPosition, Vector2 vnpVelocity, Vector2 separation)
 	{
-		Vector2 toVnp = vnpPosition - probe.Position;
+		Vector2 toVnp = vnpPosition - drone.Position;
 		float vnpDistance = toVnp.Length();
 		Vector2 directionToVnp = vnpDistance > 0.001f ? toVnp / vnpDistance : Vector2.Up;
 
 		// Far behind: sprint straight back.
-		if (vnpDistance > Tuning.ProbeSprintDistance)
+		if (vnpDistance > Tuning.DroneSprintDistance)
 			return directionToVnp * _speed;
 
-		float band = Tuning.ProbeFlockRadius;
+		float band = Tuning.DroneFlockRadius;
 		float tooClose = band * 0.45f;
-		Vector2 steer = new Vector2(-directionToVnp.Y, directionToVnp.X) * probe.OrbitSign * 0.6f;
+		Vector2 steer = new Vector2(-directionToVnp.Y, directionToVnp.X) * drone.OrbitSign * 0.6f;
 		if (vnpDistance > band)
 			steer += directionToVnp * Mathf.Min((vnpDistance - band) / band, 1.5f);
 		else if (vnpDistance < tooClose)
 			steer -= directionToVnp * (1f - vnpDistance / tooClose);
-		steer += separation * Tuning.ProbeSeparation;
+		steer += separation * Tuning.DroneSeparation;
 
 		// Matching the VNP's velocity is what keeps the flock with it instead of trailing.
-		return vnpVelocity + steer.LimitLength(1f) * Tuning.ProbeFlockSpeed;
+		return vnpVelocity + steer.LimitLength(1f) * Tuning.DroneFlockSpeed;
 	}
 
-	private static void Face(ref Probe probe, Vector2 point, float turnStep)
+	private static void Face(ref Drone drone, Vector2 point, float turnStep)
 	{
-		Vector2 toward = point - probe.Position;
+		Vector2 toward = point - drone.Position;
 		if (toward.LengthSquared() > 0.0001f)
-			probe.Yaw = Mathf.RotateToward(probe.Yaw, PlaneMath.YawFacing(toward), turnStep);
+			drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(toward), turnStep);
 	}
 
-	/// <summary>Fires the Basic Probe Weapon at an enemy within its range, if it is off cooldown.</summary>
-	private void TryFire(ref Probe probe, int enemy)
+	/// <summary>Fires the Drone Weapon at an enemy within its range, if it is off cooldown.</summary>
+	private void TryFire(ref Drone drone, int enemy)
 	{
 		EnemySwarm enemies = Fight.Enemies;
 
 		if (UsesBeam)
 		{
 			// The beam shows the whole time it is on target, and deals damage in ticks.
-			AddBeam(probe.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
-			if (probe.FireTimer <= 0f)
+			AddBeam(drone.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
+			if (drone.FireTimer <= 0f)
 			{
 				enemies.Damage(enemy, WeaponDamage);
-				probe.FireTimer = WeaponCooldown;
+				drone.FireTimer = WeaponCooldown;
 			}
 			return;
 		}
 
-		if (probe.FireTimer > 0f)
+		if (drone.FireTimer > 0f)
 			return;
 
 		// Let the shot fly a little past the weapon's range before it fizzles out.
-		float lifetime = WeaponRange * 1.5f / Tuning.ProbeProjectileSpeed;
+		float lifetime = WeaponRange * 1.5f / Tuning.DroneProjectileSpeed;
 
 		// Aim ahead of a moving enemy, at where it will be when the shot arrives.
-		Vector2 aimAt = PlaneMath.AimAhead(probe.Position, enemies.PositionOf(enemy), enemies.VelocityOf(enemy),
-			Tuning.ProbeProjectileSpeed, lifetime);
-		Vector2 toAim = aimAt - probe.Position;
+		Vector2 aimAt = PlaneMath.AimAhead(drone.Position, enemies.PositionOf(enemy), enemies.VelocityOf(enemy),
+			Tuning.DroneProjectileSpeed, lifetime);
+		Vector2 toAim = aimAt - drone.Position;
 		if (toAim.LengthSquared() < 0.0001f)
 			return;
 
-		Fight.Projectiles.Fire(probe.Position, toAim.Normalized(), WeaponDamage,
-			Tuning.ProbeProjectileSpeed, lifetime, fromEnemy: false);
-		probe.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
+		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), WeaponDamage,
+			Tuning.DroneProjectileSpeed, lifetime, fromEnemy: false);
+		drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
 	}
 
 	/// <summary>Records a harvest or attack beam to draw, ending just inside the edge of its target.</summary>
@@ -580,7 +580,7 @@ public partial class ProbeSwarm : Node3D
 		for (int i = _wreckCount - 1; i >= 0; i--)
 		{
 			_wrecks[i].Age += dt;
-			if (_wrecks[i].Age >= Tuning.ProbeWreckTime)
+			if (_wrecks[i].Age >= Tuning.DroneWreckTime)
 				_wrecks[i] = _wrecks[--_wreckCount];
 		}
 	}
@@ -591,29 +591,29 @@ public partial class ProbeSwarm : Node3D
 
 		for (int i = 0; i < Count; i++)
 		{
-			ref Probe probe = ref _probes[i];
-			Color color = Tuning.ProbeColor;
-			float scale = Tuning.ProbeSize;
+			ref Drone drone = ref _drones[i];
+			Color color = Tuning.DroneColor;
+			float scale = Tuning.DroneSize;
 
-			// A newly built probe grows in from a white spark.
-			if (probe.Age < BuildTime)
+			// A newly built drone grows in from a white spark.
+			if (drone.Age < BuildTime)
 			{
-				float grown = probe.Age / BuildTime;
+				float grown = drone.Age / BuildTime;
 				color = Colors.White.Lerp(color, grown);
 				scale *= grown;
 			}
-			if (probe.Flash > 0f)
-				color = color.Lerp(new Color(1f, 0.2f, 0.15f), probe.Flash / Tuning.HitFlashTime);
+			if (drone.Flash > 0f)
+				color = color.Lerp(new Color(1f, 0.2f, 0.15f), drone.Flash / Tuning.HitFlashTime);
 
-			_batch.Set(i, probe.Position, 0f, probe.Yaw, scale, color);
+			_batch.Set(i, drone.Position, 0f, drone.Yaw, scale, color);
 		}
 
 		// Wreckage: flares white, then spins and shrinks away to nothing.
 		for (int w = 0; w < _wreckCount; w++)
 		{
-			float gone = _wrecks[w].Age / Tuning.ProbeWreckTime;
-			Color color = Colors.White.Lerp(Tuning.ProbeColor.Darkened(0.6f), gone);
-			_batch.Set(Count + w, _wrecks[w].Position, 0f, _wrecks[w].Yaw + gone * 6f, Tuning.ProbeSize * (1f - gone), color);
+			float gone = _wrecks[w].Age / Tuning.DroneWreckTime;
+			Color color = Colors.White.Lerp(Tuning.DroneColor.Darkened(0.6f), gone);
+			_batch.Set(Count + w, _wrecks[w].Position, 0f, _wrecks[w].Yaw + gone * 6f, Tuning.DroneSize * (1f - gone), color);
 		}
 
 		_batch.Commit(Count + _wreckCount);
@@ -622,7 +622,7 @@ public partial class ProbeSwarm : Node3D
 		for (int b = 0; b < _beamCount; b++)
 		{
 			if (_beamIsAttack[b])
-				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight + 0.1f, 0.2f, 0.06f, Tuning.ProbeBeamColor);
+				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight + 0.1f, 0.2f, 0.06f, Tuning.DroneBeamColor);
 			else
 				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight, 0.12f, 0.06f, Tuning.ExperienceColor);
 		}

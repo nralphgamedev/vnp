@@ -7,8 +7,8 @@ using Godot;
 /// </summary>
 public partial class GroundGrid : MeshInstance3D
 {
-	// Below the units and the gateway.
-	private const float VisualHeight = -2.0f;
+	// Below the units, the gateway, and the lowest point of a tumbling asteroid (about -6.6 for the largest).
+	private const float VisualHeight = -7.0f;
 	private const float SheetSize = 800f;
 
 	/// <summary>The camera the sheet stays under.</summary>

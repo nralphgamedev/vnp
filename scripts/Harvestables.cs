@@ -25,21 +25,24 @@ public partial class Harvestables : Node3D
 		public Vector2 Position;
 		public float Mass;
 		public float Yaw;
+		public Basis Shape;        // An asteroid's own fixed turn and stretch in 3D.
+		public int Variant;        // Which rock shape an asteroid is drawn with.
 		public bool IsAsteroid;    // An asteroid, as opposed to debris.
 		public int Field;          // Its asteroid field, or -1 for a lone asteroid or debris.
 		public Vector2 Offset;     // Position relative to its field's center, before the field turns.
 		public float Glow;         // Seconds left of the tint that shows it is being harvested.
+		public Vector3 TumbleAxis; // Axis a tumbling asteroid turns around. Zero if it does not tumble.
+		public float TumbleSpeed;  // Radians per second.
+		public float TumblePhase;  // Starting tumble angle, so tumblers are not in step.
 	}
 
 	// Placeholder silhouettes: asteroids are rounded lumps, debris is a jagged shard.
-	private static readonly float[] AsteroidLumps = { 1.0f, 0.84f, 0.95f, 0.8f, 1.0f, 0.9f, 0.76f, 0.97f, 0.86f };
 	private static readonly Vector2[] DebrisOutline =
 	{
 		new(-0.9f, -0.3f), new(-0.2f, -0.5f), new(0.1f, -1.0f), new(0.4f, -0.3f), new(1.0f, -0.1f),
 		new(0.3f, 0.3f), new(0.5f, 0.9f), new(-0.2f, 0.4f), new(-0.7f, 0.6f), new(-0.5f, 0.1f),
 	};
 
-	private const float AsteroidThickness = 0.8f;
 	private const float DebrisThickness = 0.45f;
 
 	// Rough radius of each outline at scale 1. Used for harvest reach and spacing.
@@ -52,7 +55,7 @@ public partial class Harvestables : Node3D
 	public Fight Fight;
 
 	/// <summary>How far a harvest beam reaches past the edge of what it harvests.
-	/// Shared by the VNP and its probes, so one upgrade can change both.</summary>
+	/// Shared by the VNP and its drones, so one upgrade can change both.</summary>
 	public float BeamRange = Tuning.HarvestBeamRange;
 
 	public int AsteroidCount { get; private set; }
@@ -68,21 +71,22 @@ public partial class Harvestables : Node3D
 	private int _lastId;
 	private float _maxRadius;
 	private readonly SpatialGrid _grid = new(8f);
-	private InstanceBatch _asteroidBatch;
+	private InstanceBatch[] _asteroidBatches;
+	private int[] _variantCounts;
 	private InstanceBatch _debrisBatch;
 
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Harvestables;
 
-		var asteroidOutline = new Vector2[AsteroidLumps.Length];
-		for (int i = 0; i < AsteroidLumps.Length; i++)
-		{
-			float angle = i * Mathf.Tau / AsteroidLumps.Length;
-			asteroidOutline[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * AsteroidLumps[i];
-		}
-		_asteroidBatch = new InstanceBatch(this, "AsteroidShapes",
-			Placeholder.ExtrudedShape(asteroidOutline, AsteroidThickness), Placeholder.InstanceMaterial());
+		// Each rock shape is its own batch. The seeds are fixed so the shapes are the same every fight.
+		int variants = Mathf.Max(1, Tuning.AsteroidShapeVariants);
+		_asteroidBatches = new InstanceBatch[variants];
+		_variantCounts = new int[variants];
+		Material asteroidMaterial = Placeholder.InstanceMaterial();
+		for (int v = 0; v < variants; v++)
+			_asteroidBatches[v] = new InstanceBatch(this, $"AsteroidShapes{v}",
+				Placeholder.Rock(1000 + v * 37, Tuning.AsteroidBumpiness), asteroidMaterial);
 		_debrisBatch = new InstanceBatch(this, "DebrisShapes",
 			Placeholder.ExtrudedShape(DebrisOutline, DebrisThickness), Placeholder.InstanceMaterial());
 
@@ -207,39 +211,51 @@ public partial class Harvestables : Node3D
 
 	private void Draw()
 	{
-		_asteroidBatch.Begin(AsteroidCount);
+		for (int v = 0; v < _asteroidBatches.Length; v++)
+		{
+			_asteroidBatches[v].Begin(AsteroidCount);
+			_variantCounts[v] = 0;
+		}
 		_debrisBatch.Begin(DebrisCount);
-		int asteroids = 0;
 		int debris = 0;
+		float time = (float)Fight.Elapsed;
 
 		for (int i = 0; i < _count; i++)
 		{
 			ref Item item = ref _items[i];
-			bool isAsteroid = item.IsAsteroid;
-			float scale = (isAsteroid ? Tuning.AsteroidSize : Tuning.DebrisSize) * Mathf.Sqrt(item.Mass);
-			float thickness = isAsteroid ? AsteroidThickness : DebrisThickness;
-
-			// Keep the top just below the units, so ships, shots and beams pass over it.
-			float height = -0.3f - thickness * scale * 0.5f;
-
-			Color color = isAsteroid ? Tuning.AsteroidColor : Tuning.DebrisColor;
+			Color color = item.IsAsteroid ? Tuning.AsteroidColor : Tuning.DebrisColor;
 			if (item.Glow > 0f)
 				color = color.Lerp(Tuning.ExperienceColor, 0.6f * item.Glow / GlowTime);
 
-			if (isAsteroid)
+			if (item.IsAsteroid)
 			{
-				// Asteroids in a turning field turn with it. Turning a vector by an angle on the plane
-				// is the opposite turn as a yaw.
-				float yaw = item.Field >= 0 ? item.Yaw - _fields[item.Field].Angle : item.Yaw;
-				_asteroidBatch.Set(asteroids++, item.Position, height, yaw, scale, color);
+				float scale = Tuning.AsteroidSize * Mathf.Sqrt(item.Mass);
+
+				// Its own turn and stretch, then turning with its field (turning a vector by an angle on
+				// the plane is the opposite turn as a yaw), then any tumble on top.
+				Basis basis = item.Shape;
+				if (item.Field >= 0)
+					basis = new Basis(Vector3.Up, -_fields[item.Field].Angle) * basis;
+				if (item.TumbleSpeed != 0f)
+					basis = new Basis(item.TumbleAxis, item.TumblePhase + item.TumbleSpeed * time) * basis;
+				basis = basis.Scaled(Vector3.One * scale);
+
+				// A rock can point any side up, so sit it far enough down that its top stays just
+				// below the units, so ships, shots and beams pass over it.
+				float height = -0.3f - scale * Tuning.AsteroidStretchMax;
+				int v = item.Variant;
+				_asteroidBatches[v].SetBasis(_variantCounts[v]++, item.Position, height, basis, color);
 			}
 			else
 			{
+				float scale = Tuning.DebrisSize * Mathf.Sqrt(item.Mass);
+				float height = -0.3f - DebrisThickness * scale * 0.5f;
 				_debrisBatch.Set(debris++, item.Position, height, item.Yaw, scale, color);
 			}
 		}
 
-		_asteroidBatch.Commit(asteroids);
+		for (int v = 0; v < _asteroidBatches.Length; v++)
+			_asteroidBatches[v].Commit(_variantCounts[v]);
 		_debrisBatch.Commit(debris);
 	}
 
@@ -426,8 +442,14 @@ public partial class Harvestables : Node3D
 		if (_count == _items.Length)
 			Array.Resize(ref _items, _items.Length * 2);
 
+		bool tumbles = isAsteroid && Rng.Range(0f, 1f) < Tuning.AsteroidTumbleChance;
 		_items[_count++] = new Item
 		{
+			TumbleAxis = tumbles ? RandomAxis() : Vector3.Zero,
+			TumbleSpeed = tumbles ? Mathf.DegToRad(Rng.Range(Tuning.AsteroidTumbleSpeedMin, Tuning.AsteroidTumbleSpeedMax)) * Rng.Sign() : 0f,
+			TumblePhase = Rng.Range(0f, Mathf.Tau),
+			Shape = isAsteroid ? RandomShape() : Basis.Identity,
+			Variant = isAsteroid ? Rng.Int(0, _asteroidBatches.Length - 1) : 0,
 			Id = ++_lastId,
 			Position = position,
 			Mass = mass,
@@ -436,5 +458,23 @@ public partial class Harvestables : Node3D
 			Field = field,
 			Offset = offset,
 		};
+	}
+
+	/// <summary>A random turn in 3D, with a random stretch along each of the rock's own axes.</summary>
+	private static Basis RandomShape()
+	{
+		var stretch = new Vector3(
+			Rng.Range(Tuning.AsteroidStretchMin, Tuning.AsteroidStretchMax),
+			Rng.Range(Tuning.AsteroidStretchMin, Tuning.AsteroidStretchMax),
+			Rng.Range(Tuning.AsteroidStretchMin, Tuning.AsteroidStretchMax));
+		return new Basis(RandomAxis(), Rng.Range(0f, Mathf.Tau)) * Basis.FromScale(stretch);
+	}
+
+	/// <summary>A random direction in 3D, spread evenly over the sphere.</summary>
+	private static Vector3 RandomAxis()
+	{
+		float y = Rng.Range(-1f, 1f);
+		Vector2 flat = Rng.Direction() * Mathf.Sqrt(1f - y * y);
+		return new Vector3(flat.X, y, flat.Y);
 	}
 }

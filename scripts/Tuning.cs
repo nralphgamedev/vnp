@@ -49,7 +49,7 @@ public static class Tuning
 	public static int ShardCount = 3;
 
 	/// <summary>Damage a shard deals when it touches an enemy.</summary>
-	public static float ShardDamage = 8f;
+	public static float ShardDamage = 12f;
 
 	/// <summary>Seconds before a shard can hit the same enemy again. It only has to stop one pass
 	/// counting twice, so keep it below the time a shard takes to go round once (360 / orbit speed,
@@ -85,94 +85,94 @@ public static class Tuning
 	/// <summary>Thickness of the drawn beam. Cosmetic, because the beam only hits the enemy it aimed at.</summary>
 	public static float PulseLaserBeamWidth = 0.45f;
 
-	// ───────────── Basic probes ─────────────
+	// ───────────── Drones ─────────────
 
-	/// <summary>Probes the VNP starts the fight with.</summary>
-	public static int StartingProbes = 10;
+	/// <summary>Drones the VNP starts the fight with.</summary>
+	public static int StartingDrones = 10;
 
-	/// <summary>Health of one probe.</summary>
-	public static float ProbeHealth = 16f;
+	/// <summary>Health of one drone.</summary>
+	public static float DroneHealth = 16f;
 
-	/// <summary>Top speed of a probe. Above the VNP's speed, so probes can catch up.
-	/// The gap between the two is how fast a probe left behind closes the distance.</summary>
-	public static float ProbeSpeed = 32f;
+	/// <summary>Top speed of a drone. Above the VNP's speed, so drones can catch up.
+	/// The gap between the two is how fast a drone left behind closes the distance.</summary>
+	public static float DroneSpeed = 32f;
 
-	/// <summary>How quickly a probe changes speed or direction, in units per second squared.
+	/// <summary>How quickly a drone changes speed or direction, in units per second squared.
 	/// Higher makes the flock tighter and twitchier. Lower makes it looser and floatier.</summary>
-	public static float ProbeAcceleration = 90f;
+	public static float DroneAcceleration = 90f;
 
-	/// <summary>How fast a probe turns to face where it is going or shooting, in degrees per second.</summary>
-	public static float ProbeTurnSpeed = 720f;
+	/// <summary>How fast a drone turns to face where it is going or shooting, in degrees per second.</summary>
+	public static float DroneTurnSpeed = 720f;
 
 	/// <summary>How far from the VNP the flock hovers when it has nothing to attack.</summary>
-	public static float ProbeFlockRadius = 5f;
+	public static float DroneFlockRadius = 5f;
 
-	/// <summary>How fast probes mill about within the flock, on top of keeping pace with the VNP.
-	/// Also how quickly a probe that has dropped a little behind closes the gap.</summary>
-	public static float ProbeFlockSpeed = 6f;
+	/// <summary>How fast drones mill about within the flock, on top of keeping pace with the VNP.
+	/// Also how quickly a drone that has dropped a little behind closes the gap.</summary>
+	public static float DroneFlockSpeed = 6f;
 
-	/// <summary>A probe farther than this from the VNP drops everything and sprints back at top speed.</summary>
-	public static float ProbeSprintDistance = 15f;
+	/// <summary>A drone farther than this from the VNP drops everything and sprints back at top speed.</summary>
+	public static float DroneSprintDistance = 15f;
 
-	/// <summary>Probes closer than this to each other push apart.</summary>
-	public static float ProbeSeparationRadius = 1.8f;
+	/// <summary>Drones closer than this to each other push apart.</summary>
+	public static float DroneSeparationRadius = 1.8f;
 
 	/// <summary>Strength of the push apart.</summary>
-	public static float ProbeSeparation = 1.5f;
+	public static float DroneSeparation = 1.5f;
 
-	/// <summary>Probes attack enemies that come this close to the VNP. An enemy that ends up farther
-	/// away than this, because it fled or the VNP moved off, is dropped and the probes return.
+	/// <summary>Drones attack enemies that come this close to the VNP. An enemy that ends up farther
+	/// away than this, because it fled or the VNP moved off, is dropped and the drones return.
 	/// While any enemy is in this range, attacking comes before harvesting.</summary>
-	public static float ProbeEngageRange = 20f;
+	public static float DroneEngageRange = 20f;
 
-	/// <summary>How far from its target a probe sits while surrounding it.</summary>
-	public static float ProbeAttackDistance = 5f;
+	/// <summary>How far from its target a drone sits while surrounding it.</summary>
+	public static float DroneAttackDistance = 5f;
 
-	/// <summary>How fast probes circle whatever they surround, in degrees per second.</summary>
-	public static float ProbeCircleSpeed = 46f;
+	/// <summary>How fast drones circle whatever they surround, in degrees per second.</summary>
+	public static float DroneCircleSpeed = 46f;
 
-	/// <summary>How hard probes brake as they reach their spot around a target, as a fraction of
+	/// <summary>How hard drones brake as they reach their spot around a target, as a fraction of
 	/// their acceleration. Lower starts braking earlier and arrives more gently; higher arrives
 	/// faster but closer to overshooting. Keep it at or below 0.5 to avoid bouncing.</summary>
-	public static float ProbeArriveBraking = 0.5f;
+	public static float DroneArriveBraking = 0.5f;
 
-	/// <summary>How close an enemy projectile must pass to a probe's center to hit it.</summary>
-	public static float ProbeHitRadius = 0.7f;
+	/// <summary>How close an enemy projectile must pass to a drone's center to hit it.</summary>
+	public static float DroneHitRadius = 0.7f;
 
-	// ───────────── Basic Probe Weapon: Projectile ─────────────
-	// One weapon shared by every probe. It copies these when the fight starts.
+	// ───────────── Drone Weapon: Projectile ─────────────
+	// One weapon shared by every drone. It copies these when the fight starts.
 
-	/// <summary>Damage of one probe projectile.</summary>
-	public static float ProbeProjectileDamage = 2f;
+	/// <summary>Damage of one drone projectile.</summary>
+	public static float DroneProjectileDamage = 2f;
 
-	/// <summary>Seconds between shots from one probe.</summary>
-	public static float ProbeProjectileCooldown = 0.8f;
+	/// <summary>Seconds between shots from one drone.</summary>
+	public static float DroneProjectileCooldown = 0.8f;
 
-	/// <summary>A probe fires once its target is this close. Keep it above the attack distance.</summary>
-	public static float ProbeProjectileRange = 8f;
+	/// <summary>A drone fires once its target is this close. Keep it above the attack distance.</summary>
+	public static float DroneProjectileRange = 8f;
 
-	/// <summary>Speed of a probe projectile.</summary>
-	public static float ProbeProjectileSpeed = 30f;
+	/// <summary>Speed of a drone projectile.</summary>
+	public static float DroneProjectileSpeed = 30f;
 
-	// ───────────── Basic Probe Weapon: Beam ─────────────
-	// What every probe switches to when the Beam upgrade is taken.
+	// ───────────── Drone Weapon: Beam ─────────────
+	// What every drone switches to when the Beam upgrade is taken.
 
 	/// <summary>Damage of one beam tick.</summary>
-	public static float ProbeBeamDamage = 1f;
+	public static float DroneBeamDamage = 1f;
 
 	/// <summary>Seconds between beam ticks.</summary>
-	public static float ProbeBeamCooldown = 0.25f;
+	public static float DroneBeamCooldown = 0.25f;
 
 	/// <summary>How far the beam reaches.</summary>
-	public static float ProbeBeamRange = 5f;
+	public static float DroneBeamRange = 5f;
 
-	/// <summary>How far from its target a probe sits while surrounding it with the beam.
+	/// <summary>How far from its target a drone sits while surrounding it with the beam.
 	/// Keep it below the beam's range.</summary>
-	public static float ProbeBeamAttackDistance = 3.5f;
+	public static float DroneBeamAttackDistance = 3.5f;
 
 	// ───────────── Enemy ─────────────
 
-	/// <summary>How close a probe projectile must pass to an enemy's center to hit it.
+	/// <summary>How close a drone projectile must pass to an enemy's center to hit it.
 	/// Also how big an enemy is for Orbital Shards.</summary>
 	public static float EnemyHitRadius = 1.1f;
 
@@ -191,9 +191,17 @@ public static class Tuning
 	/// <summary>How fast an enemy turns to face where it is going or shooting, in degrees per second.</summary>
 	public static float EnemyTurnSpeed = 360f;
 
-	// An enemy goes after whichever is nearest: the VNP or one of its probes.
+	/// <summary>How fast an idle enemy turns to face where it is going, in degrees per second.
+	/// Lower looks calmer; higher follows every small change of course.</summary>
+	public static float EnemyIdleTurnSpeed = 90f;
 
-	/// <summary>An idle enemy notices the VNP or a probe that comes this close, then chases and attacks.</summary>
+	/// <summary>An idle enemy ignores changes of course smaller than this, in degrees, so small nudges
+	/// from flockmates do not show as twitching. 0 follows every change.</summary>
+	public static float EnemyIdleTurnDeadband = 10f;
+
+	// An enemy goes after whichever is nearest: the VNP or one of its drones.
+
+	/// <summary>An idle enemy notices the VNP or a drone that comes this close, then chases and attacks.</summary>
 	public static float EnemyAggroRange = 28f;
 
 	/// <summary>A chasing enemy gives up once nothing of the player's is within this distance.
@@ -271,6 +279,30 @@ public static class Tuning
 	/// <summary>No group spawns while this many enemies are alive. Raise it to test performance.</summary>
 	public static int EnemyMaxAlive = 200;
 
+	// ───────────── Enemy waves ─────────────
+	// Every so often a wave arrives: several groups at once, spaced evenly on a ring just off screen
+	// around the VNP, all hunting it from the start. Wave enemies chase from any distance and never
+	// give up. They have the same strength as other enemies spawned at that moment, and ignore
+	// EnemyMaxAlive.
+
+	/// <summary>Fight time, in seconds, when the first wave arrives.</summary>
+	public static float WaveFirstSeconds = 45f;
+
+	/// <summary>Seconds between waves.</summary>
+	public static float WaveIntervalSeconds = 45f;
+
+	/// <summary>Groups in the first wave. Each group is EnemyGroupSize enemies.</summary>
+	public static int WaveGroups = 5;
+
+	/// <summary>Groups added to each wave after the first.</summary>
+	public static int WaveGroupsAddedPerWave = 1;
+
+	/// <summary>Seconds of "WAVE INCOMING" warning before a wave arrives.</summary>
+	public static float WaveWarningSeconds = 3f;
+
+	/// <summary>Seconds the "WAVE n" banner stays up after a wave arrives.</summary>
+	public static float WaveBannerSeconds = 2f;
+
 	/// <summary>An enemy this far from the VNP is removed without counting as a kill,
 	/// so enemies left behind do not use up the cap.</summary>
 	public static float EnemyDespawnDistance = 180f;
@@ -298,36 +330,36 @@ public static class Tuning
 
 	// ───────────── Harvesting ─────────────
 	// Harvest beams draw mass out of asteroids and debris gradually, and experience and
-	// probe-building progress arrive as it comes. Harvest time is the mass divided by the total
-	// rate of the beams on it: the VNP alone takes 1 second per unit of mass.
+	// drone-building progress arrive as it comes. Harvest time is the mass divided by the total
+	// rate of the beams on it: the VNP alone takes half a second per unit of mass.
 
-	/// <summary>Mass the VNP's harvest beam draws out per second.</summary>
-	public static float VnpHarvestRate = 1f;
+	/// <summary>Mass the VNP's harvest beam draws out per second. Kept well above a drone's rate.</summary>
+	public static float VnpHarvestRate = 2f;
 
-	/// <summary>Mass one probe's harvest beam draws out per second.
-	/// More probes on the same asteroid harvest it faster.</summary>
-	public static float ProbeHarvestRate = 0.4f;
+	/// <summary>Mass one drone's harvest beam draws out per second.
+	/// More drones on the same asteroid harvest it faster.</summary>
+	public static float DroneHarvestRate = 0.4f;
 
 	/// <summary>How far a harvest beam reaches past the edge of an asteroid or piece of debris.
-	/// Used by the VNP and the probes.</summary>
+	/// Used by the VNP and the drones.</summary>
 	public static float HarvestBeamRange = 8f;
 
 	/// <summary>Fight experience gained per unit of mass harvested.</summary>
 	public static float ExperiencePerMass = 10f;
 
-	/// <summary>Mass that must be harvested to build one temporary probe.</summary>
-	public static float HarvestPerProbe = 8f;
+	/// <summary>Mass that must be harvested to build one temporary drone.</summary>
+	public static float HarvestPerDrone = 8f;
 
-	/// <summary>Most probes the VNP can have. Harvesting builds probes up to this,
+	/// <summary>Most drones the VNP can have. Harvesting builds drones up to this,
 	/// and gives only fight experience once it is reached.</summary>
-	public static int ProbeCap = 20;
+	public static int DroneCap = 20;
 
-	/// <summary>Probes go to harvest asteroids and debris whose edge comes within this distance
+	/// <summary>Drones go to harvest asteroids and debris whose edge comes within this distance
 	/// of the VNP, once there is no enemy to attack.</summary>
-	public static float ProbeHarvestRange = 20f;
+	public static float DroneHarvestRange = 20f;
 
-	/// <summary>How far beyond the edge of an asteroid a probe sits while harvesting it.</summary>
-	public static float ProbeHarvestStandoff = 2f;
+	/// <summary>How far beyond the edge of an asteroid a drone sits while harvesting it.</summary>
+	public static float DroneHarvestStandoff = 2f;
 
 	// ───────────── Levels and fight upgrades ─────────────
 
@@ -364,20 +396,30 @@ public static class Tuning
 	/// <summary>Health upgrade: added to the VNP's maximum health, and healed.</summary>
 	public static float UpgradeHealth = 25f;
 
-	/// <summary>Movement speed upgrade. Probes speed up by the same fraction, so they keep up.</summary>
+	/// <summary>Movement speed upgrade. Drones speed up by the same fraction, so they keep up.</summary>
 	public static float UpgradeMoveSpeed = 0.1f;
 
-	/// <summary>Harvest rate upgrade: every harvest beam, the VNP's and the probes', works this much faster.</summary>
+	/// <summary>Harvest rate upgrade: every harvest beam, the VNP's and the drones', works this much faster.</summary>
 	public static float UpgradeHarvestRate = 0.25f;
 
-	/// <summary>Harvest range upgrade: every harvest beam reaches this much farther.</summary>
-	public static float UpgradeHarvestRange = 0.25f;
+	/// <summary>Drone cap upgrade: added to the cap.</summary>
+	public static int UpgradeDroneCap = 5;
 
-	/// <summary>Basic probe cap upgrade: added to the cap.</summary>
-	public static int UpgradeProbeCap = 5;
+	/// <summary>New drones upgrade: drones built at once, up to the cap.</summary>
+	public static int UpgradeNewDrones = 5;
 
-	/// <summary>New basic probes upgrade: probes built at once, up to the cap.</summary>
-	public static int UpgradeNewProbes = 5;
+	// Upgrade limits: the most times each upgrade can be taken in one fight. Once reached, it is no
+	// longer offered. The card shows which one it is, such as 2/4. New weapons can be taken once.
+	// New drones has no limit.
+	public static int UpgradeLimitPulseLaserDamage = 4;
+	public static int UpgradeLimitPulseLaserCooldown = 4;
+	public static int UpgradeLimitShardDamage = 4;
+	public static int UpgradeLimitShardArea = 4;
+	public static int UpgradeLimitShardSpeed = 4;
+	public static int UpgradeLimitHealth = 4;
+	public static int UpgradeLimitMoveSpeed = 4;
+	public static int UpgradeLimitHarvestRate = 4;
+	public static int UpgradeLimitDroneCap = 4;
 
 	// ───────────── Asteroid fields ─────────────
 	// These place the fields around the gateway at the start of the fight. Farther out, the arena is
@@ -451,6 +493,16 @@ public static class Tuning
 	/// Applies to lone asteroids too.</summary>
 	public static float AsteroidSmallBias = 2f;
 
+	/// <summary>Chance that an asteroid tumbles: it turns slowly around a random axis in 3D, on top
+	/// of turning with its field. The rest only turn with their field. Applies to lone asteroids too.</summary>
+	public static float AsteroidTumbleChance = 0.25f;
+
+	/// <summary>Slowest tumble, in degrees per second.</summary>
+	public static float AsteroidTumbleSpeedMin = 15f;
+
+	/// <summary>Fastest tumble, in degrees per second.</summary>
+	public static float AsteroidTumbleSpeedMax = 50f;
+
 	// ───────────── Lone asteroids ─────────────
 	// Single asteroids scattered between the fields. Like the fields, they are placed at the start
 	// of the fight and stay put.
@@ -517,6 +569,42 @@ public static class Tuning
 	/// <summary>Seconds the camera takes to catch up with the VNP. 0 locks it to the VNP.</summary>
 	public static float CameraFollowLag = 0f;
 
+	// ───────────── Winning, losing and retreating ─────────────
+
+	/// <summary>Enemies to destroy to win the fight. Reaching it ends the fight at once.</summary>
+	public static int KillTarget = 120;
+
+	/// <summary>The time limit, in seconds. The fight does not end there; difficulty starts to escalate.</summary>
+	public static float TimeLimitSeconds = 300f;
+
+	/// <summary>Seconds the VNP must stay on the gateway before the option to retreat appears.
+	/// Leaving the gateway starts the count again.</summary>
+	public static float RetreatHoldSeconds = 10f;
+
+	// ───────────── Escalation past the time limit ─────────────
+	// At the limit, and again every step after it, difficulty rises by these amounts, on top of the
+	// ramp during the fight. Each is the fraction added per step: 0.6 means +60% at the limit,
+	// +120% a step later, and so on. Every step flashes the screen edges red with a "!".
+
+	/// <summary>Seconds between escalation steps after the limit.</summary>
+	public static float EscalationStepSeconds = 60f;
+
+	/// <summary>Extra health of newly spawned enemies per step.</summary>
+	public static float EscalationEnemyHealthPerStep = 0.6f;
+
+	/// <summary>Extra projectile damage of newly spawned enemies per step.</summary>
+	public static float EscalationEnemyDamagePerStep = 0.5f;
+
+	/// <summary>Extra spawn rate per step. 1 doubles it at the limit, triples it a step later.</summary>
+	public static float EscalationSpawnRatePerStep = 1.0f;
+
+	/// <summary>Extra aggro range per step, for every enemy. Wider aggro makes enemies come for the
+	/// VNP from farther away, which is what pushes the player to retreat.</summary>
+	public static float EscalationAggroRangePerStep = 0.4f;
+
+	/// <summary>Seconds the red edge flash and "!" last at each step.</summary>
+	public static float EscalationAlertSeconds = 1.6f;
+
 	// ───────────── Gateway ─────────────
 
 	/// <summary>Where the gateway sits on the plane. The fight starts here.</summary>
@@ -542,11 +630,11 @@ public static class Tuning
 	/// <summary>Scale of the VNP model. 1 is about 3 units long.</summary>
 	public static float VnpSize = 1f;
 
-	/// <summary>Scale of the probe model. 1 is about 1.3 units long.</summary>
-	public static float ProbeSize = 1f;
+	/// <summary>Scale of the drone model. 1 is about 1.3 units long.</summary>
+	public static float DroneSize = 1f;
 
-	/// <summary>Seconds a destroyed probe's wreckage takes to disintegrate.</summary>
-	public static float ProbeWreckTime = 0.4f;
+	/// <summary>Seconds a destroyed drone's wreckage takes to disintegrate.</summary>
+	public static float DroneWreckTime = 0.4f;
 
 	/// <summary>Scale of the enemy model. 1 is about 2.5 units across.</summary>
 	public static float EnemySize = 1f;
@@ -559,15 +647,26 @@ public static class Tuning
 	/// drawn larger, and every asteroid shrinks as it is harvested.</summary>
 	public static float AsteroidSize = 1f;
 
+	/// <summary>How many different rock shapes asteroids are drawn with.</summary>
+	public static int AsteroidShapeVariants = 4;
+
+	/// <summary>How lumpy the rock shapes are. 0 is a plain ball; 0.5 is very lumpy.</summary>
+	public static float AsteroidBumpiness = 0.35f;
+
+	/// <summary>Each asteroid is stretched or squashed along each of its own axes by a random amount
+	/// between these, so asteroids with the same rock shape still differ.</summary>
+	public static float AsteroidStretchMin = 0.75f;
+	public static float AsteroidStretchMax = 1.15f;
+
 	/// <summary>Seconds an enemy or the VNP flashes after being hit.</summary>
 	public static float HitFlashTime = 0.12f;
 
 	/// <summary>Spacing of the background grid lines. Every fifth line is brighter.</summary>
 	public static float GridCellSize = 5f;
 
-	public static Color ProbeColor = new(0.45f, 0.8f, 1.0f);
-	public static Color ProbeProjectileColor = new(0.7f, 1.0f, 0.45f);
-	public static Color ProbeBeamColor = new(0.8f, 0.97f, 1.0f);
+	public static Color DroneColor = new(0.45f, 0.8f, 1.0f);
+	public static Color DroneProjectileColor = new(0.7f, 1.0f, 0.45f);
+	public static Color DroneBeamColor = new(0.8f, 0.97f, 1.0f);
 	public static Color ShardColor = new(0.95f, 0.95f, 1.0f);
 
 	/// <summary>Scale of an Orbital Shard. 1 is 2 units long.</summary>

@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
@@ -11,10 +11,13 @@
 [ext_resource type="Script" path="res://scripts/Harvestables.cs" id="9_harvestables"]
 [ext_resource type="Script" path="res://scripts/PulseLaser.cs" id="10_laser"]
 [ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
-[ext_resource type="Script" path="res://scripts/ProbeSwarm.cs" id="12_probes"]
+[ext_resource type="Script" path="res://scripts/DroneSwarm.cs" id="12_drones"]
 [ext_resource type="Script" path="res://scripts/VnpHarvester.cs" id="13_harvester"]
 [ext_resource type="Script" path="res://scripts/ExperienceBar.cs" id="14_xpbar"]
 [ext_resource type="Script" path="res://scripts/LevelUpMenu.cs" id="15_levelup"]
+[ext_resource type="Script" path="res://scripts/FightHud.cs" id="16_fighthud"]
+[ext_resource type="Script" path="res://scripts/PauseMenu.cs" id="17_pause"]
+[ext_resource type="Script" path="res://scripts/ResultScreen.cs" id="18_result"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -45,8 +48,8 @@ script = ExtResource("2_vnp")
 [node name="Enemies" type="Node3D" parent="."]
 script = ExtResource("7_enemies")
 
-[node name="Probes" type="Node3D" parent="."]
-script = ExtResource("12_probes")
+[node name="Drones" type="Node3D" parent="."]
+script = ExtResource("12_drones")
 
 [node name="Projectiles" type="Node3D" parent="."]
 script = ExtResource("8_projectiles")
@@ -95,21 +98,15 @@ offset_right = 1900.0
 offset_bottom = 51.0
 theme_override_font_sizes/font_size = 21
 
-[node name="Message" type="Label" parent="Hud"]
-visible = false
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -500.0
-offset_top = -184.0
-offset_right = 500.0
-offset_bottom = -117.0
+[node name="FightHud" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 46
-horizontal_alignment = 1
+mouse_filter = 2
+script = ExtResource("16_fighthud")
 
 [node name="ExperienceBar" type="Control" parent="Hud"]
 layout_mode = 3
@@ -131,3 +128,25 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("15_levelup")
+
+[node name="PauseMenu" type="Control" parent="Hud"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("17_pause")
+
+[node name="ResultScreen" type="Control" parent="Hud"]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("18_result")

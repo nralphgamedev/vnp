@@ -13,7 +13,11 @@ public sealed class Upgrade
 	/// <summary>The card text. A function, so the card always shows the current Tuning numbers.</summary>
 	public Func<string> Describe;
 
-	/// <summary>Whether the upgrade can be offered right now. Leave unset for "always".</summary>
+	/// <summary>Most times it can be taken in one fight. A function, so it follows the Tuning value.
+	/// Leave unset for upgrades that switch something on once, like a new weapon.</summary>
+	public Func<int> Limit;
+
+	/// <summary>Whether the upgrade can be offered right now, apart from its limit. Leave unset for "always".</summary>
 	public Func<Fight, bool> CanOffer = _ => true;
 
 	public Action<Fight> Apply;
@@ -38,18 +42,21 @@ public static class Upgrades
 		new()
 		{
 			Name = "Pulse Laser damage",
+			Limit = () => Tuning.UpgradeLimitPulseLaserDamage,
 			Describe = () => $"Pulse Laser damage +{Percent(Tuning.UpgradePulseLaserDamage)}.",
 			Apply = f => f.PulseLaser.Damage *= 1f + Tuning.UpgradePulseLaserDamage,
 		},
 		new()
 		{
 			Name = "Pulse Laser cooldown",
+			Limit = () => Tuning.UpgradeLimitPulseLaserCooldown,
 			Describe = () => $"Pulse Laser cooldown -{Percent(Tuning.UpgradePulseLaserCooldown)}, so it fires more often.",
 			Apply = f => f.PulseLaser.Cooldown *= 1f - Tuning.UpgradePulseLaserCooldown,
 		},
 		new()
 		{
 			Name = "Orbital Shards damage",
+			Limit = () => Tuning.UpgradeLimitShardDamage,
 			Describe = () => $"Orbital Shards damage +{Percent(Tuning.UpgradeShardDamage)}.",
 			CanOffer = f => f.OrbitalShards != null,
 			Apply = f => f.OrbitalShards.Damage *= 1f + Tuning.UpgradeShardDamage,
@@ -57,6 +64,7 @@ public static class Upgrades
 		new()
 		{
 			Name = "Orbital Shards area of effect",
+			Limit = () => Tuning.UpgradeLimitShardArea,
 			Describe = () => $"Orbital Shards circle wider and grow +{Percent(Tuning.UpgradeShardArea)}.",
 			CanOffer = f => f.OrbitalShards != null,
 			Apply = f => f.OrbitalShards.Area *= 1f + Tuning.UpgradeShardArea,
@@ -64,6 +72,7 @@ public static class Upgrades
 		new()
 		{
 			Name = "Orbital Shards speed",
+			Limit = () => Tuning.UpgradeLimitShardSpeed,
 			Describe = () => $"Orbital Shards circle {Percent(Tuning.UpgradeShardSpeed)} faster, so they hit more often.",
 			CanOffer = f => f.OrbitalShards != null,
 			Apply = f => f.OrbitalShards.Speed *= 1f + Tuning.UpgradeShardSpeed,
@@ -72,49 +81,47 @@ public static class Upgrades
 		{
 			Name = "Beam",
 			IsWeapon = true,
-			Describe = () => "New Basic Probe Weapon. Every probe swaps its Projectile for a short-range beam that never misses.",
-			CanOffer = f => !f.Probes.UsesBeam,
-			Apply = f => f.Probes.SwitchToBeam(),
+			Describe = () => "New Drone Weapon. Every drone swaps its Projectile for a short-range beam that never misses.",
+			CanOffer = f => !f.Drones.UsesBeam,
+			Apply = f => f.Drones.SwitchToBeam(),
 		},
 		new()
 		{
 			Name = "Health",
+			Limit = () => Tuning.UpgradeLimitHealth,
 			Describe = () => $"VNP health +{Tuning.UpgradeHealth:0}, and heals {Tuning.UpgradeHealth:0}.",
 			Apply = f => f.Vnp.RaiseMaxHealth(Tuning.UpgradeHealth),
 		},
 		new()
 		{
 			Name = "Movement speed",
-			Describe = () => $"VNP movement speed +{Percent(Tuning.UpgradeMoveSpeed)}. Probes speed up to match.",
+			Limit = () => Tuning.UpgradeLimitMoveSpeed,
+			Describe = () => $"VNP movement speed +{Percent(Tuning.UpgradeMoveSpeed)}. Drones speed up to match.",
 			Apply = f => f.Vnp.MoveSpeed *= 1f + Tuning.UpgradeMoveSpeed,
 		},
 		new()
 		{
 			Name = "Harvest rate",
+			Limit = () => Tuning.UpgradeLimitHarvestRate,
 			Describe = () => $"All harvest beams work {Percent(Tuning.UpgradeHarvestRate)} faster, so fight experience comes in faster.",
 			Apply = f =>
 			{
 				f.VnpHarvester.Rate *= 1f + Tuning.UpgradeHarvestRate;
-				f.Probes.HarvestRate *= 1f + Tuning.UpgradeHarvestRate;
+				f.Drones.HarvestRate *= 1f + Tuning.UpgradeHarvestRate;
 			},
 		},
 		new()
 		{
-			Name = "Harvest range",
-			Describe = () => $"All harvest beams reach {Percent(Tuning.UpgradeHarvestRange)} farther.",
-			Apply = f => f.Harvestables.BeamRange *= 1f + Tuning.UpgradeHarvestRange,
+			Name = "Drone cap",
+			Limit = () => Tuning.UpgradeLimitDroneCap,
+			Describe = () => $"Drone cap +{Tuning.UpgradeDroneCap} for the rest of the fight.",
+			Apply = f => f.Drones.Cap += Tuning.UpgradeDroneCap,
 		},
 		new()
 		{
-			Name = "Basic probe cap",
-			Describe = () => $"Probe cap +{Tuning.UpgradeProbeCap} for the rest of the fight.",
-			Apply = f => f.Probes.Cap += Tuning.UpgradeProbeCap,
-		},
-		new()
-		{
-			Name = "New basic probes",
-			Describe = () => $"Build {Tuning.UpgradeNewProbes} probes right away, up to the cap.",
-			Apply = f => f.BuildProbesNow(Tuning.UpgradeNewProbes),
+			Name = "New drones",
+			Describe = () => $"Build {Tuning.UpgradeNewDrones} drones right away, up to the cap.",
+			Apply = f => f.BuildDronesNow(Tuning.UpgradeNewDrones),
 		},
 	};
 
@@ -130,6 +137,8 @@ public static class Upgrades
 		{
 			if (!upgrade.CanOffer(fight))
 				continue;
+			if (upgrade.Limit != null && TimesTaken(fight, upgrade) >= upgrade.Limit())
+				continue;
 			if (avoid != null && avoid.Contains(upgrade))
 				avoided.Add(upgrade);
 			else
@@ -140,6 +149,9 @@ public static class Upgrades
 		Shuffle(avoided);
 		return fresh.Concat(avoided).Take(count).ToList();
 	}
+
+	/// <summary>How many times this upgrade has been taken this fight.</summary>
+	public static int TimesTaken(Fight fight, Upgrade upgrade) => fight.TakenUpgrades.Count(name => name == upgrade.Name);
 
 	private static void Shuffle(List<Upgrade> list)
 	{

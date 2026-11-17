@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 /// <summary>Helpers for building the simple geometric placeholder art.</summary>
 public static class Placeholder
@@ -81,6 +82,77 @@ public static class Placeholder
 			AddTriangle(surface, aTop, bBottom, aBottom, normal);
 		}
 
+		return surface.Commit();
+	}
+
+	/// <summary>
+	/// Builds a low-poly lumpy rock: a sphere of small flat faces, pushed in and out by smooth noise.
+	/// Its farthest point is 1 from the centre. Different seeds give different rocks.
+	/// <paramref name="bumpiness"/> 0 is a plain ball; 0.5 is very lumpy.
+	/// </summary>
+	public static ArrayMesh Rock(int seed, float bumpiness)
+	{
+		// Start from an icosahedron: 12 corners, 20 faces.
+		float t = (1f + Mathf.Sqrt(5f)) * 0.5f;
+		var corners = new List<Vector3>
+		{
+			new(-1, t, 0), new(1, t, 0), new(-1, -t, 0), new(1, -t, 0),
+			new(0, -1, t), new(0, 1, t), new(0, -1, -t), new(0, 1, -t),
+			new(t, 0, -1), new(t, 0, 1), new(-t, 0, -1), new(-t, 0, 1),
+		};
+		for (int i = 0; i < corners.Count; i++)
+			corners[i] = corners[i].Normalized();
+		var faces = new List<(int A, int B, int C)>
+		{
+			(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11),
+			(1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8),
+			(3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9),
+			(4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1),
+		};
+
+		// Split every face into four, once: 80 faces, enough to read as a rock and still look faceted.
+		var middles = new Dictionary<(int, int), int>();
+		int Middle(int a, int b)
+		{
+			var key = a < b ? (a, b) : (b, a);
+			if (!middles.TryGetValue(key, out int index))
+			{
+				index = corners.Count;
+				corners.Add(((corners[a] + corners[b]) * 0.5f).Normalized());
+				middles[key] = index;
+			}
+			return index;
+		}
+		var split = new List<(int A, int B, int C)>();
+		foreach (var (a, b, c) in faces)
+		{
+			int ab = Middle(a, b), bc = Middle(b, c), ca = Middle(c, a);
+			split.Add((a, ab, ca));
+			split.Add((b, bc, ab));
+			split.Add((c, ca, bc));
+			split.Add((ab, bc, ca));
+		}
+
+		// Push each corner in or out, then scale so the farthest point is 1.
+		var noise = new FastNoiseLite { Seed = seed, NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex, Frequency = 0.9f };
+		float farthest = 0f;
+		for (int i = 0; i < corners.Count; i++)
+		{
+			corners[i] *= 1f + bumpiness * noise.GetNoise3Dv(corners[i] * 1.7f);
+			farthest = Mathf.Max(farthest, corners[i].Length());
+		}
+
+		var surface = new SurfaceTool();
+		surface.Begin(Mesh.PrimitiveType.Triangles);
+		foreach (var (a, b, c) in split)
+		{
+			Vector3 pa = corners[a] / farthest, pb = corners[b] / farthest, pc = corners[c] / farthest;
+			// Every face points away from the centre.
+			Vector3 normal = (pb - pa).Cross(pc - pa).Normalized();
+			if (normal.Dot(pa + pb + pc) < 0f)
+				normal = -normal;
+			AddTriangle(surface, pa, pb, pc, normal);
+		}
 		return surface.Commit();
 	}
 

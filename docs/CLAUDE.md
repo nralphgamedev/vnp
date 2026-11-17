@@ -16,7 +16,7 @@ The prototype spec is the source for what to build: @docs/PROTOTYPE_SPEC.md
 
 - The designer is a programmer by trade and will playtest every stage. Explain what you built in plain terms and say how to try it.
 - Build one stage from the spec's build order at a time, then stop so it can be played. Do not start the next stage until asked.
-- You cannot judge how the game feels. Feedback will arrive as descriptions of what happened on screen, such as "probes lag too far behind." Turn that into a change, and say which tuning value or behavior you adjusted.
+- You cannot judge how the game feels. Feedback will arrive as descriptions of what happened on screen, such as "drones lag too far behind." Turn that into a change, and say which tuning value or behavior you adjusted.
 - Stay inside the spec's scope. If something would be useful but is listed as out of scope or as a stretch goal, mention it rather than building it.
 - When the spec is silent on a design question, ask. Where the spec marks something as not yet decided, pick the simplest behavior, say what you picked, and keep it easy to change.
 - After a stage is approved, commit it to git so there is a working version to return to.
