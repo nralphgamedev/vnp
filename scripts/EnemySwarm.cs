@@ -5,14 +5,16 @@ using System;
 /// Every enemy in the fight. Enemies are kept as plain data in one array and drawn in one
 /// batch, so the count can be raised a long way before it costs much.
 ///
-/// Behaviour: an enemy roams with its flock around its home point. When the VNP comes inside
-/// its aggro range it chases, holds at a distance, circles and fires. When the VNP gets far
-/// enough away it gives up and roams around wherever it ended up.
+/// Behaviour: an enemy roams with its flock around its home point. When the VNP or a probe
+/// comes inside its aggro range it chases whichever is nearest, holds at a distance, circles
+/// and fires. When everything gets far enough away it gives up and roams around wherever it
+/// ended up.
 /// </summary>
 public partial class EnemySwarm : Node3D
 {
 	private struct Enemy
 	{
+		public int Id;                  // Stays the same for its whole life, unlike its place in the array.
 		public Vector2 Position;
 		public Vector2 Velocity;
 		public Vector2 Home;            // Point an idle enemy roams around.
@@ -42,9 +44,14 @@ public partial class EnemySwarm : Node3D
 	private Enemy[] _enemies = new Enemy[256];
 	private readonly SpatialGrid _grid = new(Tuning.EnemyNeighborRadius);
 	private readonly int[] _nearby = new int[64];
+	private readonly int[] _hitCandidates = new int[64];
 	private InstanceBatch _batch;
+
+	// Extra search distance for lookups made after enemies have moved this frame.
+	private const float GridSlack = 1f;
 	private float _spawnTimer;
 	private bool _startingGroupsSpawned;
+	private int _lastId;
 
 	public override void _Ready()
 	{
@@ -63,13 +70,18 @@ public partial class EnemySwarm : Node3D
 
 		RemoveDeadAndDistant(vnpPosition);
 		Spawn(dt, vnpPosition);
-		Simulate(dt, vnpPosition, vnpAlive: !Fight.Vnp.IsDestroyed);
+		Simulate(dt, vnpPosition, Fight.Vnp.Velocity, vnpAlive: !Fight.Vnp.IsDestroyed);
 		Draw();
 	}
 
 	// ───────────── Used by weapons ─────────────
 
 	public Vector2 PositionOf(int index) => _enemies[index].Position;
+
+	public Vector2 VelocityOf(int index) => _enemies[index].Velocity;
+
+	/// <summary>A number that identifies an enemy for its whole life. Use it to remember a target between frames.</summary>
+	public int IdOf(int index) => _enemies[index].Id;
 
 	/// <summary>The living enemy closest to a point, or -1 if none is within range.</summary>
 	public int FindNearest(Vector2 from, float range)
@@ -88,6 +100,52 @@ public partial class EnemySwarm : Node3D
 			}
 		}
 		return nearest;
+	}
+
+	/// <summary>
+	/// Fills <paramref name="results"/> with the living enemies within a distance of a point
+	/// and returns how many there are. Stops when <paramref name="results"/> is full.
+	/// </summary>
+	public int CollectNear(Vector2 center, float radius, int[] results)
+	{
+		// The grid is filled at the start of the enemy update, so search a little wide to
+		// allow for how far enemies have moved since.
+		int candidates = _grid.Query(center, radius + GridSlack, results);
+		float radiusSquared = radius * radius;
+		int kept = 0;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = results[c];
+			if (_enemies[i].Health > 0f && _enemies[i].Position.DistanceSquaredTo(center) <= radiusSquared)
+				results[kept++] = i;
+		}
+		return kept;
+	}
+
+	/// <summary>The first living enemy a shot travelling between two points would hit, or -1.</summary>
+	public int FindHit(Vector2 from, Vector2 to)
+	{
+		float reach = from.DistanceTo(to) * 0.5f + Tuning.EnemyHitRadius + GridSlack;
+		int candidates = _grid.Query((from + to) * 0.5f, reach, _hitCandidates);
+
+		int hit = -1;
+		float hitDistanceSquared = float.MaxValue;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _hitCandidates[c];
+			if (_enemies[i].Health <= 0f)
+				continue;
+			if (PlaneMath.DistanceToSegment(_enemies[i].Position, from, to) > Tuning.EnemyHitRadius)
+				continue;
+
+			float distanceSquared = from.DistanceSquaredTo(_enemies[i].Position);
+			if (distanceSquared < hitDistanceSquared)
+			{
+				hitDistanceSquared = distanceSquared;
+				hit = i;
+			}
+		}
+		return hit;
 	}
 
 	/// <summary>Damages an enemy. If that destroys it, it counts as a kill and leaves debris.</summary>
@@ -158,6 +216,7 @@ public partial class EnemySwarm : Node3D
 			Vector2 direction = Rng.Direction();
 			_enemies[Count++] = new Enemy
 			{
+				Id = ++_lastId,
 				Position = home + Rng.InsideCircle(4f),
 				Home = home,
 				WanderDirection = direction,
@@ -171,7 +230,7 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
-	private void Simulate(float dt, Vector2 vnpPosition, bool vnpAlive)
+	private void Simulate(float dt, Vector2 vnpPosition, Vector2 vnpVelocity, bool vnpAlive)
 	{
 		_grid.Clear();
 		for (int i = 0; i < Count; i++)
@@ -181,17 +240,34 @@ public partial class EnemySwarm : Node3D
 		float neighborRadiusSquared = neighborRadius * neighborRadius;
 		float separationRadius = Tuning.EnemySeparationRadius;
 		float turnStep = Mathf.DegToRad(Tuning.EnemyTurnSpeed) * dt;
+		ProbeSwarm probes = Fight.Probes;
 
 		for (int i = 0; i < Count; i++)
 		{
 			ref Enemy enemy = ref _enemies[i];
 
-			Vector2 toVnp = vnpPosition - enemy.Position;
-			float distance = toVnp.Length();
-			Vector2 directionToVnp = distance > 0.001f ? toVnp / distance : Vector2.Up;
+			// Notice things at the aggro range. Once chasing, keep chasing until everything is well clear.
+			float noticeRange = enemy.Aggro ? Tuning.EnemyLoseAggroRange : Tuning.EnemyAggroRange;
 
-			// Notice the VNP at the aggro range. Once chasing, keep chasing until it is well clear.
-			bool aggro = vnpAlive && distance <= (enemy.Aggro ? Tuning.EnemyLoseAggroRange : Tuning.EnemyAggroRange);
+			// Go after whichever is nearest: the VNP or one of its probes.
+			float vnpDistance = enemy.Position.DistanceTo(vnpPosition);
+			Vector2 targetPosition = vnpPosition;
+			Vector2 targetVelocity = vnpVelocity;
+			float distance = vnpAlive ? vnpDistance : float.MaxValue;
+			// Skip the probe search when even the farthest probe could not be near enough.
+			if (vnpDistance - probes.Reach <= noticeRange
+				&& probes.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
+					out Vector2 probePosition, out Vector2 probeVelocity, out float probeDistance))
+			{
+				targetPosition = probePosition;
+				targetVelocity = probeVelocity;
+				distance = probeDistance;
+			}
+
+			Vector2 toTarget = targetPosition - enemy.Position;
+			Vector2 directionToTarget = distance > 0.001f ? toTarget / distance : Vector2.Up;
+
+			bool aggro = distance <= noticeRange;
 			if (enemy.Aggro && !aggro)
 				enemy.Home = enemy.Position; // Gave up: roam around here from now on.
 			enemy.Aggro = aggro;
@@ -204,14 +280,12 @@ public partial class EnemySwarm : Node3D
 				speed = Tuning.EnemySpeed;
 				if (distance > Tuning.EnemyHoldDistance)
 				{
-					goal = directionToVnp;
+					goal = directionToTarget;
 				}
 				else
 				{
-					// Close enough: circle the VNP, backing off harder the closer it is.
-					Vector2 around = new Vector2(-directionToVnp.Y, directionToVnp.X) * enemy.OrbitSign;
-					float tooClose = 1f - distance / Tuning.EnemyHoldDistance;
-					goal = (around - directionToVnp * tooClose * 2f).Normalized();
+					// Close enough: stop closing in and circle the target at half speed.
+					goal = new Vector2(-directionToTarget.Y, directionToTarget.X) * enemy.OrbitSign * 0.5f;
 				}
 			}
 			else
@@ -272,17 +346,27 @@ public partial class EnemySwarm : Node3D
 			enemy.Velocity = enemy.Velocity.MoveToward(wantedVelocity, Tuning.EnemyAcceleration * dt);
 			enemy.Position += enemy.Velocity * dt;
 
-			// Face the VNP while in firing range, otherwise face the direction of travel.
+			// Face the target while in firing range, otherwise face the direction of travel.
 			bool inAttackRange = aggro && distance <= Tuning.EnemyAttackRange;
 			if (inAttackRange)
-				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(directionToVnp), turnStep);
+				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(directionToTarget), turnStep);
 			else if (enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
 
 			enemy.FireTimer = Mathf.Max(0f, enemy.FireTimer - dt);
 			if (inAttackRange && enemy.FireTimer <= 0f)
 			{
-				Fight.Projectiles.Fire(enemy.Position, directionToVnp, enemy.ProjectileDamage);
+				// Aim ahead of a moving target. EnemyAimLead scales how far ahead: 1 aims exactly
+				// where the target will be, 0 aims at where it is now.
+				Vector2 meetingPoint = PlaneMath.AimAhead(enemy.Position, targetPosition, targetVelocity,
+					Tuning.EnemyProjectileSpeed, Tuning.EnemyProjectileLifetime);
+				Vector2 aimAt = targetPosition.Lerp(meetingPoint, Tuning.EnemyAimLead);
+				Vector2 aim = aimAt.DistanceSquaredTo(enemy.Position) > 0.0001f
+					? (aimAt - enemy.Position).Normalized()
+					: directionToTarget;
+
+				Fight.Projectiles.Fire(enemy.Position, aim, enemy.ProjectileDamage,
+					Tuning.EnemyProjectileSpeed, Tuning.EnemyProjectileLifetime, fromEnemy: true);
 				enemy.FireTimer = Tuning.EnemyFireCooldown * Rng.Range(0.85f, 1.15f);
 			}
 

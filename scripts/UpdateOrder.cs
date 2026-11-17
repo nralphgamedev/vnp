@@ -7,9 +7,10 @@ public static class UpdateOrder
 	public const int Fight = -10;
 	public const int Vnp = 0;
 	public const int Enemies = 1;
-	public const int Projectiles = 2;
-	public const int Weapons = 3;
-	public const int Debris = 4;
+	public const int Probes = 2;
+	public const int Projectiles = 3;
+	public const int Weapons = 4;
+	public const int Debris = 5;
 	public const int Camera = 10;
 	public const int Ground = 15;
 	public const int Hud = 20;

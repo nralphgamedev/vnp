@@ -1,7 +1,10 @@
 using Godot;
 using System;
 
-/// <summary>Every enemy projectile in flight. Each flies straight, and hits the VNP if it passes close enough.</summary>
+/// <summary>
+/// Every projectile in flight, from both sides. Each flies straight until it hits something or
+/// fizzles out. Enemy shots hit the VNP or a probe. Probe shots hit enemies.
+/// </summary>
 public partial class Projectiles : Node3D
 {
 	private struct Shot
@@ -9,7 +12,8 @@ public partial class Projectiles : Node3D
 		public Vector2 Position;
 		public Vector2 Velocity;
 		public float Damage;
-		public float Life; // Seconds left before it fizzles out.
+		public float Life;      // Seconds left before it fizzles out.
+		public bool FromEnemy;
 	}
 
 	public Fight Fight;
@@ -29,7 +33,7 @@ public partial class Projectiles : Node3D
 	}
 
 	/// <summary>Launches a projectile from a point in a direction.</summary>
-	public void Fire(Vector2 from, Vector2 direction, float damage)
+	public void Fire(Vector2 from, Vector2 direction, float damage, float speed, float lifetime, bool fromEnemy)
 	{
 		if (Count == _shots.Length)
 			Array.Resize(ref _shots, _shots.Length * 2);
@@ -37,9 +41,10 @@ public partial class Projectiles : Node3D
 		_shots[Count++] = new Shot
 		{
 			Position = from,
-			Velocity = direction * Tuning.EnemyProjectileSpeed,
+			Velocity = direction * speed,
 			Damage = damage,
-			Life = Tuning.EnemyProjectileLifetime,
+			Life = lifetime,
+			FromEnemy = fromEnemy,
 		};
 	}
 
@@ -49,8 +54,6 @@ public partial class Projectiles : Node3D
 			return;
 
 		float dt = (float)delta;
-		Vnp vnp = Fight.Vnp;
-
 		for (int i = Count - 1; i >= 0; i--)
 		{
 			ref Shot shot = ref _shots[i];
@@ -58,11 +61,10 @@ public partial class Projectiles : Node3D
 			shot.Position += shot.Velocity * dt;
 			shot.Life -= dt;
 
-			// Test the whole path covered this frame, so a fast shot cannot skip past the VNP.
-			bool hit = !vnp.IsDestroyed
-				&& PlaneMath.DistanceToSegment(vnp.PlanePosition, before, shot.Position) <= Tuning.VnpHitRadius;
-			if (hit)
-				vnp.TakeDamage(shot.Damage);
+			// Test the whole path covered this frame, so a fast shot cannot skip past its target.
+			bool hit = shot.FromEnemy
+				? HitPlayerSide(before, shot.Position, shot.Damage)
+				: HitEnemy(before, shot.Position, shot.Damage);
 
 			if (hit || shot.Life <= 0f)
 				_shots[i] = _shots[--Count]; // Fill the gap with the last shot.
@@ -70,7 +72,42 @@ public partial class Projectiles : Node3D
 
 		_batch.Begin(Count);
 		for (int i = 0; i < Count; i++)
-			_batch.Set(i, _shots[i].Position, 0f, PlaneMath.YawFacing(_shots[i].Velocity), 1f, Tuning.EnemyProjectileColor);
+		{
+			ref Shot shot = ref _shots[i];
+			// Probe shots are smaller and a different colour, so the two sides are easy to tell apart.
+			_batch.Set(i, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity),
+				shot.FromEnemy ? 1f : 0.6f,
+				shot.FromEnemy ? Tuning.EnemyProjectileColor : Tuning.ProbeProjectileColor);
+		}
 		_batch.Commit(Count);
+	}
+
+	/// <summary>An enemy shot hits the VNP or the first probe on its path. Probes can shield the VNP this way.</summary>
+	private bool HitPlayerSide(Vector2 from, Vector2 to, float damage)
+	{
+		Vnp vnp = Fight.Vnp;
+		if (!vnp.IsDestroyed && PlaneMath.DistanceToSegment(vnp.PlanePosition, from, to) <= Tuning.VnpHitRadius)
+		{
+			vnp.TakeDamage(damage);
+			return true;
+		}
+
+		int probe = Fight.Probes.FindHit(from, to);
+		if (probe >= 0)
+		{
+			Fight.Probes.Damage(probe, damage);
+			return true;
+		}
+		return false;
+	}
+
+	private bool HitEnemy(Vector2 from, Vector2 to, float damage)
+	{
+		int enemy = Fight.Enemies.FindHit(from, to);
+		if (enemy < 0)
+			return false;
+
+		Fight.Enemies.Damage(enemy, damage);
+		return true;
 	}
 }

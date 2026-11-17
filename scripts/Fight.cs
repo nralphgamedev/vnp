@@ -10,6 +10,7 @@ public partial class Fight : Node3D
 	public Gateway Gateway { get; private set; }
 	public CameraRig Camera { get; private set; }
 	public EnemySwarm Enemies { get; private set; }
+	public ProbeSwarm Probes { get; private set; }
 	public Projectiles Projectiles { get; private set; }
 	public Debris Debris { get; private set; }
 
@@ -35,6 +36,7 @@ public partial class Fight : Node3D
 		Gateway = GetNode<Gateway>("Gateway");
 		Camera = GetNode<CameraRig>("Camera");
 		Enemies = GetNode<EnemySwarm>("Enemies");
+		Probes = GetNode<ProbeSwarm>("Probes");
 		Projectiles = GetNode<Projectiles>("Projectiles");
 		Debris = GetNode<Debris>("Debris");
 		_debugLabel = GetNode<Label>("Hud/DebugLabel");
@@ -53,6 +55,8 @@ public partial class Fight : Node3D
 		indicator.Gateway = Gateway;
 
 		Enemies.Fight = this;
+		Probes.Fight = this;
+		Probes.Add(Tuning.StartingProbes, Vnp.PlanePosition);
 		Projectiles.Fight = this;
 		GetNode<PulseLaser>("PulseLaser").Fight = this;
 		_healthBar = GetNode<HealthBar>("Hud/HealthBar");
@@ -85,6 +89,7 @@ public partial class Fight : Node3D
 			$"{Engine.GetFramesPerSecond():0} fps    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
+			$"probes {Probes.Count}    " +
 			$"kills {Kills}    " +
 			$"enemies {Enemies.Count}    " +
 			$"debris {Debris.Count}    " +

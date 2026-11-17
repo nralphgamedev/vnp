@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/Debris.cs" id="9_debris"]
 [ext_resource type="Script" path="res://scripts/PulseLaser.cs" id="10_laser"]
 [ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
+[ext_resource type="Script" path="res://scripts/ProbeSwarm.cs" id="12_probes"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -40,6 +41,9 @@ script = ExtResource("2_vnp")
 
 [node name="Enemies" type="Node3D" parent="."]
 script = ExtResource("7_enemies")
+
+[node name="Probes" type="Node3D" parent="."]
+script = ExtResource("12_probes")
 
 [node name="Projectiles" type="Node3D" parent="."]
 script = ExtResource("8_projectiles")
