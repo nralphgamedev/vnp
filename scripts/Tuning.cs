@@ -134,7 +134,7 @@ public static class Tuning
 	/// <summary>How hard drones brake as they reach their spot around a target, as a fraction of
 	/// their acceleration. Lower starts braking earlier and arrives more gently; higher arrives
 	/// faster but closer to overshooting. Keep it at or below 0.5 to avoid bouncing.</summary>
-	public static float DroneArriveBraking = 0.5f;
+	public static float DroneArriveBraking = 0.3f;
 
 	/// <summary>How close an enemy projectile must pass to a drone's center to hit it.</summary>
 	public static float DroneHitRadius = 0.7f;
@@ -269,12 +269,14 @@ public static class Tuning
 	/// <summary>Seconds between spawned groups at the start of the fight.</summary>
 	public static float EnemySpawnInterval = 4f;
 
-	/// <summary>A group spawns at least this far from the VNP. 62 is just off screen
-	/// at the current camera height.</summary>
-	public static float EnemySpawnDistanceMin = 62f;
+	/// <summary>How far past the edge of the screen enemy groups and waves spawn. Measured from what
+	/// the camera actually shows, so it keeps them out of sight at any zoom. It must cover a group's
+	/// spread (4 units) and an enemy's size, with room to spare.</summary>
+	public static float EnemySpawnMargin = 10f;
 
-	/// <summary>A group spawns at most this far from the VNP.</summary>
-	public static float EnemySpawnDistanceMax = 90f;
+	/// <summary>Ordinary groups spawn up to this much farther out than the margin, at random.
+	/// Waves always spawn at the margin, so they arrive together.</summary>
+	public static float EnemySpawnExtraDistance = 28f;
 
 	/// <summary>No group spawns while this many enemies are alive. Raise it to test performance.</summary>
 	public static int EnemyMaxAlive = 200;
@@ -559,9 +561,9 @@ public static class Tuning
 	public static float CameraFov = 20f;
 
 	/// <summary>How far the camera sits above the plane. Raising it shows more of the arena.
-	/// At 150 the screen shows about 97 by 55 units. If you change this, also change the two
-	/// EnemySpawnDistance values so groups still spawn off screen.</summary>
-	public static float CameraHeight = 150f;
+	/// At 150 the screen shows about 97 by 55 units. Enemies spawn relative to the screen edge,
+	/// so they stay off screen at any height.</summary>
+	public static float CameraHeight = 200f;
 
 	/// <summary>How far the camera leans away from looking straight down. 0 is a pure top-down view.</summary>
 	public static float CameraTilt = 15f;

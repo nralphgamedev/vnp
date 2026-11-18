@@ -224,7 +224,8 @@ public partial class EnemySwarm : Node3D
 		for (int g = 0; g < groups; g++)
 		{
 			float angle = startAngle + Mathf.Tau * g / groups;
-			Vector2 home = vnpPosition + Vector2.FromAngle(angle) * Tuning.EnemySpawnDistanceMin;
+			Vector2 direction = Vector2.FromAngle(angle);
+			Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
 			SpawnGroupAt(home, hunting: true);
 		}
 	}
@@ -232,8 +233,16 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Spawns one group at a random spot off screen around the VNP. That spot is the group's home.</summary>
 	private void SpawnGroup(Vector2 vnpPosition)
 	{
-		Vector2 home = vnpPosition + Rng.Direction() * Rng.Range(Tuning.EnemySpawnDistanceMin, Tuning.EnemySpawnDistanceMax);
+		Vector2 direction = Rng.Direction();
+		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, Tuning.EnemySpawnExtraDistance));
 		SpawnGroupAt(home, hunting: false);
+	}
+
+	/// <summary>How far from the VNP a group must spawn in a direction to be out of sight:
+	/// past the edge of the screen by the spawn margin, plus <paramref name="extra"/>.</summary>
+	private float OffScreenDistance(Vector2 vnpPosition, Vector2 direction, float extra)
+	{
+		return Fight.Camera.DistanceOutOfView(vnpPosition, direction, Tuning.EnemySpawnMargin) + extra;
 	}
 
 	private void SpawnGroupAt(Vector2 home, bool hunting)

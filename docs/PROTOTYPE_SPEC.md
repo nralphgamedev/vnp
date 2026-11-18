@@ -71,24 +71,28 @@ A perspective camera placed high above the plane, with a narrow field of view an
 - The number of fields varies.
 - Fields come in two layouts: clusters and rings.
 - A field can be stationary, moving, or rotating.
+- Occasional lone asteroids sit between fields.
+- Fields start around the gateway. Farther out, the arena is filled with fields and lone asteroids as the player explores, so asteroids stay about as common however far the player travels. Once placed, asteroids stay where they are and do not respawn.
+- Asteroids are lumpy 3D rocks. Some of them tumble slowly around a random axis.
 
 ### Harvesting
 
 - The VNP and every drone harvest asteroids and debris with harvest beams. There are no pickups to collect.
 - Asteroids and debris can always be harvested once they are within harvest range.
 - Enemy debris never disappears.
-- Each asteroid and piece of debris has a **mass**. Mass sets the base harvest time: about 1 second for a small one, up to about 10 seconds for a large one.
+- Each asteroid and piece of debris has a **mass**. Mass sets the harvest time. Mass draws out gradually, so fight experience arrives while the beam works rather than all at the end.
 - Larger asteroids and debris also give more fight experience.
-- The base harvest time is shortened by harvesting upgrades and by the number of drones harvesting, so more drones means faster harvesting.
+- The VNP's harvest beam is much faster than a drone's.
+- Harvest time is shortened by harvesting upgrades and by the number of drones harvesting, so more drones means faster harvesting.
 - Harvesting gives fight experience. It also builds temporary drones, up to the drone cap. Once the cap is reached, harvesting gives only fight experience.
 
 ### Drones
 
 - The VNP starts the fight with **10** drones.
 - Drones are smaller than the VNP and flock around it.
-- When asteroids or debris come in range, the drones surround and harvest them.
 - When enemies come in range, the drones surround and attack them.
-- Drones harvest and fight at the same time. Harvesting stays their priority whenever harvestable material is in range.
+- When asteroids or debris come in range, the drones surround and harvest them.
+- Fighting comes first: drones attack whenever an enemy is in range, and harvest only when none is.
 - If the player moves away, the drones try to disengage and follow.
 - Drones can be destroyed. A destroyed drone's wreckage disintegrates and cannot be harvested.
 - Drones start with the **Projectile** weapon, which fires single projectiles.
@@ -97,38 +101,41 @@ A perspective camera placed high above the plane, with a narrow field of view an
 
 One placeholder enemy type:
 
-- It has its own flocking movement.
-- It attacks with projectiles.
-- It has an aggro range.
-- It spawns endlessly.
+- It has its own flocking movement. Idle groups wander near where they spawned.
+- It attacks with projectiles, aimed ahead of a moving target.
+- It has an aggro range. Inside it, an enemy chases whichever is nearest, the VNP or a drone.
+- It spawns endlessly, in groups just off screen around the VNP.
 - It grows stronger over the course of the fight.
 - When destroyed, it leaves debris.
+
+**Waves:** every so often a wave arrives: several groups at once, spaced evenly around the VNP just off screen, all hunting it. Wave enemies chase from any distance and never give up. Each wave is larger than the last. A warning appears on screen a few seconds before each wave.
 
 ### Fight experience and level ups
 
 - The prototype uses a single color of fight experience.
 - Gathering enough fight experience levels the player up.
 - Each level up pauses the action and offers a fight upgrade: a choice of three options from the upgrade pool.
-- An offer can be rerolled. The player starts with one free reroll.
+- An offer can be rerolled. The player starts with one free reroll, which is not refreshed during the fight.
+- Most upgrades have a limit on how many times they can be taken in one fight. The card shows which time it would be, such as 2/4. Once an upgrade reaches its limit, it is no longer offered.
 
 ### Upgrade pool
 
 Twelve upgrades. This list is expected to change through playtesting, so keep upgrades easy to add, remove, and adjust.
 
-| Upgrade | Effect | Condition |
-|---|---|---|
-| Orbital Shards | New VNP Weapon for the second slot: shapes that circle the VNP and damage what they touch | Not yet equipped |
-| Pulse Laser damage | Raises Pulse Laser damage | |
-| Pulse Laser cooldown | Shortens Pulse Laser cooldown | |
-| Orbital Shards damage | Raises Orbital Shards damage | Orbital Shards equipped |
-| Orbital Shards area of effect | Raises Orbital Shards area of effect | Orbital Shards equipped |
-| Beam | Switches the drones from Projectile to Beam, a short-range beam attack | Drones not already using Beam |
-| Health | Raises the VNP's health | |
-| Movement speed | Raises the VNP's movement speed | |
-| Harvest rate | Fight experience is gathered faster | |
-| Harvest range | The harvest beam reaches farther | |
-| Drone cap | Raises the cap for the rest of the fight | |
-| New drones | Adds temporary drones right away, up to the cap | |
+| Upgrade | Effect | Condition | Limit |
+|---|---|---|---|
+| Orbital Shards | New VNP Weapon for the second slot: shapes that circle the VNP and damage what they touch | Not yet equipped | Once |
+| Pulse Laser damage | Raises Pulse Laser damage | | 4 |
+| Pulse Laser cooldown | Shortens Pulse Laser cooldown | | 4 |
+| Orbital Shards damage | Raises Orbital Shards damage | Orbital Shards equipped | 4 |
+| Orbital Shards area of effect | Raises Orbital Shards area of effect | Orbital Shards equipped | 4 |
+| Orbital Shards speed | The shards circle faster, so they hit more often | Orbital Shards equipped | 4 |
+| Beam | Switches the drones from Projectile to Beam, a short-range beam attack | Drones not already using Beam | Once |
+| Health | Raises the VNP's health | | 4 |
+| Movement speed | Raises the VNP's movement speed | | 4 |
+| Harvest rate | Fight experience is gathered faster | | 4 |
+| Drone cap | Raises the cap for the rest of the fight | | 4 |
+| New drones | Adds temporary drones right away, up to the cap | Drones below the cap | None |
 
 The Pulse Laser is a straight beam that fires at the nearest enemy. Damage, cooldown, and area of effect belong to each weapon, not to the VNP.
 
@@ -137,12 +144,13 @@ The Pulse Laser is a straight beam that fires at the nearest enemy. Damage, cool
 - **Win:** destroy a target number of enemies (the kill target).
 - **Loss:** the primary VNP is destroyed.
 - **Retreat:** the player chooses the retreat option at the gateway.
-- **Time limit:** 5 minutes. The fight does not end at the limit. Instead, the edges of the screen flash red and an exclamation point briefly appears in the center. From then on, difficulty rises substantially every minute, with another flash and exclamation point each time. Past the limit, the player should be forced to retreat, die, or narrowly succeed.
+- **Time limit:** 5 minutes. The fight does not end at the limit. Instead, the edges of the screen flash red and an exclamation point briefly appears in the center. From then on, difficulty rises substantially every minute, with another flash and exclamation point each time. Each step makes newly spawned enemies tougher and hit harder, makes them spawn faster, and widens every enemy's aggro range. Past the limit, the player should be forced to retreat, die, or narrowly succeed.
 
 ### Screens
 
-- **Pause menu:** pauses the fight and lists the player's current upgrades.
-- **Result screen:** shows win, loss, or retreat, along with kills, time, and fight experience harvested. It should offer a quick way to start another fight.
+- **HUD:** the clock (counting down to the limit, then counting time past it), kills toward the kill target, and the retreat prompt while on the gateway.
+- **Pause menu:** pauses the fight and lists the player's current upgrades. It only resumes the fight.
+- **Result screen:** shows win, loss, or retreat, along with kills, time, fight experience harvested, level reached, and upgrades taken. It should offer a quick way to start another fight.
 
 ## Tuning values
 
@@ -156,9 +164,11 @@ Keep all of these in one place so they can be adjusted quickly without hunting t
 | Weapon slots | 2 |
 | Options per fight upgrade offer | 3 |
 | Free rerolls | 1 |
-| Base harvest time by mass | about 1 second (small) to about 10 seconds (large) |
+| Harvest rate of the VNP and of each drone | placeholder, with the VNP well above a drone |
+| Asteroid mass | placeholder, small asteroids more common than large ones |
 | Kill target | placeholder |
 | Enemy spawn rate | placeholder |
+| Enemy wave timing and size | placeholder |
 | Difficulty ramp during the fight | placeholder |
 | Difficulty increase per minute past the limit | placeholder, but it should be large |
 | Fight experience needed per level | placeholder |
@@ -169,16 +179,17 @@ Keep all of these in one place so they can be adjusted quickly without hunting t
 | Enemy aggro range, health, damage, and speed | placeholder |
 | Weapon damage, cooldown, and range | placeholder |
 | Upgrade amounts | placeholder |
+| Upgrade limits | 4 for each limited upgrade, to start |
 | Camera field of view, height, and tilt | placeholder |
 
-## Not yet decided
+## Settled during the build
 
-The designer has not settled these. Use the simplest reasonable behavior, say what you chose, and make it easy to change.
+These were open when the spec was written. The prototype now does the following; any of them can still change.
 
-- What drones do when an enemy and harvestable material are both in range but far apart from each other.
-- Whether the free reroll refreshes per offer, per fight, or not at all.
-- Where asteroid fields sit in relation to the gateway.
-- How enemies choose where to spawn in an infinite arena.
+- **Drones with an enemy and harvestable material both in range:** they attack first, and harvest only when no enemy is in range.
+- **The free reroll:** one per fight, not refreshed.
+- **Where asteroid fields sit:** around the gateway at the start, then filled in as the player explores.
+- **Where enemies spawn:** in groups at a random spot just off screen around the VNP, plus waves from all sides.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 

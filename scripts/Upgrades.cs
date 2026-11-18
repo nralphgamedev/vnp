@@ -121,6 +121,8 @@ public static class Upgrades
 		{
 			Name = "New drones",
 			Describe = () => $"Build {Tuning.UpgradeNewDrones} drones right away, up to the cap.",
+			// Drones already being built count, so it is not offered when they would fill the cap anyway.
+			CanOffer = f => f.Drones.CountWithBuilds < f.Drones.Cap,
 			Apply = f => f.BuildDronesNow(Tuning.UpgradeNewDrones),
 		},
 	};
