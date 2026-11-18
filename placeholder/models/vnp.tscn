@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://placeholder/materials/vnp_hull.tres" id="1_ftlpx"]
+[ext_resource type="PrismMesh" path="res://placeholder/meshes/vnp_hull.tres" id="2_fle4i"]
+[ext_resource type="BoxMesh" path="res://placeholder/meshes/vnp_pod.tres" id="3_8hnij"]
+[ext_resource type="Material" path="res://placeholder/materials/vnp_core.tres" id="4_80xgn"]
+[ext_resource type="SphereMesh" path="res://placeholder/meshes/vnp_core.tres" id="5_nur32"]
+
+[node name="Vnp" type="Node3D" unique_id=2132363410]
+
+[node name="Hull" type="MeshInstance3D" parent="." unique_id=625804570]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0)
+material_override = ExtResource("1_ftlpx")
+cast_shadow = 0
+mesh = ExtResource("2_fle4i")
+
+[node name="PodLeft" type="MeshInstance3D" parent="." unique_id=501023567]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.25, 0, 1)
+material_override = ExtResource("1_ftlpx")
+cast_shadow = 0
+mesh = ExtResource("3_8hnij")
+
+[node name="PodRight" type="MeshInstance3D" parent="." unique_id=923218928]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.25, 0, 1)
+material_override = ExtResource("1_ftlpx")
+cast_shadow = 0
+mesh = ExtResource("3_8hnij")
+
+[node name="Core" type="MeshInstance3D" parent="." unique_id=1558669986]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.55)
+material_override = ExtResource("4_80xgn")
+cast_shadow = 0
+mesh = ExtResource("5_nur32")

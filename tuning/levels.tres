@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="LevelsTuning" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/LevelsTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/upgrades/equip.tres" id="2_orbital_shards"]
+[ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/upgrades/damage.tres" id="3_pulse_laser_damage"]
+[ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/upgrades/cooldown.tres" id="4_pulse_laser_cooldown"]
+[ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/upgrades/damage.tres" id="5_orbital_shards_damage"]
+[ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/upgrades/area.tres" id="6_orbital_shards_area"]
+[ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/upgrades/speed.tres" id="7_orbital_shards_speed"]
+[ext_resource type="Resource" path="res://tuning/drone_weapons/beam/upgrades/equip.tres" id="8_beam"]
+[ext_resource type="Resource" path="res://tuning/upgrades/vnp_stats/health.tres" id="9_health"]
+[ext_resource type="Resource" path="res://tuning/upgrades/vnp_stats/movement_speed.tres" id="10_movement_speed"]
+[ext_resource type="Resource" path="res://tuning/upgrades/harvesting/rate.tres" id="11_harvest_rate"]
+[ext_resource type="Resource" path="res://tuning/upgrades/drones/cap.tres" id="12_drone_cap"]
+[ext_resource type="Resource" path="res://tuning/upgrades/drones/new_drones.tres" id="13_new_drones"]
+[ext_resource type="Script" path="res://scripts/schemas/UpgradeDefinition.cs" id="14_upgrade_script"]
+
+[resource]
+script = ExtResource("1_script")
+ExperienceForFirstLevel = 150.0
+ExperienceIncreasePerLevel = 75.0
+OptionsPerOffer = 3
+FreeRerolls = 1
+Upgrades = Array[ExtResource("14_upgrade_script")]([ExtResource("2_orbital_shards"), ExtResource("3_pulse_laser_damage"), ExtResource("4_pulse_laser_cooldown"), ExtResource("5_orbital_shards_damage"), ExtResource("6_orbital_shards_area"), ExtResource("7_orbital_shards_speed"), ExtResource("8_beam"), ExtResource("9_health"), ExtResource("10_movement_speed"), ExtResource("11_harvest_rate"), ExtResource("12_drone_cap"), ExtResource("13_new_drones")])

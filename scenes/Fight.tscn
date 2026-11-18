@@ -1,36 +1,29 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=19 format=3]
 
-[ext_resource type="Script" path="res://scripts/Fight.cs" id="1_fight"]
-[ext_resource type="Script" path="res://scripts/Vnp.cs" id="2_vnp"]
-[ext_resource type="Script" path="res://scripts/Gateway.cs" id="3_gateway"]
-[ext_resource type="Script" path="res://scripts/GroundGrid.cs" id="4_ground"]
-[ext_resource type="Script" path="res://scripts/CameraRig.cs" id="5_camera"]
-[ext_resource type="Script" path="res://scripts/GatewayIndicator.cs" id="6_indicator"]
-[ext_resource type="Script" path="res://scripts/EnemySwarm.cs" id="7_enemies"]
-[ext_resource type="Script" path="res://scripts/Projectiles.cs" id="8_projectiles"]
-[ext_resource type="Script" path="res://scripts/Harvestables.cs" id="9_harvestables"]
-[ext_resource type="Script" path="res://scripts/PulseLaser.cs" id="10_laser"]
-[ext_resource type="Script" path="res://scripts/HealthBar.cs" id="11_healthbar"]
-[ext_resource type="Script" path="res://scripts/DroneSwarm.cs" id="12_drones"]
-[ext_resource type="Script" path="res://scripts/VnpHarvester.cs" id="13_harvester"]
-[ext_resource type="Script" path="res://scripts/ExperienceBar.cs" id="14_xpbar"]
-[ext_resource type="Script" path="res://scripts/LevelUpMenu.cs" id="15_levelup"]
-[ext_resource type="Script" path="res://scripts/FightHud.cs" id="16_fighthud"]
-[ext_resource type="Script" path="res://scripts/PauseMenu.cs" id="17_pause"]
-[ext_resource type="Script" path="res://scripts/ResultScreen.cs" id="18_result"]
-
-[sub_resource type="Environment" id="Environment_space"]
-background_mode = 1
-background_color = Color(0.008, 0.012, 0.028, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.62, 0.68, 0.85, 1)
-ambient_light_energy = 0.35
+[ext_resource type="Script" path="res://scripts/fight/Fight.cs" id="1_fight"]
+[ext_resource type="Script" path="res://scripts/units/Vnp.cs" id="2_vnp"]
+[ext_resource type="Script" path="res://scripts/fight/Gateway.cs" id="3_gateway"]
+[ext_resource type="Script" path="res://scripts/fight/GroundGrid.cs" id="4_ground"]
+[ext_resource type="Script" path="res://scripts/fight/CameraRig.cs" id="5_camera"]
+[ext_resource type="Script" path="res://scripts/ui/GatewayIndicator.cs" id="6_indicator"]
+[ext_resource type="Script" path="res://scripts/units/EnemySwarm.cs" id="7_enemies"]
+[ext_resource type="Script" path="res://scripts/units/Projectiles.cs" id="8_projectiles"]
+[ext_resource type="Script" path="res://scripts/units/Harvestables.cs" id="9_harvestables"]
+[ext_resource type="Script" path="res://scripts/ui/HealthBar.cs" id="11_healthbar"]
+[ext_resource type="Script" path="res://scripts/units/DroneSwarm.cs" id="12_drones"]
+[ext_resource type="Script" path="res://scripts/units/VnpHarvester.cs" id="13_harvester"]
+[ext_resource type="Script" path="res://scripts/ui/ExperienceBar.cs" id="14_xpbar"]
+[ext_resource type="Script" path="res://scripts/ui/LevelUpMenu.cs" id="15_levelup"]
+[ext_resource type="Script" path="res://scripts/ui/FightHud.cs" id="16_fighthud"]
+[ext_resource type="Script" path="res://scripts/ui/PauseMenu.cs" id="17_pause"]
+[ext_resource type="Script" path="res://scripts/ui/ResultScreen.cs" id="18_result"]
+[ext_resource type="Environment" path="res://placeholder/environments/space.tres" id="19_space"]
 
 [node name="Fight" type="Node3D"]
 script = ExtResource("1_fight")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_space")
+environment = ExtResource("19_space")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 50, 0)
@@ -54,8 +47,7 @@ script = ExtResource("12_drones")
 [node name="Projectiles" type="Node3D" parent="."]
 script = ExtResource("8_projectiles")
 
-[node name="PulseLaser" type="Node3D" parent="."]
-script = ExtResource("10_laser")
+[node name="Weapons" type="Node3D" parent="."]
 
 [node name="VnpHarvester" type="Node3D" parent="."]
 script = ExtResource("13_harvester")

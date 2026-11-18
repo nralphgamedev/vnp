@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="AsteroidsTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/AsteroidsTuning.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+FieldsMin = 5
+FieldsMax = 9
+FieldDistanceMin = 70.0
+FieldDistanceMax = 260.0
+FieldSpacing = 70.0
+RingChance = 0.4
+FieldMovingChance = 0.3
+FieldTurningChance = 0.3
+FieldDriftSpeed = 0.6
+FieldTurnSpeed = 5.0
+ClusterCountMin = 12
+ClusterCountMax = 24
+ClusterRadiusMin = 10.0
+ClusterRadiusMax = 18.0
+RingCountMin = 22
+RingCountMax = 36
+RingRadiusMin = 16.0
+RingRadiusMax = 26.0
+RingWidth = 5.0
+MassMin = 1.0
+MassMax = 10.0
+SmallBias = 2.0
+TumbleChance = 0.25
+TumbleSpeedMin = 15.0
+TumbleSpeedMax = 50.0
+LoneCount = 30
+LoneDistanceMin = 20.0
+LoneDistanceMax = 300.0
+LoneFieldClearance = 45.0
+LoneSpacing = 25.0
+LoneMassMin = 3.0
+LoneMassMax = 10.0
+CellSize = 400.0
+FillDistance = 500.0
+FieldsPerCellMin = 4
+FieldsPerCellMax = 7
+LonePerCell = 17
+Size = 1.0
+ShapeVariants = 4
+Bumpiness = 0.35
+StretchMin = 0.75
+StretchMax = 1.15
+Color = Color(0.46, 0.47, 0.52, 1)

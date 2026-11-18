@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HarvestingTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/HarvestingTuning.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+VnpRate = 2.0
+DroneRate = 0.4
+BeamRange = 8.0
+ExperiencePerMass = 10.0
+MassPerDrone = 8.0
+DroneRange = 20.0
+DroneStandoff = 2.0
+DebrisSize = 0.8
+DebrisColor = Color(0.55, 0.3, 0.24, 1)

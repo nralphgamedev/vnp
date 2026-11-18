@@ -1,0 +1,626 @@
+using Godot;
+using System;
+
+/// <summary>
+/// The VNP's drones. Like the enemies, they are plain data in one array, drawn in one batch.
+///
+/// Each drone does the first of these that applies:
+/// 1. Attack. When an enemy is within engage range of the VNP, the drone heads for its own spot
+///    around it, so the drones surround it, and fires. While attacking it still harvests anything
+///    already within reach of its harvest beam, but does not move for it.
+/// 2. Harvest. When an asteroid or piece of debris is within harvest range of the VNP, the drone
+///    surrounds it and draws mass out with its harvest beam.
+/// 3. Flock. Otherwise it flocks around the VNP and keeps pace with it.
+/// A drone drops its target once that target is no longer within range of the VNP, so when the
+/// player moves away, the drones break off and follow.
+/// </summary>
+public partial class DroneSwarm : Node3D
+{
+	private struct Drone
+	{
+		public Vector2 Position;
+		public Vector2 Velocity;
+		public float Yaw;
+		public float Health;
+		public float FireTimer;   // Seconds until it can fire again.
+		public float SlotAngle;   // Its side of whatever it is surrounding.
+		public float OrbitSign;   // 1 or -1: which way it circles.
+		public float Flash;       // Seconds left of the hit flash.
+		public float Age;         // Seconds since it was built.
+		public int TargetId;      // The enemy it is attacking, or 0.
+		public int HarvestId;     // The asteroid or debris it is harvesting, or 0.
+	}
+
+	/// <summary>A destroyed drone, shown briefly while it disintegrates. It cannot be harvested.</summary>
+	private struct Wreck
+	{
+		public Vector2 Position;
+		public float Yaw;
+		public float Age;
+	}
+
+	// A drone already busy with a target keeps it a little past the range it would pick it up at,
+	// so it does not dither when a target sits right on the edge.
+	private const float KeepTargetFactor = 1.2f;
+
+	// Seconds a newly built drone takes to grow to full size.
+	private const float BuildTime = 0.35f;
+
+	private const float BeamHeight = 0.2f;
+
+	public Fight Fight;
+
+	/// <summary>Drones currently alive.</summary>
+	public int Count { get; private set; }
+
+	/// <summary>Drones alive plus those built this frame and not yet added.</summary>
+	public int CountWithBuilds => Count + _pendingBuilds;
+
+	/// <summary>Distance from the VNP to its farthest drone.</summary>
+	public float Reach { get; private set; }
+
+	/// <summary>Most drones the VNP can have. Harvesting builds drones up to this.</summary>
+	public int Cap = Tuning.Drones.Cap;
+
+	/// <summary>The Drone Weapon every drone uses. Its numbers are copied below, so upgrades can
+	/// change them for all the drones at once.</summary>
+	public DroneWeaponDefinition Weapon { get; private set; } = Tuning.Drones.StartingWeapon;
+
+	public float WeaponDamage = Tuning.Drones.StartingWeapon.Damage;
+	public float WeaponCooldown = Tuning.Drones.StartingWeapon.Cooldown;
+	public float WeaponRange = Tuning.Drones.StartingWeapon.Range;
+
+	/// <summary>How far from its target a drone sits while surrounding it. Depends on the weapon.</summary>
+	public float AttackDistance = Tuning.Drones.StartingWeapon.AttackDistance;
+
+	/// <summary>Mass each drone's harvest beam draws out per second.</summary>
+	public float HarvestRate = Tuning.Harvesting.DroneRate;
+
+	/// <summary>Switches every drone to another Drone Weapon, starting from that weapon's numbers.</summary>
+	public void SwitchWeapon(DroneWeaponDefinition weapon)
+	{
+		if (weapon == null)
+			return;
+		Weapon = weapon;
+		WeaponDamage = weapon.Damage;
+		WeaponCooldown = weapon.Cooldown;
+		WeaponRange = weapon.Range;
+		AttackDistance = weapon.AttackDistance;
+	}
+
+	private Drone[] _drones = new Drone[64];
+	private Wreck[] _wrecks = new Wreck[16];
+	private int _wreckCount;
+	private int _spawned;
+	private int _pendingBuilds;
+	private readonly SpatialGrid _grid = new(4f);
+	private readonly int[] _nearby = new int[32];
+	private readonly int[] _enemyTargets = new int[1024];
+	private readonly int[] _harvestTargets = new int[512];
+	private Vector2[] _beamFrom = new Vector2[64];
+	private Vector2[] _beamTo = new Vector2[64];
+	private bool[] _beamIsAttack = new bool[64];
+	private int _beamCount;
+	private float _speed = Tuning.Drones.Speed;
+	private InstanceBatch _batch;
+	private InstanceBatch _beamBatch;
+
+	public override void _Ready()
+	{
+		ProcessPriority = UpdateOrder.Drones;
+		_batch = new InstanceBatch(this, "DroneShapes", Placeholders.Mesh("drone"), Placeholders.Material("instanced_lit"));
+		_beamBatch = new InstanceBatch(this, "HarvestBeams", Placeholders.Mesh("unit_box"), Placeholders.Material("instanced_unshaded"));
+	}
+
+	/// <summary>Adds drones in a ring around a point. Built drones start small and grow in.</summary>
+	public void Add(int count, Vector2 around, bool built = false)
+	{
+		float spread = built ? 1f : Tuning.Drones.FlockRadius;
+		for (int i = 0; i < count; i++)
+		{
+			if (Count == _drones.Length)
+				Array.Resize(ref _drones, _drones.Length * 2);
+
+			// The golden angle spreads any number of drones evenly around a circle.
+			float angle = _spawned++ * 2.39996f;
+			Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+			_drones[Count++] = new Drone
+			{
+				Position = around + offset * spread,
+				Yaw = PlaneMath.YawFacing(offset),
+				Health = Tuning.Drones.Health,
+				FireTimer = Rng.Range(0f, WeaponCooldown), // So the drones do not fire in unison.
+				SlotAngle = angle,
+				OrbitSign = Rng.Sign(),
+				Age = built ? 0f : BuildTime,
+			};
+		}
+	}
+
+	/// <summary>Builds one drone at the VNP. It appears at the start of the next drone update.</summary>
+	public void Build() => _pendingBuilds++;
+
+	public override void _Process(double delta)
+	{
+		if (Fight == null)
+			return;
+
+		float dt = (float)delta;
+		RemoveDestroyed();
+		if (_pendingBuilds > 0)
+		{
+			Add(_pendingBuilds, Fight.Vnp.PlanePosition, built: true);
+			_pendingBuilds = 0;
+		}
+		Simulate(dt);
+		AgeWrecks(dt);
+		Draw();
+	}
+
+	// ───────────── Used by enemies and projectiles ─────────────
+
+	/// <summary>Finds the living drone closest to a point. False if none is within range.</summary>
+	public bool FindNearest(Vector2 from, float range, out Vector2 position, out Vector2 velocity, out float distance)
+	{
+		int nearest = -1;
+		float nearestSquared = range * range;
+		for (int i = 0; i < Count; i++)
+		{
+			if (_drones[i].Health <= 0f)
+				continue;
+			float distanceSquared = from.DistanceSquaredTo(_drones[i].Position);
+			if (distanceSquared <= nearestSquared)
+			{
+				nearestSquared = distanceSquared;
+				nearest = i;
+			}
+		}
+
+		position = nearest >= 0 ? _drones[nearest].Position : default;
+		velocity = nearest >= 0 ? _drones[nearest].Velocity : default;
+		distance = Mathf.Sqrt(nearestSquared);
+		return nearest >= 0;
+	}
+
+	/// <summary>The first living drone a shot travelling between two points would hit, or -1.</summary>
+	public int FindHit(Vector2 from, Vector2 to)
+	{
+		// The grid is filled at the start of the drone update, so search a little wide to
+		// allow for how far drones have moved since.
+		float reach = from.DistanceTo(to) * 0.5f + Tuning.Drones.HitRadius + 1f;
+		int candidates = _grid.Query((from + to) * 0.5f, reach, _nearby);
+
+		int hit = -1;
+		float hitDistanceSquared = float.MaxValue;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _nearby[c];
+			if (_drones[i].Health <= 0f)
+				continue;
+			if (PlaneMath.DistanceToSegment(_drones[i].Position, from, to) > Tuning.Drones.HitRadius)
+				continue;
+
+			float distanceSquared = from.DistanceSquaredTo(_drones[i].Position);
+			if (distanceSquared < hitDistanceSquared)
+			{
+				hitDistanceSquared = distanceSquared;
+				hit = i;
+			}
+		}
+		return hit;
+	}
+
+	/// <summary>Damages a drone. A destroyed drone leaves wreckage that disintegrates.</summary>
+	public void Damage(int index, float amount)
+	{
+		ref Drone drone = ref _drones[index];
+		if (drone.Health <= 0f)
+			return;
+
+		drone.Health -= amount;
+		drone.Flash = Tuning.Look.HitFlashTime;
+		if (drone.Health <= 0f)
+		{
+			if (_wreckCount == _wrecks.Length)
+				Array.Resize(ref _wrecks, _wrecks.Length * 2);
+			_wrecks[_wreckCount++] = new Wreck { Position = drone.Position, Yaw = drone.Yaw };
+			// The drone itself is cleared away at the start of the next update.
+		}
+	}
+
+	// ───────────── Each frame ─────────────
+
+	private void RemoveDestroyed()
+	{
+		for (int i = Count - 1; i >= 0; i--)
+		{
+			if (_drones[i].Health <= 0f)
+				_drones[i] = _drones[--Count]; // Fill the gap with the last drone.
+		}
+	}
+
+	private void Simulate(float dt)
+	{
+		Vnp vnp = Fight.Vnp;
+		Vector2 vnpPosition = vnp.PlanePosition;
+		Vector2 vnpVelocity = vnp.Velocity;
+		EnemySwarm enemies = Fight.Enemies;
+		Harvestables harvestables = Fight.Harvestables;
+
+		_grid.Clear();
+		for (int i = 0; i < Count; i++)
+			_grid.Insert(i, _drones[i].Position);
+
+		// Everything the drones could go after this frame: what is near enough to the VNP.
+		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.Drones.EngageRange * KeepTargetFactor, _enemyTargets);
+		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.Harvesting.DroneRange * KeepTargetFactor, _harvestTargets);
+
+		// Up to two beams per drone: one attacking, one harvesting.
+		if (_beamFrom.Length < Count * 2)
+		{
+			Array.Resize(ref _beamFrom, Count * 4);
+			Array.Resize(ref _beamTo, Count * 4);
+			Array.Resize(ref _beamIsAttack, Count * 4);
+		}
+		_beamCount = 0;
+
+		// Drones speed up with the VNP's movement speed upgrades, so they keep up.
+		_speed = Tuning.Drones.Speed * vnp.MoveSpeed / Tuning.Vnp.MoveSpeed;
+
+		float turnStep = Mathf.DegToRad(Tuning.Drones.TurnSpeed) * dt;
+		float reach = 0f;
+
+		for (int i = 0; i < Count; i++)
+		{
+			ref Drone drone = ref _drones[i];
+			drone.FireTimer = Mathf.Max(0f, drone.FireTimer - dt);
+			drone.Flash = Mathf.Max(0f, drone.Flash - dt);
+			drone.Age += dt;
+
+			Vector2 separation = Separation(i);
+			Vector2 wantedVelocity;
+
+			int enemy = PickEnemyTarget(ref drone, enemyCount, vnpPosition);
+			if (enemy >= 0)
+			{
+				// 1. Attack, and harvest at the same time.
+				drone.TargetId = enemies.IdOf(enemy);
+				drone.HarvestId = 0;
+
+				Vector2 enemyPosition = enemies.PositionOf(enemy);
+				wantedVelocity = SteerToSlot(ref drone, enemyPosition, enemies.VelocityOf(enemy),
+					AttackDistance, separation, dt);
+				Face(ref drone, enemyPosition, turnStep);
+				if (drone.Position.DistanceTo(enemyPosition) <= WeaponRange)
+					TryFire(ref drone, enemy);
+
+				// Beam whatever is already within reach, without moving for it.
+				int nearby = NearestHarvestInBeamRange(drone.Position, harvestCount);
+				if (nearby >= 0)
+				{
+					harvestables.Harvest(nearby, HarvestRate * dt);
+					AddBeam(drone.Position, harvestables.PositionOf(nearby), harvestables.RadiusOf(nearby));
+				}
+			}
+			else
+			{
+				drone.TargetId = 0;
+				int harvest = PickHarvestTarget(ref drone, harvestCount, vnpPosition);
+				if (harvest >= 0)
+				{
+					// 2. Harvest.
+					drone.HarvestId = harvestables.IdOf(harvest);
+
+					Vector2 itemPosition = harvestables.PositionOf(harvest);
+					float itemRadius = harvestables.RadiusOf(harvest);
+					wantedVelocity = SteerToSlot(ref drone, itemPosition, harvestables.VelocityOf(harvest),
+						itemRadius + Tuning.Harvesting.DroneStandoff, separation, dt);
+					Face(ref drone, itemPosition, turnStep);
+
+					if (drone.Position.DistanceTo(itemPosition) - itemRadius <= harvestables.BeamRange)
+					{
+						harvestables.Harvest(harvest, HarvestRate * dt);
+						AddBeam(drone.Position, itemPosition, itemRadius);
+					}
+				}
+				else
+				{
+					// 3. Flock.
+					drone.HarvestId = 0;
+					wantedVelocity = Flock(ref drone, vnpPosition, vnpVelocity, separation);
+					if (drone.Velocity.LengthSquared() > 0.25f)
+						drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(drone.Velocity), turnStep);
+				}
+			}
+
+			wantedVelocity = wantedVelocity.LimitLength(_speed);
+			drone.Velocity = drone.Velocity.MoveToward(wantedVelocity, Tuning.Drones.Acceleration * dt);
+			drone.Position += drone.Velocity * dt;
+
+			reach = Mathf.Max(reach, drone.Position.DistanceTo(vnpPosition));
+		}
+
+		Reach = reach;
+	}
+
+	/// <summary>Push away from drones that are too close.</summary>
+	private Vector2 Separation(int index)
+	{
+		Vector2 position = _drones[index].Position;
+		float radius = Tuning.Drones.SeparationRadius;
+		Vector2 separation = Vector2.Zero;
+
+		int nearbyCount = _grid.Query(position, radius, _nearby);
+		for (int n = 0; n < nearbyCount; n++)
+		{
+			int other = _nearby[n];
+			if (other == index)
+				continue;
+			Vector2 away = position - _drones[other].Position;
+			float gap = away.Length();
+			if (gap < radius)
+				separation += (gap > 0.001f ? away / gap : Rng.Direction()) * (1f - gap / radius);
+		}
+		return separation;
+	}
+
+	/// <summary>
+	/// What this drone should harvest, or -1. It keeps its current target while that lasts and stays
+	/// within range of the VNP. Otherwise it takes the closest to itself, out of those within range.
+	/// </summary>
+	private int PickHarvestTarget(ref Drone drone, int candidateCount, Vector2 vnpPosition)
+	{
+		Harvestables harvestables = Fight.Harvestables;
+
+		// The candidates were collected out to the wider keep range.
+		if (drone.HarvestId != 0)
+		{
+			for (int c = 0; c < candidateCount; c++)
+			{
+				if (harvestables.IdOf(_harvestTargets[c]) == drone.HarvestId)
+					return _harvestTargets[c];
+			}
+		}
+
+		int best = -1;
+		float bestSquared = float.MaxValue;
+		for (int c = 0; c < candidateCount; c++)
+		{
+			int i = _harvestTargets[c];
+			if (harvestables.EdgeDistance(i, vnpPosition) > Tuning.Harvesting.DroneRange)
+				continue;
+			float distanceSquared = harvestables.PositionOf(i).DistanceSquaredTo(drone.Position);
+			if (distanceSquared < bestSquared)
+			{
+				bestSquared = distanceSquared;
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>
+	/// Which enemy this drone should attack, or -1. It stays on its current enemy while that enemy is
+	/// alive and within range of the VNP. Without this, drones in a crowd keep switching target and
+	/// never finish anything off. Otherwise it takes the closest to itself, out of those within range.
+	/// </summary>
+	private int PickEnemyTarget(ref Drone drone, int candidateCount, Vector2 vnpPosition)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+
+		if (drone.TargetId != 0)
+		{
+			float keepRange = Tuning.Drones.EngageRange * KeepTargetFactor;
+			for (int c = 0; c < candidateCount; c++)
+			{
+				int i = _enemyTargets[c];
+				if (enemies.IdOf(i) != drone.TargetId)
+					continue;
+				if (enemies.PositionOf(i).DistanceSquaredTo(vnpPosition) <= keepRange * keepRange)
+					return i;
+				break;
+			}
+		}
+
+		float range = Tuning.Drones.EngageRange;
+		int best = -1;
+		float bestSquared = float.MaxValue;
+		for (int c = 0; c < candidateCount; c++)
+		{
+			int i = _enemyTargets[c];
+			Vector2 enemyPosition = enemies.PositionOf(i);
+			if (enemyPosition.DistanceSquaredTo(vnpPosition) > range * range)
+				continue;
+			float distanceSquared = enemyPosition.DistanceSquaredTo(drone.Position);
+			if (distanceSquared < bestSquared)
+			{
+				bestSquared = distanceSquared;
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>The closest asteroid or debris within this drone's harvest beam reach, or -1.</summary>
+	private int NearestHarvestInBeamRange(Vector2 position, int candidateCount)
+	{
+		Harvestables harvestables = Fight.Harvestables;
+		int best = -1;
+		float bestEdge = harvestables.BeamRange;
+		for (int c = 0; c < candidateCount; c++)
+		{
+			int i = _harvestTargets[c];
+			float edge = harvestables.EdgeDistance(i, position);
+			if (edge <= bestEdge)
+			{
+				bestEdge = edge;
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>
+	/// Heads for this drone's own spot on a ring around a point, so a group of drones surrounds it.
+	/// The spots slowly turn, so the ring circles.
+	/// </summary>
+	private Vector2 SteerToSlot(ref Drone drone, Vector2 center, Vector2 centerVelocity, float distance,
+		Vector2 separation, float dt)
+	{
+		float circleSpeed = Mathf.DegToRad(Tuning.Drones.CircleSpeed) * drone.OrbitSign;
+		drone.SlotAngle += circleSpeed * dt;
+		Vector2 around = new Vector2(Mathf.Cos(drone.SlotAngle), Mathf.Sin(drone.SlotAngle));
+		Vector2 slot = center + around * distance;
+
+		// Move with the slot: carried along by the target, and turning around it.
+		Vector2 velocity = centerVelocity + new Vector2(-around.Y, around.X) * (circleSpeed * distance);
+
+		// On top of that, close in only as fast as it can still stop at the slot, so it arrives
+		// without overshooting and bouncing back. The last couple of units ease out smoothly.
+		Vector2 toSlot = slot - drone.Position;
+		float slotDistance = toSlot.Length();
+		if (slotDistance > 0.001f)
+		{
+			float braking = Tuning.Drones.Acceleration * Tuning.Drones.ArriveBraking;
+			float approach = Mathf.Min(_speed,
+				Mathf.Min(Mathf.Sqrt(2f * braking * slotDistance), Mathf.Sqrt(braking) * slotDistance));
+			velocity += toSlot / slotDistance * approach;
+		}
+
+		return velocity + separation * Tuning.Drones.Separation * Tuning.Drones.FlockSpeed;
+	}
+
+	/// <summary>Stay in a band around the VNP, circle it, keep clear of other drones, and keep pace.</summary>
+	private Vector2 Flock(ref Drone drone, Vector2 vnpPosition, Vector2 vnpVelocity, Vector2 separation)
+	{
+		Vector2 toVnp = vnpPosition - drone.Position;
+		float vnpDistance = toVnp.Length();
+		Vector2 directionToVnp = vnpDistance > 0.001f ? toVnp / vnpDistance : Vector2.Up;
+
+		// Far behind: sprint straight back.
+		if (vnpDistance > Tuning.Drones.SprintDistance)
+			return directionToVnp * _speed;
+
+		float band = Tuning.Drones.FlockRadius;
+		float tooClose = band * 0.45f;
+		Vector2 steer = new Vector2(-directionToVnp.Y, directionToVnp.X) * drone.OrbitSign * 0.6f;
+		if (vnpDistance > band)
+			steer += directionToVnp * Mathf.Min((vnpDistance - band) / band, 1.5f);
+		else if (vnpDistance < tooClose)
+			steer -= directionToVnp * (1f - vnpDistance / tooClose);
+		steer += separation * Tuning.Drones.Separation;
+
+		// Matching the VNP's velocity is what keeps the flock with it instead of trailing.
+		return vnpVelocity + steer.LimitLength(1f) * Tuning.Drones.FlockSpeed;
+	}
+
+	private static void Face(ref Drone drone, Vector2 point, float turnStep)
+	{
+		Vector2 toward = point - drone.Position;
+		if (toward.LengthSquared() > 0.0001f)
+			drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(toward), turnStep);
+	}
+
+	/// <summary>Fires the Drone Weapon at an enemy within its range, if it is off cooldown.</summary>
+	private void TryFire(ref Drone drone, int enemy)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+
+		if (Weapon.Kind == DroneWeaponKind.Beam)
+		{
+			// The beam shows the whole time it is on target, and deals damage in ticks.
+			AddBeam(drone.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
+			if (drone.FireTimer <= 0f)
+			{
+				enemies.Damage(enemy, WeaponDamage);
+				drone.FireTimer = WeaponCooldown;
+			}
+			return;
+		}
+
+		if (drone.FireTimer > 0f)
+			return;
+
+		// Let the shot fly a little past the weapon's range before it fizzles out.
+		float lifetime = WeaponRange * 1.5f / Weapon.ProjectileSpeed;
+
+		// Aim ahead of a moving enemy, at where it will be when the shot arrives.
+		Vector2 aimAt = PlaneMath.AimAhead(drone.Position, enemies.PositionOf(enemy), enemies.VelocityOf(enemy),
+			Weapon.ProjectileSpeed, lifetime);
+		Vector2 toAim = aimAt - drone.Position;
+		if (toAim.LengthSquared() < 0.0001f)
+			return;
+
+		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), WeaponDamage,
+			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color);
+		drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
+	}
+
+	/// <summary>Records a harvest or attack beam to draw, ending just inside the edge of its target.</summary>
+	private void AddBeam(Vector2 from, Vector2 to, float targetRadius, bool isAttack = false)
+	{
+		Vector2 along = to - from;
+		float distance = along.Length();
+		if (distance < 0.01f)
+			return;
+
+		_beamFrom[_beamCount] = from;
+		_beamTo[_beamCount] = from + along / distance * Mathf.Max(0f, distance - targetRadius * 0.5f);
+		_beamIsAttack[_beamCount] = isAttack;
+		_beamCount++;
+	}
+
+	private void AgeWrecks(float dt)
+	{
+		for (int i = _wreckCount - 1; i >= 0; i--)
+		{
+			_wrecks[i].Age += dt;
+			if (_wrecks[i].Age >= Tuning.Drones.WreckTime)
+				_wrecks[i] = _wrecks[--_wreckCount];
+		}
+	}
+
+	private void Draw()
+	{
+		_batch.Begin(Count + _wreckCount);
+
+		for (int i = 0; i < Count; i++)
+		{
+			ref Drone drone = ref _drones[i];
+			Color color = Tuning.Drones.Color;
+			float scale = Tuning.Drones.Size;
+
+			// A newly built drone grows in from a white spark.
+			if (drone.Age < BuildTime)
+			{
+				float grown = drone.Age / BuildTime;
+				color = Colors.White.Lerp(color, grown);
+				scale *= grown;
+			}
+			if (drone.Flash > 0f)
+				color = color.Lerp(new Color(1f, 0.2f, 0.15f), drone.Flash / Tuning.Look.HitFlashTime);
+
+			_batch.Set(i, drone.Position, 0f, drone.Yaw, scale, color);
+		}
+
+		// Wreckage: flares white, then spins and shrinks away to nothing.
+		for (int w = 0; w < _wreckCount; w++)
+		{
+			float gone = _wrecks[w].Age / Tuning.Drones.WreckTime;
+			Color color = Colors.White.Lerp(Tuning.Drones.Color.Darkened(0.6f), gone);
+			_batch.Set(Count + w, _wrecks[w].Position, 0f, _wrecks[w].Yaw + gone * 6f, Tuning.Drones.Size * (1f - gone), color);
+		}
+
+		_batch.Commit(Count + _wreckCount);
+
+		_beamBatch.Begin(_beamCount);
+		for (int b = 0; b < _beamCount; b++)
+		{
+			if (_beamIsAttack[b])
+				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight + 0.1f, 0.2f, 0.06f, Weapon.Color);
+			else
+				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight, 0.12f, 0.06f, Tuning.Look.ExperienceColor);
+		}
+		_beamBatch.Commit(_beamCount);
+	}
+}

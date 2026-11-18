@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/EnemySpawningTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/enemies/basic_enemy.tres" id="2_enemy"]
+
+[resource]
+script = ExtResource("1_script")
+StartingGroups = 5
+GroupSize = 4
+SpawnInterval = 4.0
+SpawnMargin = 10.0
+SpawnExtraDistance = 28.0
+MaxAlive = 200
+DespawnDistance = 180.0
+WaveFirstSeconds = 45.0
+WaveIntervalSeconds = 45.0
+WaveGroups = 5
+WaveGroupsAddedPerWave = 1
+WaveWarningSeconds = 3.0
+WaveBannerSeconds = 2.0
+Enemy = ExtResource("2_enemy")

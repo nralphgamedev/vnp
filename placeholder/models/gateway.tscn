@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://placeholder/materials/gateway_solid.tres" id="1_lnli5"]
+[ext_resource type="TorusMesh" path="res://placeholder/meshes/gateway_ring.tres" id="2_2rgk1"]
+[ext_resource type="Material" path="res://placeholder/materials/gateway_faint.tres" id="3_tk40d"]
+[ext_resource type="CylinderMesh" path="res://placeholder/meshes/gateway_disc.tres" id="4_fycjs"]
+[ext_resource type="BoxMesh" path="res://placeholder/meshes/gateway_pylon.tres" id="5_fm41k"]
+[ext_resource type="TorusMesh" path="res://placeholder/meshes/gateway_inner_ring.tres" id="6_foli5"]
+[ext_resource type="BoxMesh" path="res://placeholder/meshes/gateway_marker.tres" id="7_fk2hw"]
+
+[node name="Gateway" type="Node3D" unique_id=2053135988]
+
+[node name="Ring" type="MeshInstance3D" parent="." unique_id=459381598]
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("2_2rgk1")
+
+[node name="Disc" type="MeshInstance3D" parent="." unique_id=1182635661]
+material_override = ExtResource("3_tk40d")
+cast_shadow = 0
+mesh = ExtResource("4_fycjs")
+
+[node name="Pylon1" type="MeshInstance3D" parent="." unique_id=1014989561]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 4.2426405, 0.8, 4.2426405)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("5_fm41k")
+
+[node name="Pylon2" type="MeshInstance3D" parent="." unique_id=761067450]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, -4.2426405, 0.8, 4.2426405)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("5_fm41k")
+
+[node name="Pylon3" type="MeshInstance3D" parent="." unique_id=1436617711]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, -4.24264, 0.8, -4.2426414)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("5_fm41k")
+
+[node name="Pylon4" type="MeshInstance3D" parent="." unique_id=1468736934]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 4.2426405, 0.8, -4.2426414)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("5_fm41k")
+
+[node name="InnerRing" type="Node3D" parent="." unique_id=341888177]
+
+[node name="Ring" type="MeshInstance3D" parent="InnerRing" unique_id=110521563]
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("6_foli5")
+
+[node name="Marker1" type="MeshInstance3D" parent="InnerRing" unique_id=1314350312]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 0)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("7_fk2hw")
+
+[node name="Marker2" type="MeshInstance3D" parent="InnerRing" unique_id=1731982636]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5000002, 0, 2.598076)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("7_fk2hw")
+
+[node name="Marker3" type="MeshInstance3D" parent="InnerRing" unique_id=153831591]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4999998, 0, -2.5980763)
+material_override = ExtResource("1_lnli5")
+cast_shadow = 0
+mesh = ExtResource("7_fk2hw")

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="LookTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/LookTuning.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+HitFlashTime = 0.12
+ExperienceColor = Color(0.72, 0.45, 1.0, 1)
+GatewayColor = Color(0.2, 0.95, 0.85, 1)
+IndicatorEdgeMargin = 46.0
+IndicatorSize = 36.0
+IndicatorAlwaysVisible = false

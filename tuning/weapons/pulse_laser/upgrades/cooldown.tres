@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/pulse_laser.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "pulse_laser_cooldown"
+Name = "Pulse Laser cooldown"
+Description = "Pulse Laser cooldown -{percent}, so it fires more often."
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 1
+Amount = -0.15
+Limit = 4

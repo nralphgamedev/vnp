@@ -1,0 +1,110 @@
+using Godot;
+
+/// <summary>
+/// The fight's own readouts: the clock and kill count at the top, the retreat prompt on the
+/// gateway, the wave warning and banner, and the red edge flash with a "!" at each escalation step
+/// past the time limit.
+/// </summary>
+public partial class FightHud : Control
+{
+	private static readonly Color Warning = new(1f, 0.6f, 0.2f);
+	private static readonly Color Danger = new(1f, 0.22f, 0.2f);
+
+	public Fight Fight;
+
+	private float _alertLeft;
+
+	public override void _Ready()
+	{
+		ProcessPriority = UpdateOrder.Hud;
+		MouseFilter = MouseFilterEnum.Ignore;
+		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+	}
+
+	/// <summary>Starts the red edge flash and the "!".</summary>
+	public void ShowEscalationAlert() => _alertLeft = Tuning.Difficulty.EscalationAlertSeconds;
+
+	public override void _Process(double delta)
+	{
+		_alertLeft = Mathf.Max(0f, _alertLeft - (float)delta);
+		QueueRedraw();
+	}
+
+	public override void _Draw()
+	{
+		if (Fight == null)
+			return;
+
+		Font font = ThemeDB.FallbackFont;
+		float width = Size.X;
+
+		// Clock: counts down to the limit, then counts up the time past it.
+		double left = Tuning.Fight.TimeLimitSeconds - Fight.Elapsed;
+		string clock;
+		Color clockColor;
+		if (left > 0)
+		{
+			clock = Ui.Clock(System.Math.Ceiling(left));
+			clockColor = left <= 30 ? Warning : Colors.White;
+		}
+		else
+		{
+			clock = $"PAST LIMIT  +{Ui.Clock(-left)}";
+			clockColor = Danger;
+		}
+		DrawString(font, new Vector2(0f, 104f), clock, HorizontalAlignment.Center, width, 48, clockColor);
+		DrawString(font, new Vector2(0f, 146f), $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}",
+			HorizontalAlignment.Center, width, 28, new Color(1f, 1f, 1f, 0.85f));
+
+		// Retreat prompt, while on the gateway.
+		if (Fight.OnGateway && !Fight.IsOver)
+		{
+			string prompt = Fight.CanRetreat
+				? "Press Space or A to retreat"
+				: $"Stay on the gateway to retreat:  {System.Math.Ceiling(Tuning.Fight.RetreatHoldSeconds - Fight.GatewayTime):0}";
+			DrawString(font, new Vector2(0f, Size.Y - 110f), prompt, HorizontalAlignment.Center, width,
+				Fight.CanRetreat ? 36 : 28, Tuning.Look.GatewayColor);
+		}
+
+		// Wave warning before a wave, then its number for a moment after it arrives.
+		double toWave = Fight.Enemies.NextWaveTime - Fight.Elapsed;
+		double sinceWave = Fight.Elapsed - (Fight.Enemies.NextWaveTime - Tuning.EnemySpawning.WaveIntervalSeconds);
+		if (!Fight.IsOver && toWave <= Tuning.EnemySpawning.WaveWarningSeconds)
+		{
+			float blink = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin((float)toWave * Mathf.Pi * 2f));
+			DrawString(font, new Vector2(0f, 214f), "WAVE INCOMING", HorizontalAlignment.Center, width, 44,
+				new Color(Warning, blink));
+		}
+		else if (!Fight.IsOver && Fight.Enemies.WavesSent > 0 && sinceWave < Tuning.EnemySpawning.WaveBannerSeconds)
+		{
+			DrawString(font, new Vector2(0f, 214f), $"WAVE {Fight.Enemies.WavesSent}", HorizontalAlignment.Center, width, 44,
+				new Color(Danger, 1f - (float)(sinceWave / Tuning.EnemySpawning.WaveBannerSeconds)));
+		}
+
+		if (_alertLeft > 0f)
+			DrawEscalationAlert(font);
+	}
+
+	/// <summary>Red bands along every edge, fading inward, and a large "!" in the middle. Pulses twice.</summary>
+	private void DrawEscalationAlert(Font font)
+	{
+		float progress = 1f - _alertLeft / Tuning.Difficulty.EscalationAlertSeconds;
+		float strength = Mathf.Abs(Mathf.Sin(progress * Mathf.Pi * 2f)) * (1f - progress * 0.5f);
+
+		const int Bands = 14;
+		const float BandWidth = 9f;
+		for (int b = 0; b < Bands; b++)
+		{
+			float alpha = strength * 0.55f * (1f - (float)b / Bands);
+			var color = new Color(Danger, alpha);
+			float inset = b * BandWidth;
+			DrawRect(new Rect2(inset, inset, Size.X - inset * 2f, BandWidth), color);
+			DrawRect(new Rect2(inset, Size.Y - inset - BandWidth, Size.X - inset * 2f, BandWidth), color);
+			DrawRect(new Rect2(inset, inset + BandWidth, BandWidth, Size.Y - (inset + BandWidth) * 2f), color);
+			DrawRect(new Rect2(Size.X - inset - BandWidth, inset + BandWidth, BandWidth, Size.Y - (inset + BandWidth) * 2f), color);
+		}
+
+		DrawString(font, new Vector2(0f, Size.Y * 0.5f + 90f), "!", HorizontalAlignment.Center, Size.X, 260,
+			new Color(Danger, Mathf.Min(1f, strength * 1.4f)));
+	}
+}

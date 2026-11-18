@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DronesTuning" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/DronesTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/drone_weapons/projectile/projectile.tres" id="2_projectile"]
+
+[resource]
+script = ExtResource("1_script")
+StartingCount = 10
+Cap = 20
+Health = 16.0
+HitRadius = 0.7
+Speed = 32.0
+Acceleration = 90.0
+TurnSpeed = 720.0
+FlockRadius = 5.0
+FlockSpeed = 6.0
+SprintDistance = 15.0
+SeparationRadius = 1.8
+Separation = 1.5
+EngageRange = 20.0
+CircleSpeed = 46.0
+ArriveBraking = 0.3
+Size = 1.0
+WreckTime = 0.4
+Color = Color(0.45, 0.8, 1.0, 1)
+StartingWeapon = ExtResource("2_projectile")

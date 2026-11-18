@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="VnpTuning" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/VnpTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/pulse_laser.tres" id="2_pulse_laser"]
+[ext_resource type="Script" path="res://scripts/schemas/WeaponDefinition.cs" id="3_weapon_script"]
+
+[resource]
+script = ExtResource("1_script")
+MoveSpeed = 20.0
+Acceleration = 80.0
+Deceleration = 60.0
+TurnSpeed = 540.0
+StickDeadzone = 0.2
+MaxHealth = 100.0
+HitRadius = 1.4
+WeaponSlots = 2
+Size = 1.0
+StartingWeapons = Array[ExtResource("3_weapon_script")]([ExtResource("2_pulse_laser")])

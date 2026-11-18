@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/EnemyDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "basic_enemy"
+Name = "Enemy"
+Health = 30.0
+HitRadius = 1.1
+DebrisMassMin = 1.0
+DebrisMassMax = 2.0
+Speed = 13.0
+WanderSpeed = 4.0
+Acceleration = 30.0
+TurnSpeed = 360.0
+IdleTurnSpeed = 90.0
+IdleTurnDeadband = 10.0
+WanderRadius = 12.0
+AggroRange = 28.0
+LoseAggroRange = 45.0
+AttackRange = 16.0
+HoldDistance = 11.0
+FireCooldown = 1.5
+ProjectileDamage = 4.0
+ProjectileSpeed = 32.0
+ProjectileLifetime = 1.0
+AimLead = 0.75
+NeighborRadius = 8.0
+SeparationRadius = 3.2
+Separation = 1.6
+Alignment = 1.0
+Cohesion = 0.6
+WanderWeight = 0.5
+Size = 1.0
+Color = Color(0.95, 0.22, 0.25, 1)
+ProjectileColor = Color(1.0, 0.55, 0.15, 1)

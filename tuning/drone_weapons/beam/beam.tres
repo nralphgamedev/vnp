@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DroneWeaponDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/DroneWeaponDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "beam"
+Name = "Beam"
+Kind = 1
+Damage = 1.0
+Cooldown = 0.25
+Range = 5.0
+AttackDistance = 3.5
+ProjectileSpeed = 0.0
+Color = Color(0.8, 0.97, 1.0, 1)

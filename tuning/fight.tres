@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="FightTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/FightTuning.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+KillTarget = 120
+TimeLimitSeconds = 300.0
+RetreatHoldSeconds = 10.0
+GatewayPosition = Vector2(0, 0)
+GatewayRadius = 6.0
