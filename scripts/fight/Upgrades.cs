@@ -74,7 +74,7 @@ public static class Upgrades
 				AddStat(fight, upgrade.Stat, upgrade.Amount);
 				break;
 			case UpgradeEffect.BuildDrones:
-				fight.BuildDronesNow(Mathf.RoundToInt(upgrade.Amount));
+				fight.DronesBuiltByUpgrades += fight.BuildDronesNow(DronesToBuild(fight, upgrade));
 				break;
 		}
 	}
@@ -83,15 +83,55 @@ public static class Upgrades
 	public static bool IsNewWeapon(UpgradeDefinition upgrade) =>
 		upgrade.Effect is UpgradeEffect.EquipWeapon or UpgradeEffect.SwitchDroneWeapon;
 
-	/// <summary>The card text, with the numbers filled in.</summary>
-	public static string Describe(UpgradeDefinition upgrade)
+	/// <summary>
+	/// How many drones a BuildDrones upgrade would build right now: its amount, or fewer if that would go
+	/// over the cap. Drones already being built count toward the cap.
+	/// </summary>
+	public static int DronesToBuild(Fight fight, UpgradeDefinition upgrade)
+	{
+		int room = fight.Drones.Cap - fight.Drones.CountWithBuilds;
+		return Mathf.Clamp(Mathf.RoundToInt(upgrade.Amount), 0, Mathf.Max(0, room));
+	}
+
+	/// <summary>The card text, with the numbers filled in for this moment in the fight.</summary>
+	public static string Describe(UpgradeDefinition upgrade, Fight fight)
 	{
 		string text = (upgrade.Description ?? "")
 			.Replace("{percent}", $"{Mathf.Abs(upgrade.Amount) * 100f:0}%")
 			.Replace("{amount}", $"{upgrade.Amount:0.##}");
+		if (upgrade.Effect == UpgradeEffect.BuildDrones)
+		{
+			int drones = DronesToBuild(fight, upgrade);
+			text = text.Replace("{drones}", drones == 1 ? "1 drone" : $"{drones} drones");
+		}
 		if (upgrade.Weapon is OrbitalShardsDefinition shards)
 			text = text.Replace("{count}", shards.Count.ToString());
 		return text;
+	}
+
+	/// <summary>
+	/// The total change from taking an upgrade <paramref name="times"/> times, as shown in the upgrade list.
+	/// Percentage upgrades multiply, so two +25% upgrades come to +56% and two -15% come to -28%; they
+	/// end in %. Flat upgrades add up, and are shown as plain numbers, such as +50. Upgrades that equip or
+	/// switch a weapon have no number, and give null.
+	/// </summary>
+	public static string TotalBonus(UpgradeDefinition upgrade, int times, Fight fight)
+	{
+		switch (upgrade.Effect)
+		{
+			case UpgradeEffect.BuildDrones:
+				// The drones actually built, which can be fewer than offered near the cap.
+				return $"+{fight.DronesBuiltByUpgrades}";
+			case UpgradeEffect.ScaleWeaponStat:
+			case UpgradeEffect.ScaleStat:
+				float percent = (Mathf.Pow(1f + upgrade.Amount, times) - 1f) * 100f;
+				return $"{(percent >= 0f ? "+" : "-")}{Mathf.Abs(percent):0}%";
+			case UpgradeEffect.AddStat:
+				float total = upgrade.Amount * times;
+				return $"{(total >= 0f ? "+" : "-")}{Mathf.Abs(total):0.##}";
+			default:
+				return null;
+		}
 	}
 
 	/// <summary>How many times this upgrade has been taken this fight.</summary>

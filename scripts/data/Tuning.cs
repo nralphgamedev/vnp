@@ -23,6 +23,7 @@ public static class Tuning
 	public static CameraTuning Camera => _camera ??= Load<CameraTuning>("camera");
 	public static LookTuning Look => _look ??= Load<LookTuning>("look");
 	public static FeedbackTuning Feedback => _feedback ??= Load<FeedbackTuning>("feedback");
+	public static AudioTuning Audio => _audio ??= Load<AudioTuning>("audio");
 
 	private static VnpTuning _vnp;
 	private static DronesTuning _drones;
@@ -35,6 +36,7 @@ public static class Tuning
 	private static CameraTuning _camera;
 	private static LookTuning _look;
 	private static FeedbackTuning _feedback;
+	private static AudioTuning _audio;
 
 	private static T Load<T>(string file) where T : Resource
 	{

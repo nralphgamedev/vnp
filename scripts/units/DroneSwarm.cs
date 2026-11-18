@@ -139,7 +139,10 @@ public partial class DroneSwarm : Node3D
 				Age = built ? 0f : BuildTime,
 			};
 			if (built)
+			{
 				Fight.Effects.DroneBuilt(around + offset * spread, Tuning.Drones.Color);
+				Fight.Sounds.Play(Sound.DroneBuilt);
+			}
 		}
 	}
 
@@ -225,12 +228,14 @@ public partial class DroneSwarm : Node3D
 
 		drone.Health -= amount;
 		drone.Flash = Tuning.Feedback.HitFlashTime;
+		Fight.Sounds.Play(Sound.Hit, 0.6f);
 		if (drone.Health <= 0f)
 		{
 			if (_wreckCount == _wrecks.Length)
 				Array.Resize(ref _wrecks, _wrecks.Length * 2);
 			_wrecks[_wreckCount++] = new Wreck { Position = drone.Position, Yaw = drone.Yaw };
 			Fight.Effects.DronePop(drone.Position, Tuning.Drones.Color);
+			Fight.Sounds.Play(Sound.DroneDeath);
 			// The drone itself is cleared away at the start of the next update.
 		}
 	}
@@ -543,6 +548,7 @@ public partial class DroneSwarm : Node3D
 			if (drone.FireTimer <= 0f)
 			{
 				Fight.Effects.Impact(enemies.PositionOf(enemy), Weapon.Color, 0.4f);
+				Fight.Sounds.Play(Sound.DroneBeamTick);
 				enemies.Damage(enemy, WeaponDamage);
 				drone.FireTimer = WeaponCooldown;
 			}
@@ -565,12 +571,14 @@ public partial class DroneSwarm : Node3D
 		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), WeaponDamage,
 			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color);
 		Fight.Effects.MuzzleFlash(drone.Position, toAim, Weapon.Color, 0.5f);
+		Fight.Sounds.Play(Sound.DroneProjectileFire);
 		drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
 	}
 
-	/// <summary>Sends harvest particles from the edge of the material to the drone.</summary>
+	/// <summary>Sends harvest particles from the edge of the material to the drone, and keeps the harvesting sound going.</summary>
 	private void HarvestFlow(Vector2 dronePosition, Vector2 itemPosition, float itemRadius, float dt)
 	{
+		Fight.Sounds.Hold(Sound.HarvestLoop);
 		Vector2 toDrone = (dronePosition - itemPosition).Normalized();
 		Fight.Effects.HarvestFlow(itemPosition + toDrone * itemRadius * 0.6f, dronePosition,
 			Tuning.Look.ExperienceColor, Tuning.Feedback.DroneHarvestParticles, dt, 0.16f, HarvestBeamHeight);

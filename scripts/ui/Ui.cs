@@ -54,6 +54,15 @@ public static class Ui
 		return column;
 	}
 
+	/// <summary>The colour of an upgrade category, from look.tres. Used on offer cards and in the upgrade list.</summary>
+	public static Color CategoryColor(UpgradeCategory category) => category switch
+	{
+		UpgradeCategory.VnpWeapon => Tuning.Look.VnpWeaponCardColor,
+		UpgradeCategory.DroneWeapon => Tuning.Look.DroneWeaponCardColor,
+		UpgradeCategory.Drones => Tuning.Look.DronesCardColor,
+		_ => Tuning.Look.StatsCardColor,
+	};
+
 	public static string Clock(double seconds)
 	{
 		int whole = (int)seconds;

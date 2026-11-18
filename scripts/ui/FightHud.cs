@@ -53,7 +53,8 @@ public partial class FightHud : Control
 			clockColor = Danger;
 		}
 		DrawString(font, new Vector2(0f, 104f), clock, HorizontalAlignment.Center, width, 48, clockColor);
-		DrawString(font, new Vector2(0f, 146f), $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}",
+		string kills = Fight.IsEndless ? $"Kills {Fight.Kills}  ·  Endless" : $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}";
+		DrawString(font, new Vector2(0f, 146f), kills,
 			HorizontalAlignment.Center, width, 28, new Color(1f, 1f, 1f, 0.85f));
 
 		// Retreat prompt, while on the gateway.

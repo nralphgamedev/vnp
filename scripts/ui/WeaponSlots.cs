@@ -4,8 +4,8 @@ using System.Collections.Generic;
 /// <summary>
 /// Bottom left of the screen: one box for each of the VNP's weapon slots, showing the icon of the weapon
 /// in it or nothing if it is free, and a box beside them for the Drone Weapon the drones are using.
-/// It shows only while a level-up offer or the pause menu is open, drawn above them, so the player can
-/// see their weapons while choosing and the screen stays clean during play.
+/// It shows only while a level-up offer, the pause menu or the result screen is up, drawn above them, so
+/// the player can see their weapons while choosing and at the end, and the screen stays clean during play.
 /// </summary>
 public partial class WeaponSlots : Control
 {
@@ -42,7 +42,7 @@ public partial class WeaponSlots : Control
 
 	public override void _Draw()
 	{
-		if (Fight == null || Fight.IsOver || !(_levelUpMenu.IsOpen || _pauseMenu.IsOpen))
+		if (Fight == null || !(_levelUpMenu.IsOpen || _pauseMenu.IsOpen || Fight.IsOver))
 			return;
 
 		Font font = ThemeDB.FallbackFont;

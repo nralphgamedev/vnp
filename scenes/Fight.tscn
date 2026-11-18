@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/fight/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/units/Vnp.cs" id="2_vnp"]
@@ -21,6 +21,7 @@
 [ext_resource type="Script" path="res://scripts/effects/Effects.cs" id="20_effects"]
 [ext_resource type="Script" path="res://scripts/ui/DamageNumbers.cs" id="21_damage"]
 [ext_resource type="Script" path="res://scripts/ui/WeaponSlots.cs" id="22_slots"]
+[ext_resource type="Script" path="res://scripts/audio/Sounds.cs" id="23_sounds"]
 
 [node name="Fight" type="Node3D"]
 script = ExtResource("1_fight")
@@ -54,6 +55,9 @@ script = ExtResource("8_projectiles")
 
 [node name="Effects" type="Node3D" parent="."]
 script = ExtResource("20_effects")
+
+[node name="Sounds" type="Node" parent="."]
+script = ExtResource("23_sounds")
 
 [node name="VnpHarvester" type="Node3D" parent="."]
 script = ExtResource("13_harvester")
@@ -148,16 +152,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("17_pause")
 
-[node name="WeaponSlots" type="Control" parent="Hud"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("22_slots")
-
 [node name="ResultScreen" type="Control" parent="Hud"]
 process_mode = 3
 visible = false
@@ -168,3 +162,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("18_result")
+
+[node name="WeaponSlots" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("22_slots")

@@ -57,6 +57,7 @@ public partial class PulseLaser : VnpWeapon
 		Fight.Enemies.Damage(target, Damage);
 		ShowBeam(from, targetPosition);
 		Fight.Effects.MuzzleFlash(from, targetPosition - from, Laser.Color, Power);
+		Fight.Sounds.Play(Sound.PulseLaserFire);
 		Fight.Effects.Impact(targetPosition, Laser.Color, 1.2f * Power);
 		_cooldownLeft = Cooldown;
 	}

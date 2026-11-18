@@ -77,6 +77,8 @@ public partial class VnpHarvester : Node3D
 		harvestables.Harvest(target, Rate * (float)delta);
 		ShowBeam(from, targetPosition, harvestables.HeightOf(target));
 
+		Fight.Sounds.Hold(Sound.HarvestLoop);
+
 		// Particles flow from the material's edge back to the VNP.
 		Vector2 toVnp = (from - targetPosition).Normalized();
 		Fight.Effects.HarvestFlow(targetPosition + toVnp * targetRadius * 0.6f, from, Tuning.Look.ExperienceColor,

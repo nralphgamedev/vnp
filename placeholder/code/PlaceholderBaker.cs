@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary>
-/// Makes every placeholder mesh, material and model file in res://placeholder/ and saves it, overwriting
+/// Makes every placeholder mesh, material, model and sound file in res://placeholder/ and saves it, overwriting
 /// what is there. The shapes and colours are written here, so change them here and bake again rather
 /// than editing the files by hand. To bake, open res://placeholder/code/Bake.tscn and press F6
 /// (Run Current Scene), or run Godot with that scene from the command line. It quits when done.
@@ -165,6 +165,9 @@ public partial class PlaceholderBaker : Node
 				new Vector3(Mathf.Cos(angle) * inner, 0f, Mathf.Sin(angle) * inner));
 		}
 		SaveModel(gateway, "models/gateway.tscn");
+
+		// ───────────── Sounds ─────────────
+		PlaceholderSounds.Bake($"{Root}/audio");
 	}
 
 	/// <summary>A flat-coloured material with a little self-glow so shapes stay readable against space.</summary>

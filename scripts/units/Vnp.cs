@@ -23,6 +23,9 @@ public partial class Vnp : Node3D
 	/// <summary>Raised whenever the VNP takes damage, with the amount.</summary>
 	public event Action<float> Damaged;
 
+	/// <summary>Raised at each low-health flash, so the warning sound can play with it.</summary>
+	public event Action LowHealthPulse;
+
 	/// <summary>True while health is below the low-health fraction in feedback.tres.</summary>
 	public bool IsLowHealth => !IsDestroyed && Health < MaxHealth * Tuning.Feedback.LowHealthFraction;
 
@@ -109,6 +112,9 @@ public partial class Vnp : Node3D
 		if (IsLowHealth)
 		{
 			float period = Mathf.Max(0.1f, Tuning.Feedback.LowHealthPulseSeconds);
+			// A new flash starts on first dropping low, and each time the period comes round.
+			if (_lowHealthTime == 0f || _lowHealthTime + dt >= period)
+				LowHealthPulse?.Invoke();
 			_lowHealthTime = (_lowHealthTime + dt) % period;
 			// A quick rise and a slower fade at the start of each period.
 			float pulse = Mathf.Max(0f, 1f - _lowHealthTime / (period * 0.45f));

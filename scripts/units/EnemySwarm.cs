@@ -176,11 +176,13 @@ public partial class EnemySwarm : Node3D
 		enemy.Flash = Tuning.Feedback.HitFlashTime;
 		enemy.Aggro = true; // Being shot gets its attention, even from outside its aggro range.
 		Fight.DamageNumbers.Add(enemy.Id, enemy.Position, amount);
+		Fight.Sounds.Play(Sound.Hit);
 		if (enemy.Health <= 0f)
 		{
 			Fight.Kills++;
 			// It bursts apart, and its debris appears a moment later.
 			Fight.Effects.EnemyDeath(enemy.Position, Type.Color);
+			Fight.Sounds.Play(Sound.EnemyDeath);
 			AddPendingDebris(enemy.Position, Rng.Range(Type.DebrisMassMin, Type.DebrisMassMax));
 			// The enemy itself is cleared away at the start of the next update.
 		}
@@ -469,6 +471,7 @@ public partial class EnemySwarm : Node3D
 
 				Fight.Projectiles.Fire(enemy.Position, aim, enemy.ProjectileDamage,
 					Type.ProjectileSpeed, Type.ProjectileLifetime, fromEnemy: true, Type.ProjectileColor);
+				Fight.Sounds.Play(Sound.EnemyFire);
 				enemy.FireTimer = Type.FireCooldown * Rng.Range(0.85f, 1.15f);
 			}
 

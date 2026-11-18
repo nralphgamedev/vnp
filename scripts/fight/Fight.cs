@@ -17,6 +17,7 @@ public partial class Fight : Node3D
 	public VnpHarvester VnpHarvester { get; private set; }
 	public Effects Effects { get; private set; }
 	public DamageNumbers DamageNumbers { get; private set; }
+	public Sounds Sounds { get; private set; }
 
 	/// <summary>The VNP Weapons equipped, in slot order.</summary>
 	public IReadOnlyList<VnpWeapon> Weapons => _weapons;
@@ -58,6 +59,16 @@ public partial class Fight : Node3D
 	/// <summary>True once the fight has ended and the result screen is up.</summary>
 	public bool IsOver { get; private set; }
 
+	/// <summary>
+	/// True once the player has won and chosen to keep fighting. The kill target no longer ends the fight;
+	/// it ends only by retreating or being destroyed, and is still a victory. No additional rewards.
+	/// </summary>
+	public bool IsEndless { get; private set; }
+
+	/// <summary>Kills and fight time when the kill target was reached, for the endless result screen.</summary>
+	public int VictoryKills { get; private set; }
+	public double VictoryTime { get; private set; }
+
 	/// <summary>True while the VNP is on the gateway.</summary>
 	public bool OnGateway { get; private set; }
 
@@ -87,6 +98,7 @@ public partial class Fight : Node3D
 	private float _levelStartExperience;
 	private int _pendingLevelUps;
 	private int _alertedSteps;
+	private int _warnedWave = -1;
 	private Label _debugLabel;
 	private HealthBar _healthBar;
 	private LevelUpMenu _levelUpMenu;
@@ -106,6 +118,7 @@ public partial class Fight : Node3D
 		Projectiles = GetNode<Projectiles>("Projectiles");
 		Effects = GetNode<Effects>("Effects");
 		DamageNumbers = GetNode<DamageNumbers>("Hud/DamageNumbers");
+		Sounds = GetNode<Sounds>("Sounds");
 		Harvestables = GetNode<Harvestables>("Harvestables");
 		_weaponHolder = GetNode<Node3D>("Weapons");
 		VnpHarvester = GetNode<VnpHarvester>("VnpHarvester");
@@ -114,7 +127,12 @@ public partial class Fight : Node3D
 		// The fight starts at the gateway.
 		Vnp.PlaceAt(Gateway.PlanePosition);
 		Vnp.Destroyed += OnVnpDestroyed;
-		Vnp.Damaged += _ => Camera.Shake(Tuning.Feedback.ShakeOnVnpDamage);
+		Vnp.Damaged += _ =>
+		{
+			Camera.Shake(Tuning.Feedback.ShakeOnVnpDamage);
+			Sounds.Play(Sound.VnpDamage);
+		};
+		Vnp.LowHealthPulse += () => Sounds.Play(Sound.LowHealth);
 
 		Camera.Target = Vnp;
 		Camera.SnapToTarget();
@@ -152,6 +170,11 @@ public partial class Fight : Node3D
 		if (IsOver)
 			return;
 		IsOver = true;
+		if (outcome == Outcome.Win)
+		{
+			VictoryKills = Kills;
+			VictoryTime = Elapsed;
+		}
 
 		// Nothing updates while frozen, so bring the readouts up to date first.
 		RefreshDebugLabel();
@@ -220,12 +243,17 @@ public partial class Fight : Node3D
 		return null;
 	}
 
-	/// <summary>Builds up to <paramref name="count"/> drones at once, stopping at the cap.</summary>
-	public void BuildDronesNow(int count)
+	/// <summary>Builds up to <paramref name="count"/> drones at once, stopping at the cap. Returns how many it built.</summary>
+	public int BuildDronesNow(int count)
 	{
-		for (int i = 0; i < count && Drones.CountWithBuilds < Drones.Cap; i++)
+		int built = 0;
+		for (; built < count && Drones.CountWithBuilds < Drones.Cap; built++)
 			Drones.Build();
+		return built;
 	}
+
+	/// <summary>Drones built by upgrades so far, which can be fewer than they offered if the cap was near.</summary>
+	public int DronesBuiltByUpgrades;
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
@@ -245,7 +273,16 @@ public partial class Fight : Node3D
 		{
 			_alertedSteps = EscalationSteps;
 			_fightHud.ShowEscalationAlert();
+			Sounds.Play(Sound.TimeLimit);
 			Camera.Shake(Tuning.Feedback.ShakeOnEscalation);
+		}
+
+		// The wave warning sounds once, as the warning appears on screen.
+		if (Enemies.WavesSent != _warnedWave
+			&& Enemies.NextWaveTime - Elapsed <= Tuning.EnemySpawning.WaveWarningSeconds)
+		{
+			_warnedWave = Enemies.WavesSent;
+			Sounds.Play(Sound.WaveWarning);
 		}
 
 		// Retreat: stay on the gateway long enough and the option appears.
@@ -257,7 +294,7 @@ public partial class Fight : Node3D
 			return;
 		}
 
-		if (Kills >= Tuning.Fight.KillTarget)
+		if (!IsEndless && Kills >= Tuning.Fight.KillTarget)
 		{
 			End(Outcome.Win);
 			return;
@@ -298,4 +335,14 @@ public partial class Fight : Node3D
 	}
 
 	private void OnVnpDestroyed() => End(Outcome.Loss);
+
+	/// <summary>Picks the won fight back up in endless mode, from where it stopped.</summary>
+	public void ContinueEndless()
+	{
+		if (!IsOver || IsEndless)
+			return;
+		IsEndless = true;
+		IsOver = false;
+		GetTree().Paused = false;
+	}
 }

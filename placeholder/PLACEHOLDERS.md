@@ -4,7 +4,7 @@ Every visual and audio asset in the prototype is temporary. This file lists all 
 
 Most files here are made by `code/PlaceholderBaker.cs`, which holds their shapes, sizes and colours. To change one of those, edit the baker and bake again rather than editing the file. To bake, open `code/Bake.tscn` in Godot and press F6 (Run Current Scene). Final art can simply overwrite a file, as long as it keeps the same path and type. After that, stop baking that file, or remove it from the baker.
 
-No audio yet. No asset was downloaded, so there are no licences to track.
+No asset was downloaded, so there are no licences to track.
 
 ## Meshes (`meshes/`)
 
@@ -67,6 +67,37 @@ Scenes that put meshes and materials together. Both are made by `code/Placeholde
 | `icon.svg` | Godot's default project icon | Project settings (window and file icon) |
 | `icons/pulse_laser.svg`, `icons/orbital_shards.svg`, `icons/projectile.svg`, `icons/beam.svg` | White weapon icons, tinted with the weapon's colour. Drawn by hand. Each is named after its weapon's ID, so a new weapon's icon is `icons/<id>.svg`; a weapon without one shows its first letter. | HUD weapon slots and Drone Weapon box (`WeaponSlots.cs`) |
 
+## Audio (`audio/`)
+
+All made by `code/PlaceholderSounds.cs`, which `code/PlaceholderBaker.cs` runs. Each sound is synthesised from simple tones and noise, and saved as 16-bit mono .wav at 44.1 kHz. To change one, change its recipe in `PlaceholderSounds.cs` and bake again.
+
+Every sound is listed in `tuning/audio.tres`, which sets its category, volume, copy limit, pitch variation, and whether it loops. A final sound can replace a file directly, as long as it keeps the same name.
+
+| File | What it sounds like | Played when |
+|---|---|---|
+| `pulse_laser_fire.wav` | Short falling zap | The Pulse Laser fires |
+| `shard_hit.wav` | Bright tink | An Orbital Shard hits an enemy |
+| `drone_projectile_fire.wav` | Tiny blip | A drone fires a projectile |
+| `drone_beam_tick.wav` | Soft buzz | A drone's Beam deals a tick of damage |
+| `enemy_fire.wav` | Low pew | An enemy fires |
+| `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
+| `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |
+| `drone_death.wav` | Small pop | A drone is destroyed |
+| `vnp_damage.wav` | Heavy low thud | The VNP takes damage |
+| `low_health.wav` | Soft low heartbeat, two thumps | Each low-health flash |
+| `harvest_loop.wav` | Soft pulsing hum, two seconds, loops seamlessly | While any harvest beam is working |
+| `material_pop.wav` | Rising pop | An asteroid or piece of debris is used up |
+| `drone_built.wav` | Rising chirp | A temporary drone is built |
+| `wave_warning.wav` | Two soft rising sweeps | The wave warning appears |
+| `time_limit.wav` | Two low, harsh pulses | The time limit and each escalation step |
+| `level_up.wav` | Rising four-note arpeggio | A level-up offer appears |
+| `upgrade_choose.wav` | Two rising notes | An upgrade is chosen |
+| `menu_move.wav` | Tick | The highlight moves in the level-up offer |
+| `menu_select.wav` | Short note | A reroll, or the pause menu opening or closing |
+| `win.wav` | Rising major arpeggio | The win result |
+| `loss.wav` | Falling notes over a low tone | The loss result |
+| `retreat.wav` | Rising sweep | The retreat result |
+
 ## Made in code at runtime
 
 These are not saved as files. Each is listed with the script that makes it.
@@ -84,5 +115,5 @@ These are not saved as files. Each is listed with the script that makes it.
 | Offer card colours by category | `LevelUpMenu.cs` | Colours are in `tuning/look.tres` |
 | Screen shake | `CameraRig.cs` | Strength and timing in `tuning/feedback.tres` |
 | Gateway indicator arrow | `GatewayIndicator.cs` | Drawn in code each frame |
-| Menu panels and labels: level-up cards, pause menu, result screen | `Ui.cs`, `LevelUpMenu.cs`, `PauseMenu.cs`, `ResultScreen.cs` | Styles built in code |
+| Menu panels and labels: level-up cards, pause menu and its settings page, result screen, and the upgrade list on the right | `Ui.cs`, `LevelUpMenu.cs`, `PauseMenu.cs`, `ResultScreen.cs`, `UpgradeList.cs` | Styles built in code |
 | Font | Godot's built-in default font | No font file is used |

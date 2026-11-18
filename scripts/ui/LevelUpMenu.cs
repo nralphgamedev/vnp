@@ -63,11 +63,13 @@ public partial class LevelUpMenu : Control
 		GetTree().Paused = true;
 		Refresh();
 		_pulse.Start(Fight.Camera.UnprojectPosition(Fight.Vnp.GlobalPosition));
+		Fight.Sounds.Play(Sound.LevelUp);
 	}
 
 	/// <summary>Moves the highlight. Left and right move along the cards; down and up move to and from the reroll.</summary>
 	public void MoveSelection(int across, int down)
 	{
+		int before = _selected;
 		bool onReroll = _selected == _options.Count;
 		if (down > 0 && !onReroll)
 		{
@@ -82,6 +84,8 @@ public partial class LevelUpMenu : Control
 		{
 			_selected = Mathf.Clamp(_selected + across, 0, _options.Count - 1);
 		}
+		if (_selected != before)
+			Fight.Sounds.Play(Sound.MenuMove);
 		Refresh();
 	}
 
@@ -99,6 +103,7 @@ public partial class LevelUpMenu : Control
 		if (index < 0 || index >= _options.Count)
 			return;
 		Fight.ApplyUpgrade(_options[index]);
+		Fight.Sounds.Play(Sound.UpgradeChoose);
 		Visible = false;
 		GetTree().Paused = false;
 	}
@@ -109,6 +114,7 @@ public partial class LevelUpMenu : Control
 		if (Fight.Rerolls <= 0)
 			return;
 		Fight.Rerolls--;
+		Fight.Sounds.Play(Sound.MenuSelect);
 		_options = Upgrades.Draw(Fight, Tuning.Levels.OptionsPerOffer, _options);
 		Refresh();
 	}
@@ -138,7 +144,7 @@ public partial class LevelUpMenu : Control
 			_cardTags[i].Text = CardTag(upgrade);
 			_cardTags[i].AddThemeColorOverride("font_color", CategoryColor(upgrade.Category));
 			_cardNames[i].Text = upgrade.Name;
-			_cardTexts[i].Text = Upgrades.Describe(upgrade);
+			_cardTexts[i].Text = Upgrades.Describe(upgrade, Fight);
 			_cards[i].AddThemeStyleboxOverride("panel", CardStyle(upgrade.Category, i == _selected));
 		}
 
@@ -165,13 +171,7 @@ public partial class LevelUpMenu : Control
 		return upgrade.Limit > 0 ? $"{category}   {Upgrades.TimesTaken(Fight, upgrade) + 1}/{upgrade.Limit}" : category;
 	}
 
-	private static Color CategoryColor(UpgradeCategory category) => category switch
-	{
-		UpgradeCategory.VnpWeapon => Tuning.Look.VnpWeaponCardColor,
-		UpgradeCategory.DroneWeapon => Tuning.Look.DroneWeaponCardColor,
-		UpgradeCategory.Drones => Tuning.Look.DronesCardColor,
-		_ => Tuning.Look.StatsCardColor,
-	};
+	private static Color CategoryColor(UpgradeCategory category) => Ui.CategoryColor(category);
 
 	/// <summary>A card tinted and bordered in its category's colour. The highlighted card is brighter, with a thicker border.</summary>
 	private StyleBoxFlat CardStyle(UpgradeCategory category, bool highlighted)

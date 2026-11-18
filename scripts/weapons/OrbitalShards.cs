@@ -70,6 +70,7 @@ public partial class OrbitalShards : VnpWeapon
 						continue;
 					_nextHitAt[key] = now + Cooldown;
 					Fight.Effects.Impact(enemies.PositionOf(enemy), Shards.Color, 0.7f * Mathf.Sqrt(Power));
+					Fight.Sounds.Play(Sound.ShardHit);
 					enemies.Damage(enemy, Damage);
 				}
 			}

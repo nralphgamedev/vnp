@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 Id = "new_drones"
 Name = "New drones"
-Description = "Build {amount} drones right away, up to the cap."
+Description = "Gain {drones} right away."
 Category = 3
 Effect = 5
 Amount = 5.0

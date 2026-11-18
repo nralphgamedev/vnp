@@ -89,7 +89,9 @@ public partial class UpgradeDefinition : Resource
 	[Export] public string Name;
 
 	/// <summary>The card text. {percent} is replaced by the amount as a percentage, such as 25%,
-	/// and {amount} by the amount as a number. For an Orbital Shards weapon, {count} is its shard count.</summary>
+	/// and {amount} by the amount as a number. For an Orbital Shards weapon, {count} is its shard count.
+	/// For BuildDrones, {drones} is how many it would build right now, such as "2 drones", which is
+	/// fewer than the amount when the cap is near.</summary>
 	[Export(PropertyHint.MultilineText)] public string Description;
 
 	/// <summary>Decides the colour of its offer card and the category named on it.</summary>

@@ -178,8 +178,11 @@ public partial class Harvestables : Node3D
 		Fight.AddHarvest(taken);
 		// Used up: it pops. It is cleared away at the start of the next update.
 		if (item.Mass <= UsedUp && item.Mass + taken > UsedUp)
+		{
 			Fight.Effects.MaterialPop(item.Position, item.IsAsteroid ? Tuning.Asteroids.Color : Tuning.Harvesting.DebrisColor,
 				Tuning.Look.ExperienceColor);
+			Fight.Sounds.Play(Sound.MaterialPop);
+		}
 		return taken;
 	}
 

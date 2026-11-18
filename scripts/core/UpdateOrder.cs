@@ -12,6 +12,7 @@ public static class UpdateOrder
 	public const int Projectiles = 4;
 	public const int Weapons = 5;
 	public const int Effects = 6;
+	public const int Audio = 7;
 	public const int Camera = 10;
 	public const int Ground = 15;
 	public const int Hud = 20;
