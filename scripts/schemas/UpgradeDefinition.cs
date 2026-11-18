@@ -25,6 +25,26 @@ public enum UpgradeEffect
 	BuildDrones,
 }
 
+/// <summary>
+/// What an upgrade is about. Its offer card takes the category's colour from look.tres, so an offer reads
+/// at a glance. Upgrades to a weapon go with that weapon's kind. The full rule and the current upgrades
+/// in each category are under "Offer card colours" in docs/PROTOTYPE_2_SPEC.md.
+/// </summary>
+public enum UpgradeCategory
+{
+	/// <summary>New VNP Weapons and upgrades to a VNP Weapon. Orange cards.</summary>
+	VnpWeapon,
+
+	/// <summary>New Drone Weapons and upgrades to how drones attack. Blue cards.</summary>
+	DroneWeapon,
+
+	/// <summary>The VNP's own stats, and harvesting. Green cards.</summary>
+	Stats,
+
+	/// <summary>How many drones there are: the drone cap and new drones. Pink cards.</summary>
+	Drones,
+}
+
 /// <summary>A stat that belongs to a VNP Weapon.</summary>
 public enum WeaponStat
 {
@@ -71,6 +91,9 @@ public partial class UpgradeDefinition : Resource
 	/// <summary>The card text. {percent} is replaced by the amount as a percentage, such as 25%,
 	/// and {amount} by the amount as a number. For an Orbital Shards weapon, {count} is its shard count.</summary>
 	[Export(PropertyHint.MultilineText)] public string Description;
+
+	/// <summary>Decides the colour of its offer card and the category named on it.</summary>
+	[Export] public UpgradeCategory Category;
 
 	[Export] public UpgradeEffect Effect;
 

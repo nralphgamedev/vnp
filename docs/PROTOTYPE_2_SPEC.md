@@ -165,11 +165,52 @@ For design questions this file does not answer, ask the designer rather than inv
 These were open when this file was written. The prototype now does the following; any of them can still change.
 
 - **When tuning changes take effect:** each tuning file is read when the game starts. A change applies from the next run, not during a running fight.
-- **Tuning files:** one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, and `look` (colours and effects shared by several systems, and the gateway indicator). Weapons, Drone Weapons, enemy types, and upgrades are definitions in folders beside them, organized by what they affect: each weapon and Drone Weapon has its own folder holding its definition and, in `upgrades/`, its upgrades (`weapons/pulse_laser/`, `weapons/orbital_shards/`, `drone_weapons/projectile/`, `drone_weapons/beam/`). The other upgrades are in `upgrades/drones/`, `upgrades/vnp_stats/`, and `upgrades/harvesting/`, and enemy types in `enemies/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
+- **Tuning files:** one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, `look` (colours shared by several systems, the gateway indicator, and offer card colours), and `feedback` (hit flash, damage numbers, screen shake, low health, and the amounts and size of every effect). Weapons, Drone Weapons, enemy types, and upgrades are definitions in folders beside them, organized by what they affect: each weapon and Drone Weapon has its own folder holding its definition and, in `upgrades/`, its upgrades (`weapons/pulse_laser/`, `weapons/orbital_shards/`, `drone_weapons/projectile/`, `drone_weapons/beam/`). The other upgrades are in `upgrades/drones/`, `upgrades/vnp_stats/`, and `upgrades/harvesting/`, and enemy types in `enemies/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
 - **How upgrades are described as data:** each upgrade uses one of a fixed set of effects written in code: equip a weapon, scale a weapon stat, switch the Drone Weapon, scale a player stat, add to a player stat, or build drones. Each effect has its own built-in condition, such as "weapon equipped" or "drones below the cap". An upgrade that reuses an effect is a new file. An upgrade that needs new behaviour, such as Orbital Shards blocking, needs a new effect added in code.
 - **Card text:** each upgrade's card text is in its file. `{percent}`, `{amount}`, and `{count}` (the Orbital Shards shard count) are filled in from the numbers, so the text follows the tuning.
 - **Placeholder files:** the meshes, materials, and models in `res://placeholder/` are made by `res://placeholder/code/PlaceholderBaker.cs`. Change a shape or colour there and bake again, rather than editing the files. The asteroid rocks are still made in code when the fight starts, because their shape follows tuning values.
+- **Offer card colours:** see Offer card colours below.
+- **Damage numbers:** hits on the same enemy within a quarter of a second are added into one number, so fast beams don't fill the screen with ones. A number pops slightly larger, rises, and fades. At most 80 are shown at once.
+- **Enemy deaths:** the enemy bursts into pieces with sparks and a flash ring, and its debris appears a quarter of a second later (`DebrisDelay`).
+- **Weapon effects:** the Pulse Laser flashes where it fires and sparks where it hits. Orbital Shards draw a trail along their orbit, behind each shard, drawn around wherever the VNP is now, so it stays fixed to the shard as the VNP moves (`ShardTrailTime` sets its length), and spark on each hit. Drone projectiles flash when fired and spark on impact, and the drone Beam sparks on each damage tick. Enemy shots also spark when they hit the VNP or a drone.
+- **Upgrades that show:** Pulse Laser damage upgrades widen its beam and enlarge its flashes. Orbital Shards damage upgrades lengthen the trails and enlarge the hit sparks. Speed, area of effect, and cooldown upgrades already show as faster, larger, or more frequent attacks.
+- **Harvesting:** particles flow along every harvest beam from the material to the VNP or drone, and used-up material pops into pieces with a ring. Drone harvest beams start just below the drones, so a beam seems to come from under the drone rather than out of its middle. Every harvest beam, the VNP's and the drones', angles down into the middle of the material, so its end is hidden inside.
+- **Debris look:** debris is a thick broken plate of hull that always tumbles slowly (20 to 60 degrees a second, `DebrisTumbleSpeedMin` and `Max` in `harvesting.tres`), so it no longer looks like a star. It lies roughly flat and its tumble axis stays within 30 degrees of upright, so it wobbles and spins but never turns edge-on, where it would be hard to see.
+- **Debris reward:** after playtesting, debris mass was raised from 1–2 to 1.5–2.5 (`DebrisMassMin` and `DebrisMassMax` in the enemy's file), so each kill gives about a third more fight experience and drone-building progress.
+- **New drones:** a white ring and a few sparks where each drone is built, as well as its existing grow-in from a white spark.
+- **Level up:** the fight pauses for the offer, so the pulse ring is drawn on the screen, over the dimmed fight and under the cards, spreading out from the VNP.
+- **Screen shake:** the camera jitters sideways and settles over `ShakeTime`. A weaker shake does not cut short a stronger one.
+- **Low health:** below 30% health (`LowHealthFraction`), the VNP flashes red every 0.8 seconds, and its health bar swells and glows red.
+- **HUD icons:** weapon slot boxes and the Drone Weapon box sit at the bottom left, above the level. To keep the screen clean during play, they show only while a level-up offer or the pause menu is open, drawn above it. Each weapon's icon is a file named after its ID; a weapon without one shows its first letter.
+- **Effect performance:** effects are drawn in batches, like the units, and capped at 3,000 particles (`MaxParticles`). In a stress test with about 900 enemies and 350 kills, they added about 0.06 ms per frame.
 - **Model colours:** the VNP, gateway, and ground grid colours, and the grid's line spacing, are in their material files rather than in tuning. `GatewayColor` in `look.tres` colours only the gateway arrow and text on screen.
+
+## Offer card colours
+
+Every offer card is coloured by its upgrade's category, so an offer can be read at a glance.
+
+**How it works.** Each upgrade's file in `res://tuning/` has a `Category` field. The card takes that category's colour from `look.tres`. The colour is used for:
+
+- the card's border;
+- a light tint on the card's background;
+- the text of its top line.
+
+The highlighted card has a thicker, full-strength border and a stronger tint. The top line names the category. It says NEW for a weapon the player doesn't have yet, and for a limited upgrade it shows which time this would be, such as `STATS   2/4`.
+
+| Category | Colour (`look.tres`) | What belongs in it | Upgrades now |
+|---|---|---|---|
+| VNP Weapon | Orange, `VnpWeaponCardColor` | New VNP Weapons and upgrades to a VNP Weapon | Orbital Shards; Pulse Laser damage and cooldown; Orbital Shards damage, area of effect and speed |
+| Drone Weapon | Blue, `DroneWeaponCardColor` | New Drone Weapons and upgrades to how drones attack | Beam |
+| Stats | Green, `StatsCardColor` | The VNP's own stats, and harvesting | Health, Movement speed, Harvest rate |
+| Drones | Pink, `DronesCardColor` | How many drones there are | Drone cap, New drones |
+
+**Filing a new upgrade.** Upgrades to a weapon go with that weapon's kind, so its card matches the weapon it improves. The upgrades still to come in this phase are filed as follows:
+
+- **VNP Weapon:** the four new VNP Weapons and their upgrades, plus Orbital Shards count and blocking.
+- **Drone Weapon:** Ram, Drone damage and Drone attack rate.
+- **Stats:** Armor and Debris reward.
+
+To change a card's colour, edit the colour in `look.tres`. To move an upgrade to another category, change `Category` in its file.
 
 ## Suggested build order
 

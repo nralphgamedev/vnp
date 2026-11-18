@@ -94,6 +94,13 @@ public sealed class InstanceBatch
 		_buffer[o + 15] = color.A;
 	}
 
+	/// <summary>Places copy number <paramref name="index"/> with a full 3D transform.</summary>
+	public void SetTransform(int index, Transform3D transform, Color color)
+	{
+		Vector3 o = transform.Origin;
+		SetBasis(index, new Vector2(o.X, o.Z), o.Y, transform.Basis, color);
+	}
+
 	/// <summary>
 	/// Places copy number <paramref name="index"/> as a bar stretched between two points on the plane.
 	/// Use it with a 1 by 1 by 1 box: the box is scaled to <paramref name="width"/> across,

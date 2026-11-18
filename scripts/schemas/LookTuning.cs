@@ -4,11 +4,8 @@ using Godot;
 [GlobalClass]
 public partial class LookTuning : Resource
 {
-	/// <summary>Seconds an enemy or the VNP flashes after being hit.</summary>
-	[ExportGroup("Shared")]
-	[Export] public float HitFlashTime;
-
 	/// <summary>Colour of fight experience: harvest beams, and the tint on whatever they are harvesting.</summary>
+	[ExportGroup("Shared")]
 	[Export] public Color ExperienceColor;
 
 	/// <summary>Colour of the gateway arrow and the gateway text on screen. The gateway model's own
@@ -25,4 +22,20 @@ public partial class LookTuning : Resource
 	/// <summary>False hides the arrow while the gateway itself is on screen.
 	/// True keeps it at the screen edge at all times.</summary>
 	[Export] public bool IndicatorAlwaysVisible;
+
+	// Each offer card takes the colour of its upgrade's Category: on its border, as a light tint, and on
+	// its top line. See "Offer card colours" in docs/PROTOTYPE_2_SPEC.md.
+
+	/// <summary>Colour of offer cards for VNP Weapons and their upgrades.</summary>
+	[ExportGroup("Offer cards")]
+	[Export] public Color VnpWeaponCardColor;
+
+	/// <summary>Colour of offer cards for Drone Weapons and upgrades to how drones attack.</summary>
+	[Export] public Color DroneWeaponCardColor;
+
+	/// <summary>Colour of offer cards for VNP stats and harvesting.</summary>
+	[Export] public Color StatsCardColor;
+
+	/// <summary>Colour of offer cards for how many drones there are: the drone cap and new drones.</summary>
+	[Export] public Color DronesCardColor;
 }

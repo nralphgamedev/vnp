@@ -46,7 +46,10 @@ public partial class DroneSwarm : Node3D
 	// Seconds a newly built drone takes to grow to full size.
 	private const float BuildTime = 0.35f;
 
+	// Attack beams run just above the drones. Harvest beams run just below them, so a beam seems to come
+	// from under the drone rather than out of its middle.
 	private const float BeamHeight = 0.2f;
+	private const float HarvestBeamHeight = -0.3f;
 
 	public Fight Fight;
 
@@ -100,6 +103,7 @@ public partial class DroneSwarm : Node3D
 	private Vector2[] _beamFrom = new Vector2[64];
 	private Vector2[] _beamTo = new Vector2[64];
 	private bool[] _beamIsAttack = new bool[64];
+	private float[] _beamEndHeight = new float[64];
 	private int _beamCount;
 	private float _speed = Tuning.Drones.Speed;
 	private InstanceBatch _batch;
@@ -134,6 +138,8 @@ public partial class DroneSwarm : Node3D
 				OrbitSign = Rng.Sign(),
 				Age = built ? 0f : BuildTime,
 			};
+			if (built)
+				Fight.Effects.DroneBuilt(around + offset * spread, Tuning.Drones.Color);
 		}
 	}
 
@@ -218,12 +224,13 @@ public partial class DroneSwarm : Node3D
 			return;
 
 		drone.Health -= amount;
-		drone.Flash = Tuning.Look.HitFlashTime;
+		drone.Flash = Tuning.Feedback.HitFlashTime;
 		if (drone.Health <= 0f)
 		{
 			if (_wreckCount == _wrecks.Length)
 				Array.Resize(ref _wrecks, _wrecks.Length * 2);
 			_wrecks[_wreckCount++] = new Wreck { Position = drone.Position, Yaw = drone.Yaw };
+			Fight.Effects.DronePop(drone.Position, Tuning.Drones.Color);
 			// The drone itself is cleared away at the start of the next update.
 		}
 	}
@@ -261,6 +268,7 @@ public partial class DroneSwarm : Node3D
 			Array.Resize(ref _beamFrom, Count * 4);
 			Array.Resize(ref _beamTo, Count * 4);
 			Array.Resize(ref _beamIsAttack, Count * 4);
+			Array.Resize(ref _beamEndHeight, Count * 4);
 		}
 		_beamCount = 0;
 
@@ -299,7 +307,8 @@ public partial class DroneSwarm : Node3D
 				if (nearby >= 0)
 				{
 					harvestables.Harvest(nearby, HarvestRate * dt);
-					AddBeam(drone.Position, harvestables.PositionOf(nearby), harvestables.RadiusOf(nearby));
+					AddHarvestBeam(drone.Position, harvestables.PositionOf(nearby), harvestables.HeightOf(nearby));
+					HarvestFlow(drone.Position, harvestables.PositionOf(nearby), harvestables.RadiusOf(nearby), dt);
 				}
 			}
 			else
@@ -320,7 +329,8 @@ public partial class DroneSwarm : Node3D
 					if (drone.Position.DistanceTo(itemPosition) - itemRadius <= harvestables.BeamRange)
 					{
 						harvestables.Harvest(harvest, HarvestRate * dt);
-						AddBeam(drone.Position, itemPosition, itemRadius);
+						AddHarvestBeam(drone.Position, itemPosition, harvestables.HeightOf(harvest));
+						HarvestFlow(drone.Position, itemPosition, itemRadius, dt);
 					}
 				}
 				else
@@ -532,6 +542,7 @@ public partial class DroneSwarm : Node3D
 			AddBeam(drone.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
 			if (drone.FireTimer <= 0f)
 			{
+				Fight.Effects.Impact(enemies.PositionOf(enemy), Weapon.Color, 0.4f);
 				enemies.Damage(enemy, WeaponDamage);
 				drone.FireTimer = WeaponCooldown;
 			}
@@ -553,10 +564,30 @@ public partial class DroneSwarm : Node3D
 
 		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), WeaponDamage,
 			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color);
+		Fight.Effects.MuzzleFlash(drone.Position, toAim, Weapon.Color, 0.5f);
 		drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
 	}
 
-	/// <summary>Records a harvest or attack beam to draw, ending just inside the edge of its target.</summary>
+	/// <summary>Sends harvest particles from the edge of the material to the drone.</summary>
+	private void HarvestFlow(Vector2 dronePosition, Vector2 itemPosition, float itemRadius, float dt)
+	{
+		Vector2 toDrone = (dronePosition - itemPosition).Normalized();
+		Fight.Effects.HarvestFlow(itemPosition + toDrone * itemRadius * 0.6f, dronePosition,
+			Tuning.Look.ExperienceColor, Tuning.Feedback.DroneHarvestParticles, dt, 0.16f, HarvestBeamHeight);
+	}
+
+	/// <summary>Records a harvest beam to draw, from under the drone down into the middle of the material,
+	/// so neither end shows.</summary>
+	private void AddHarvestBeam(Vector2 from, Vector2 to, float endHeight)
+	{
+		_beamFrom[_beamCount] = from;
+		_beamTo[_beamCount] = to;
+		_beamIsAttack[_beamCount] = false;
+		_beamEndHeight[_beamCount] = endHeight;
+		_beamCount++;
+	}
+
+	/// <summary>Records an attack beam to draw, ending just inside the edge of its target.</summary>
 	private void AddBeam(Vector2 from, Vector2 to, float targetRadius, bool isAttack = false)
 	{
 		Vector2 along = to - from;
@@ -598,7 +629,7 @@ public partial class DroneSwarm : Node3D
 				scale *= grown;
 			}
 			if (drone.Flash > 0f)
-				color = color.Lerp(new Color(1f, 0.2f, 0.15f), drone.Flash / Tuning.Look.HitFlashTime);
+				color = color.Lerp(new Color(1f, 0.2f, 0.15f), drone.Flash / Tuning.Feedback.HitFlashTime);
 
 			_batch.Set(i, drone.Position, 0f, drone.Yaw, scale, color);
 		}
@@ -619,7 +650,8 @@ public partial class DroneSwarm : Node3D
 			if (_beamIsAttack[b])
 				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight + 0.1f, 0.2f, 0.06f, Weapon.Color);
 			else
-				_beamBatch.SetBeam(b, _beamFrom[b], _beamTo[b], BeamHeight, 0.12f, 0.06f, Tuning.Look.ExperienceColor);
+				_beamBatch.SetTransform(b, PlaneMath.Bar(PlaneMath.ToWorld(_beamFrom[b], HarvestBeamHeight),
+					PlaneMath.ToWorld(_beamTo[b], _beamEndHeight[b]), 0.12f, 0.06f), Tuning.Look.ExperienceColor);
 		}
 		_beamBatch.Commit(_beamCount);
 	}

@@ -20,11 +20,18 @@ public partial class Vnp : Node3D
 	/// <summary>Raised once, when health reaches zero.</summary>
 	public event Action Destroyed;
 
+	/// <summary>Raised whenever the VNP takes damage, with the amount.</summary>
+	public event Action<float> Damaged;
+
+	/// <summary>True while health is below the low-health fraction in feedback.tres.</summary>
+	public bool IsLowHealth => !IsDestroyed && Health < MaxHealth * Tuning.Feedback.LowHealthFraction;
+
 	private Node3D _model;
 	private StandardMaterial3D _hullMaterial;
 	private Color _hullGlow;
 	private float _hullGlowStrength;
 	private float _flash;
+	private float _lowHealthTime;
 
 	public override void _Ready()
 	{
@@ -54,7 +61,8 @@ public partial class Vnp : Node3D
 			return;
 
 		Health = Mathf.Max(0f, Health - amount);
-		_flash = Tuning.Look.HitFlashTime;
+		_flash = Tuning.Feedback.HitFlashTime;
+		Damaged?.Invoke(amount);
 		if (Health <= 0f)
 		{
 			IsDestroyed = true;
@@ -89,11 +97,28 @@ public partial class Vnp : Node3D
 		}
 	}
 
-	/// <summary>The hull glows red for a moment after a hit.</summary>
+	/// <summary>
+	/// The hull glows red for a moment after a hit. At low health it also flashes red now and then,
+	/// a softer flash than a hit.
+	/// </summary>
 	private void UpdateHitFlash(float dt)
 	{
 		_flash = Mathf.Max(0f, _flash - dt);
-		float strength = _flash / Tuning.Look.HitFlashTime;
+		float strength = _flash / Tuning.Feedback.HitFlashTime;
+
+		if (IsLowHealth)
+		{
+			float period = Mathf.Max(0.1f, Tuning.Feedback.LowHealthPulseSeconds);
+			_lowHealthTime = (_lowHealthTime + dt) % period;
+			// A quick rise and a slower fade at the start of each period.
+			float pulse = Mathf.Max(0f, 1f - _lowHealthTime / (period * 0.45f));
+			strength = Mathf.Max(strength, 0.7f * pulse);
+		}
+		else
+		{
+			_lowHealthTime = 0f;
+		}
+
 		_hullMaterial.Emission = _hullGlow.Lerp(new Color(1f, 0.15f, 0.1f), strength);
 		_hullMaterial.EmissionEnergyMultiplier = Mathf.Lerp(_hullGlowStrength, 2.5f, strength);
 	}

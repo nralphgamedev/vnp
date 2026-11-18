@@ -35,6 +35,10 @@ public partial class LevelUpMenu : Control
 	private StyleBoxFlat _normalStyle;
 	private StyleBoxFlat _selectedStyle;
 	private StyleBoxFlat _disabledStyle;
+	private LevelUpPulse _pulse;
+
+	// Card styles for each category, normal and highlighted, made on first use.
+	private readonly Dictionary<(UpgradeCategory, bool), StyleBoxFlat> _cardStyles = new();
 
 	public override void _Ready()
 	{
@@ -58,6 +62,7 @@ public partial class LevelUpMenu : Control
 		Visible = true;
 		GetTree().Paused = true;
 		Refresh();
+		_pulse.Start(Fight.Camera.UnprojectPosition(Fight.Vnp.GlobalPosition));
 	}
 
 	/// <summary>Moves the highlight. Left and right move along the cards; down and up move to and from the reroll.</summary>
@@ -130,14 +135,11 @@ public partial class LevelUpMenu : Control
 				continue;
 
 			UpgradeDefinition upgrade = _options[i];
-			_cardTags[i].Text = Upgrades.IsNewWeapon(upgrade)
-				? "NEW WEAPON"
-				: upgrade.Limit > 0
-					? $"UPGRADE   {Upgrades.TimesTaken(Fight, upgrade) + 1}/{upgrade.Limit}"
-					: "UPGRADE";
+			_cardTags[i].Text = CardTag(upgrade);
+			_cardTags[i].AddThemeColorOverride("font_color", CategoryColor(upgrade.Category));
 			_cardNames[i].Text = upgrade.Name;
 			_cardTexts[i].Text = Upgrades.Describe(upgrade);
-			_cards[i].AddThemeStyleboxOverride("panel", i == _selected ? _selectedStyle : _normalStyle);
+			_cards[i].AddThemeStyleboxOverride("panel", CardStyle(upgrade.Category, i == _selected));
 		}
 
 		bool canReroll = Fight.Rerolls > 0;
@@ -145,6 +147,47 @@ public partial class LevelUpMenu : Control
 		_rerollLabel.Modulate = new Color(1f, 1f, 1f, canReroll ? 1f : 0.4f);
 		StyleBoxFlat rerollStyle = !canReroll ? _disabledStyle : _selected == _options.Count ? _selectedStyle : _normalStyle;
 		_rerollCard.AddThemeStyleboxOverride("panel", rerollStyle);
+	}
+
+	/// <summary>The line at the top of a card: its category, marked NEW for a weapon the player does not
+	/// have yet, and which time it would be for an upgrade with a limit, such as 2/4.</summary>
+	private string CardTag(UpgradeDefinition upgrade)
+	{
+		string category = upgrade.Category switch
+		{
+			UpgradeCategory.VnpWeapon => "VNP WEAPON",
+			UpgradeCategory.DroneWeapon => "DRONE WEAPON",
+			UpgradeCategory.Drones => "DRONES",
+			_ => "STATS",
+		};
+		if (Upgrades.IsNewWeapon(upgrade))
+			return "NEW " + category;
+		return upgrade.Limit > 0 ? $"{category}   {Upgrades.TimesTaken(Fight, upgrade) + 1}/{upgrade.Limit}" : category;
+	}
+
+	private static Color CategoryColor(UpgradeCategory category) => category switch
+	{
+		UpgradeCategory.VnpWeapon => Tuning.Look.VnpWeaponCardColor,
+		UpgradeCategory.DroneWeapon => Tuning.Look.DroneWeaponCardColor,
+		UpgradeCategory.Drones => Tuning.Look.DronesCardColor,
+		_ => Tuning.Look.StatsCardColor,
+	};
+
+	/// <summary>A card tinted and bordered in its category's colour. The highlighted card is brighter, with a thicker border.</summary>
+	private StyleBoxFlat CardStyle(UpgradeCategory category, bool highlighted)
+	{
+		if (_cardStyles.TryGetValue((category, highlighted), out StyleBoxFlat style))
+			return style;
+
+		Color color = CategoryColor(category);
+		var background = new Color(0.07f, 0.09f, 0.15f, 0.96f);
+		style = highlighted
+			? MakeStyle(background.Lerp(color, 0.22f), color)
+			: MakeStyle(background.Lerp(color, 0.08f), color.Darkened(0.45f));
+		if (highlighted)
+			style.SetBorderWidthAll(6);
+		_cardStyles[(category, highlighted)] = style;
+		return style;
 	}
 
 	private void BuildLayout()
@@ -156,6 +199,10 @@ public partial class LevelUpMenu : Control
 		var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.6f), MouseFilter = MouseFilterEnum.Ignore };
 		dim.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(dim);
+
+		// Over the dimmed fight, under the cards.
+		_pulse = new LevelUpPulse();
+		AddChild(_pulse);
 
 		var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
 		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);

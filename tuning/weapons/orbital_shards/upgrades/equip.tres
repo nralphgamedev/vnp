@@ -8,6 +8,7 @@ script = ExtResource("1_script")
 Id = "orbital_shards"
 Name = "Orbital Shards"
 Description = "New VNP Weapon. {count} shards circle the VNP and damage enemies they touch."
+Category = 0
 Effect = 0
 Weapon = ExtResource("2_weapon")
 Amount = 0.0

@@ -39,4 +39,10 @@ public partial class HarvestingTuning : Resource
 	[Export] public float DebrisSize;
 
 	[Export] public Color DebrisColor;
+
+	/// <summary>Slowest debris tumble, in degrees per second. Every piece of debris tumbles around a random axis.</summary>
+	[Export] public float DebrisTumbleSpeedMin;
+
+	/// <summary>Fastest debris tumble, in degrees per second.</summary>
+	[Export] public float DebrisTumbleSpeedMax;
 }

@@ -72,29 +72,28 @@ public partial class VnpHarvester : Node3D
 		}
 
 		_targetId = harvestables.IdOf(target);
+		Vector2 targetPosition = harvestables.PositionOf(target);
+		float targetRadius = harvestables.RadiusOf(target);
 		harvestables.Harvest(target, Rate * (float)delta);
-		ShowBeam(from, harvestables.PositionOf(target), harvestables.RadiusOf(target));
+		ShowBeam(from, targetPosition, harvestables.HeightOf(target));
+
+		// Particles flow from the material's edge back to the VNP.
+		Vector2 toVnp = (from - targetPosition).Normalized();
+		Fight.Effects.HarvestFlow(targetPosition + toVnp * targetRadius * 0.6f, from, Tuning.Look.ExperienceColor,
+			Tuning.Feedback.VnpHarvestParticles, (float)delta);
 	}
 
-	private void ShowBeam(Vector2 from, Vector2 to, float targetRadius)
+	/// <summary>Draws the beam from inside the VNP down into the middle of the material, so its end is
+	/// hidden inside whatever it is harvesting.</summary>
+	private void ShowBeam(Vector2 from, Vector2 to, float targetHeight)
 	{
-		Vector2 along = to - from;
-		float distance = along.Length();
-		if (distance < 0.01f)
-			return;
-
-		// End the beam just inside the target's edge.
-		Vector2 end = from + along / distance * Mathf.Max(0f, distance - targetRadius * 0.5f);
-		float length = from.DistanceTo(end);
-		if (length < 0.01f)
+		if (from.DistanceTo(to) < 0.01f)
 			return;
 
 		// A slight shimmer, so a beam that is working looks alive.
 		float width = 0.22f + 0.06f * Mathf.Sin((float)Fight.Elapsed * 25f);
 
-		_beam.Position = PlaneMath.ToWorld((from + end) * 0.5f, BeamHeight);
-		_beam.Rotation = new Vector3(0f, PlaneMath.YawFacing(along), 0f);
-		_beam.Scale = new Vector3(width, 0.1f, length);
+		_beam.Transform = PlaneMath.Bar(PlaneMath.ToWorld(from, BeamHeight), PlaneMath.ToWorld(to, targetHeight), width, 0.1f);
 		_beam.Visible = true;
 	}
 }

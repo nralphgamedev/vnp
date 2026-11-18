@@ -13,3 +13,5 @@ DroneRange = 20.0
 DroneStandoff = 2.0
 DebrisSize = 0.8
 DebrisColor = Color(0.55, 0.3, 0.24, 1)
+DebrisTumbleSpeedMin = 20.0
+DebrisTumbleSpeedMax = 60.0

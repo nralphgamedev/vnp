@@ -33,11 +33,18 @@ public partial class PlaceholderBaker : Node
 		new(0f, -1f), new(0.32f, 0f), new(0f, 1f), new(-0.32f, 0f),
 	};
 
-	// Debris: a jagged shard. Its thickness is also in Harvestables.DebrisThickness.
+	// Debris: a broken plate of hull, with a few torn edges. It tumbles, so its thickness shows.
+	// Its farthest point from the centre is about 1, which Harvestables.DebrisExtent relies on.
 	private static readonly Vector2[] DebrisOutline =
 	{
-		new(-0.9f, -0.3f), new(-0.2f, -0.5f), new(0.1f, -1.0f), new(0.4f, -0.3f), new(1.0f, -0.1f),
-		new(0.3f, 0.3f), new(0.5f, 0.9f), new(-0.2f, 0.4f), new(-0.7f, 0.6f), new(-0.5f, 0.1f),
+		new(-0.85f, -0.5f), new(0.15f, -0.7f), new(0.4f, -0.4f), new(0.9f, -0.45f), new(0.7f, 0.25f),
+		new(0.85f, 0.55f), new(0.1f, 0.7f), new(-0.25f, 0.45f), new(-0.8f, 0.55f), new(-0.6f, 0.05f),
+	};
+
+	// Fragment: a small jagged triangle that destroyed enemies and used-up material burst into.
+	private static readonly Vector2[] FragmentOutline =
+	{
+		new(0f, -0.5f), new(0.4f, 0.35f), new(-0.05f, 0.2f), new(-0.4f, 0.4f),
 	};
 
 	private static readonly Color VnpHullColor = new(0.62f, 0.7f, 0.9f);
@@ -65,10 +72,13 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.ExtrudedShape(DroneOutline, 0.45f), "meshes/drone.tres");
 		Save(PlaceholderShapes.ExtrudedShape(EnemyOutline, 0.7f), "meshes/enemy.tres");
 		Save(PlaceholderShapes.ExtrudedShape(ShardOutline, 0.4f), "meshes/orbital_shard.tres");
-		Save(PlaceholderShapes.ExtrudedShape(DebrisOutline, 0.45f), "meshes/debris.tres");
+		Save(PlaceholderShapes.ExtrudedShape(DebrisOutline, 0.5f), "meshes/debris.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
 		Save(new BoxMesh { Size = Vector3.One }, "meshes/unit_box.tres");
 		Save(new BoxMesh { Size = new Vector3(0.4f, 0.4f, 1.3f) }, "meshes/projectile.tres");
+		// Effects: pieces of a burst, and a flat ring that spreads out. Sparks use the unit box.
+		Save(PlaceholderShapes.ExtrudedShape(FragmentOutline, 0.3f), "meshes/fragment.tres");
+		Save(PlaceholderShapes.FlatRing(0.8f, 1f, 40), "meshes/ring.tres");
 		// The sheet the ground grid is drawn on. It moves with the camera.
 		Save(new PlaneMesh { Size = new Vector2(800f, 800f) }, "meshes/ground_sheet.tres");
 
@@ -90,6 +100,12 @@ public partial class PlaceholderBaker : Node
 		// Shapes drawn many at once, where each copy brings its own colour.
 		Save(InstanceMaterial(unshaded: false), "materials/instanced_lit.tres");
 		Save(InstanceMaterial(unshaded: true), "materials/instanced_unshaded.tres");
+		// Glowing effects: colours add to what is behind them, so fading to black fades to nothing.
+		StandardMaterial3D glow = InstanceMaterial(unshaded: true);
+		glow.BlendMode = BaseMaterial3D.BlendModeEnum.Add;
+		glow.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+		glow.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+		Save(glow, "materials/instanced_glow.tres");
 
 		Material hull = Save(Solid(VnpHullColor, glow: 0.1f), "materials/vnp_hull.tres");
 		Material core = Save(Solid(VnpCoreColor, glow: 0.8f), "materials/vnp_core.tres");

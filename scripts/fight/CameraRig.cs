@@ -13,11 +13,26 @@ public partial class CameraRig : Camera3D
 	/// <summary>The point on the plane at the center of the screen.</summary>
 	public Vector3 Focus { get; private set; }
 
+	// How much shake is left, from 0 to 1. It dies away over ShakeTime.
+	private float _shake;
+	private readonly Random _shakeRandom = new();
+
 	public override void _Ready()
 	{
 		// Run after the VNP has moved this frame, so the camera never trails a frame behind.
 		ProcessPriority = UpdateOrder.Camera;
 		Current = true;
+	}
+
+	/// <summary>
+	/// Shakes the screen. <paramref name="amount"/> is from 0 to 1 of the strongest shake in feedback.tres.
+	/// A weaker shake does not cut short a stronger one already going.
+	/// </summary>
+	public void Shake(float amount)
+	{
+		if (!Tuning.Feedback.ScreenShake)
+			return;
+		_shake = Mathf.Max(_shake, Mathf.Clamp(amount, 0f, 1f));
 	}
 
 	/// <summary>Jumps straight to the target, skipping any follow lag.</summary>
@@ -40,6 +55,9 @@ public partial class CameraRig : Camera3D
 		else
 			Focus = wanted;
 
+		float shakeTime = Tuning.Feedback.ShakeTime;
+		_shake = shakeTime > 0f ? Mathf.Max(0f, _shake - (float)delta / shakeTime) : 0f;
+
 		Apply();
 	}
 
@@ -51,7 +69,7 @@ public partial class CameraRig : Camera3D
 
 		// Sit above the focus and slightly toward the bottom of the screen, looking back at it.
 		// Pitching by -(90 - tilt) keeps the top of the screen pointing along -Z.
-		GlobalPosition = Focus + new Vector3(0f, height, height * Mathf.Tan(tilt));
+		GlobalPosition = Focus + new Vector3(0f, height, height * Mathf.Tan(tilt)) + ShakeOffset();
 		RotationDegrees = new Vector3(-(90f - Tuning.Camera.Tilt), 0f, 0f);
 
 		Near = 1f;
@@ -69,6 +87,15 @@ public partial class CameraRig : Camera3D
 			Projection = ProjectionType.Perspective;
 			Fov = Tuning.Camera.Fov;
 		}
+	}
+
+	/// <summary>A random nudge sideways on the plane. Squaring the shake makes it die away smoothly.</summary>
+	private Vector3 ShakeOffset()
+	{
+		if (_shake <= 0f)
+			return Vector3.Zero;
+		float reach = Tuning.Feedback.ShakeStrength * _shake * _shake;
+		return new Vector3(_shakeRandom.NextSingle() * 2f - 1f, 0f, _shakeRandom.NextSingle() * 2f - 1f) * reach;
 	}
 
 	/// <summary>

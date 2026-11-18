@@ -15,6 +15,8 @@ public partial class Fight : Node3D
 	public Projectiles Projectiles { get; private set; }
 	public Harvestables Harvestables { get; private set; }
 	public VnpHarvester VnpHarvester { get; private set; }
+	public Effects Effects { get; private set; }
+	public DamageNumbers DamageNumbers { get; private set; }
 
 	/// <summary>The VNP Weapons equipped, in slot order.</summary>
 	public IReadOnlyList<VnpWeapon> Weapons => _weapons;
@@ -102,6 +104,8 @@ public partial class Fight : Node3D
 		Enemies = GetNode<EnemySwarm>("Enemies");
 		Drones = GetNode<DroneSwarm>("Drones");
 		Projectiles = GetNode<Projectiles>("Projectiles");
+		Effects = GetNode<Effects>("Effects");
+		DamageNumbers = GetNode<DamageNumbers>("Hud/DamageNumbers");
 		Harvestables = GetNode<Harvestables>("Harvestables");
 		_weaponHolder = GetNode<Node3D>("Weapons");
 		VnpHarvester = GetNode<VnpHarvester>("VnpHarvester");
@@ -110,6 +114,7 @@ public partial class Fight : Node3D
 		// The fight starts at the gateway.
 		Vnp.PlaceAt(Gateway.PlanePosition);
 		Vnp.Destroyed += OnVnpDestroyed;
+		Vnp.Damaged += _ => Camera.Shake(Tuning.Feedback.ShakeOnVnpDamage);
 
 		Camera.Target = Vnp;
 		Camera.SnapToTarget();
@@ -137,6 +142,8 @@ public partial class Fight : Node3D
 		GetNode<PauseMenu>("Hud/PauseMenu").Fight = this;
 		_resultScreen = GetNode<ResultScreen>("Hud/ResultScreen");
 		_resultScreen.Fight = this;
+		DamageNumbers.Fight = this;
+		GetNode<WeaponSlots>("Hud/WeaponSlots").Fight = this;
 	}
 
 	/// <summary>Ends the fight: freezes it and shows the result screen.</summary>
@@ -238,6 +245,7 @@ public partial class Fight : Node3D
 		{
 			_alertedSteps = EscalationSteps;
 			_fightHud.ShowEscalationAlert();
+			Camera.Shake(Tuning.Feedback.ShakeOnEscalation);
 		}
 
 		// Retreat: stay on the gateway long enough and the option appears.

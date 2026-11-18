@@ -8,6 +8,7 @@ script = ExtResource("1_script")
 Id = "beam"
 Name = "Beam"
 Description = "New Drone Weapon. Every drone swaps its Projectile for a short-range beam that never misses."
+Category = 1
 Effect = 2
 DroneWeapon = ExtResource("2_drone_weapon")
 Amount = 0.0

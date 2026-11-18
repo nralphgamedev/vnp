@@ -22,6 +22,7 @@ public static class Tuning
 	public static LevelsTuning Levels => _levels ??= Load<LevelsTuning>("levels");
 	public static CameraTuning Camera => _camera ??= Load<CameraTuning>("camera");
 	public static LookTuning Look => _look ??= Load<LookTuning>("look");
+	public static FeedbackTuning Feedback => _feedback ??= Load<FeedbackTuning>("feedback");
 
 	private static VnpTuning _vnp;
 	private static DronesTuning _drones;
@@ -33,6 +34,7 @@ public static class Tuning
 	private static LevelsTuning _levels;
 	private static CameraTuning _camera;
 	private static LookTuning _look;
+	private static FeedbackTuning _feedback;
 
 	private static T Load<T>(string file) where T : Resource
 	{

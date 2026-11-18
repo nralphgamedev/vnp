@@ -8,6 +8,7 @@ script = ExtResource("1_script")
 Id = "pulse_laser_cooldown"
 Name = "Pulse Laser cooldown"
 Description = "Pulse Laser cooldown -{percent}, so it fires more often."
+Category = 0
 Effect = 1
 Weapon = ExtResource("2_weapon")
 WeaponStat = 1

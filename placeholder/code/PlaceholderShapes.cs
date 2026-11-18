@@ -126,6 +126,30 @@ public static class PlaceholderShapes
 		return surface.Commit();
 	}
 
+	/// <summary>
+	/// A flat ring lying on the plane, seen from above and below. <paramref name="inner"/> and
+	/// <paramref name="outer"/> are its radii; scale it to grow the ring.
+	/// </summary>
+	public static ArrayMesh FlatRing(float inner, float outer, int segments)
+	{
+		var surface = new SurfaceTool();
+		surface.Begin(Mesh.PrimitiveType.Triangles);
+		for (int i = 0; i < segments; i++)
+		{
+			float a0 = i * Mathf.Tau / segments;
+			float a1 = (i + 1) * Mathf.Tau / segments;
+			var d0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0));
+			var d1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
+			Vector3 i0 = d0 * inner, o0 = d0 * outer, i1 = d1 * inner, o1 = d1 * outer;
+			foreach (Vector3 normal in new[] { Vector3.Up, Vector3.Down })
+			{
+				AddTriangle(surface, i0, o0, o1, normal);
+				AddTriangle(surface, i0, o1, i1, normal);
+			}
+		}
+		return surface.Commit();
+	}
+
 	/// <summary>Adds one triangle that faces along <paramref name="normal"/>, whichever order its corners came in.</summary>
 	private static void AddTriangle(SurfaceTool surface, Vector3 a, Vector3 b, Vector3 c, Vector3 normal)
 	{

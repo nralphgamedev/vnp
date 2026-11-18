@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="FeedbackTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/FeedbackTuning.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+HitFlashTime = 0.12
+DamageNumbers = true
+DamageNumberSize = 22
+DamageNumberTime = 0.7
+DamageNumberRise = 45.0
+DamageNumberMergeSeconds = 0.25
+DamageNumberMax = 80
+DamageNumberColor = Color(1, 0.95, 0.8, 1)
+ScreenShake = true
+ShakeStrength = 1.2
+ShakeTime = 0.3
+ShakeOnVnpDamage = 0.35
+ShakeOnWave = 0.6
+ShakeOnEscalation = 1.0
+LowHealthFraction = 0.3
+LowHealthPulseSeconds = 0.8
+DebrisDelay = 0.25
+EnemyDeathChunks = 6
+EnemyDeathSparks = 10
+DronePopSparks = 8
+EffectSize = 1.3
+ImpactSparks = 4
+MuzzleSparks = 3
+SparkSpeed = 14.0
+SparkTime = 0.25
+ShardTrails = true
+ShardTrailTime = 0.22
+VnpHarvestParticles = 30.0
+DroneHarvestParticles = 6.0
+HarvestParticleSpeed = 22.0
+MaterialPopChunks = 6
+LevelUpPulseTime = 0.6
+MaxParticles = 3000

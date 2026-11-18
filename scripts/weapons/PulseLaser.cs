@@ -10,6 +10,9 @@ public partial class PulseLaser : VnpWeapon
 
 	private PulseLaserDefinition Laser => (PulseLaserDefinition)Definition;
 
+	/// <summary>How much damage upgrades show: the beam and its flashes grow with damage, gently.</summary>
+	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Laser.Damage));
+
 	private float _cooldownLeft;
 	private float _beamTimeLeft;
 	private MeshInstance3D _beam;
@@ -53,6 +56,8 @@ public partial class PulseLaser : VnpWeapon
 		Vector2 targetPosition = Fight.Enemies.PositionOf(target);
 		Fight.Enemies.Damage(target, Damage);
 		ShowBeam(from, targetPosition);
+		Fight.Effects.MuzzleFlash(from, targetPosition - from, Laser.Color, Power);
+		Fight.Effects.Impact(targetPosition, Laser.Color, 1.2f * Power);
 		_cooldownLeft = Cooldown;
 	}
 
@@ -65,7 +70,7 @@ public partial class PulseLaser : VnpWeapon
 
 		_beam.Position = PlaneMath.ToWorld((from + to) * 0.5f, BeamHeight);
 		_beam.Rotation = new Vector3(0f, PlaneMath.YawFacing(along), 0f);
-		_beam.Scale = new Vector3(Laser.BeamWidth, 0.15f, length);
+		_beam.Scale = new Vector3(Laser.BeamWidth * Power, 0.15f, length);
 		_beam.Visible = true;
 		_beamTimeLeft = Laser.BeamTime;
 		_beamMaterial.AlbedoColor = Laser.Color;

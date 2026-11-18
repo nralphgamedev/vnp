@@ -66,6 +66,8 @@ public partial class Projectiles : Node3D
 			bool hit = shot.FromEnemy
 				? HitPlayerSide(before, shot.Position, shot.Damage)
 				: HitEnemy(before, shot.Position, shot.Damage);
+			if (hit)
+				Fight.Effects.Impact(shot.Position, shot.Color, 0.6f);
 
 			if (hit || shot.Life <= 0f)
 				_shots[i] = _shots[--Count]; // Fill the gap with the last shot.

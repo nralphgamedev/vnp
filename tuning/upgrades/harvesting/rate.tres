@@ -7,6 +7,7 @@ script = ExtResource("1_script")
 Id = "harvest_rate"
 Name = "Harvest rate"
 Description = "All harvest beams work {percent} faster, so fight experience comes in faster."
+Category = 2
 Effect = 3
 Stat = 2
 Amount = 0.25

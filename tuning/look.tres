@@ -4,9 +4,12 @@
 
 [resource]
 script = ExtResource("1_script")
-HitFlashTime = 0.12
 ExperienceColor = Color(0.72, 0.45, 1.0, 1)
 GatewayColor = Color(0.2, 0.95, 0.85, 1)
 IndicatorEdgeMargin = 46.0
 IndicatorSize = 36.0
 IndicatorAlwaysVisible = false
+VnpWeaponCardColor = Color(1, 0.62, 0.25, 1)
+DroneWeaponCardColor = Color(0.45, 0.8, 1, 1)
+StatsCardColor = Color(0.45, 0.95, 0.55, 1)
+DronesCardColor = Color(1, 0.5, 0.78, 1)

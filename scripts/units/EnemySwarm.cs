@@ -47,7 +47,17 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Fight time, in seconds, when the next wave arrives.</summary>
 	public float NextWaveTime => Tuning.EnemySpawning.WaveFirstSeconds + WavesSent * Tuning.EnemySpawning.WaveIntervalSeconds;
 
+	/// <summary>Debris waiting to appear while its enemy bursts apart.</summary>
+	private struct PendingDebris
+	{
+		public Vector2 Position;
+		public float Mass;
+		public float Delay;
+	}
+
 	private Enemy[] _enemies = new Enemy[256];
+	private PendingDebris[] _pendingDebris = new PendingDebris[32];
+	private int _pendingDebrisCount;
 	private readonly SpatialGrid _grid = new(Type.NeighborRadius);
 	private readonly int[] _nearby = new int[64];
 	private readonly int[] _hitCandidates = new int[64];
@@ -75,6 +85,7 @@ public partial class EnemySwarm : Node3D
 		Vector2 vnpPosition = Fight.Vnp.PlanePosition;
 
 		RemoveDeadAndDistant(vnpPosition);
+		DropPendingDebris(dt);
 		Spawn(dt, vnpPosition);
 		Simulate(dt, vnpPosition, Fight.Vnp.Velocity, vnpAlive: !Fight.Vnp.IsDestroyed);
 		Draw();
@@ -162,12 +173,15 @@ public partial class EnemySwarm : Node3D
 			return;
 
 		enemy.Health -= amount;
-		enemy.Flash = Tuning.Look.HitFlashTime;
+		enemy.Flash = Tuning.Feedback.HitFlashTime;
 		enemy.Aggro = true; // Being shot gets its attention, even from outside its aggro range.
+		Fight.DamageNumbers.Add(enemy.Id, enemy.Position, amount);
 		if (enemy.Health <= 0f)
 		{
 			Fight.Kills++;
-			Fight.Harvestables.AddDebris(enemy.Position, Rng.Range(Type.DebrisMassMin, Type.DebrisMassMax));
+			// It bursts apart, and its debris appears a moment later.
+			Fight.Effects.EnemyDeath(enemy.Position, Type.Color);
+			AddPendingDebris(enemy.Position, Rng.Range(Type.DebrisMassMin, Type.DebrisMassMax));
 			// The enemy itself is cleared away at the start of the next update.
 		}
 	}
@@ -183,6 +197,35 @@ public partial class EnemySwarm : Node3D
 			bool tooFar = _enemies[i].Position.DistanceSquaredTo(vnpPosition) > despawnSquared;
 			if (dead || tooFar)
 				_enemies[i] = _enemies[--Count]; // Fill the gap with the last enemy.
+		}
+	}
+
+	private void AddPendingDebris(Vector2 position, float mass)
+	{
+		if (Tuning.Feedback.DebrisDelay <= 0f)
+		{
+			Fight.Harvestables.AddDebris(position, mass);
+			return;
+		}
+		if (_pendingDebrisCount == _pendingDebris.Length)
+			Array.Resize(ref _pendingDebris, _pendingDebris.Length * 2);
+		_pendingDebris[_pendingDebrisCount++] = new PendingDebris
+		{
+			Position = position,
+			Mass = mass,
+			Delay = Tuning.Feedback.DebrisDelay,
+		};
+	}
+
+	private void DropPendingDebris(float dt)
+	{
+		for (int i = _pendingDebrisCount - 1; i >= 0; i--)
+		{
+			_pendingDebris[i].Delay -= dt;
+			if (_pendingDebris[i].Delay > 0f)
+				continue;
+			Fight.Harvestables.AddDebris(_pendingDebris[i].Position, _pendingDebris[i].Mass);
+			_pendingDebris[i] = _pendingDebris[--_pendingDebrisCount];
 		}
 	}
 
@@ -216,6 +259,7 @@ public partial class EnemySwarm : Node3D
 	{
 		int groups = Tuning.EnemySpawning.WaveGroups + Tuning.EnemySpawning.WaveGroupsAddedPerWave * WavesSent;
 		WavesSent++;
+		Fight.Camera.Shake(Tuning.Feedback.ShakeOnWave);
 		float startAngle = Rng.Range(0f, Mathf.Tau);
 		for (int g = 0; g < groups; g++)
 		{
@@ -444,7 +488,7 @@ public partial class EnemySwarm : Node3D
 			ref Enemy enemy = ref _enemies[i];
 			Color color = enemy.Aggro ? chasing : idle;
 			if (enemy.Flash > 0f)
-				color = color.Lerp(Colors.White, enemy.Flash / Tuning.Look.HitFlashTime);
+				color = color.Lerp(Colors.White, enemy.Flash / Tuning.Feedback.HitFlashTime);
 			_batch.Set(i, enemy.Position, 0f, enemy.Yaw, Type.Size, color);
 		}
 		_batch.Commit(Count);

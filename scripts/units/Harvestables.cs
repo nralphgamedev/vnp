@@ -24,7 +24,6 @@ public partial class Harvestables : Node3D
 		public int Id;             // Stays the same for its whole life, unlike its place in the array.
 		public Vector2 Position;
 		public float Mass;
-		public float Yaw;
 		public Basis Shape;        // An asteroid's own fixed turn and stretch in 3D.
 		public int Variant;        // Which rock shape an asteroid is drawn with.
 		public bool IsAsteroid;    // An asteroid, as opposed to debris.
@@ -36,12 +35,20 @@ public partial class Harvestables : Node3D
 		public float TumblePhase;  // Starting tumble angle, so tumblers are not in step.
 	}
 
-	// Thickness of the debris mesh at scale 1, used to sit it below the units.
-	private const float DebrisThickness = 0.45f;
+	// Farthest point of the debris mesh from its centre at scale 1. Debris tumbles, so any point can face
+	// up; this is used to sit it below the units.
+	private const float DebrisExtent = 1f;
+
+	// How far, in degrees, debris and its tumble axis tilt from flat. Kept well short of 90 so a piece
+	// never turns edge-on to the camera.
+	private const float DebrisWobble = 30f;
 
 	// Rough radius of each outline at scale 1. Used for harvest reach and spacing.
 	private const float AsteroidShapeRadius = 0.9f;
 	private const float DebrisShapeRadius = 0.8f;
+
+	// Mass below this counts as used up.
+	private const float UsedUp = 0.0001f;
 
 	// How long the being-harvested tint lingers after a beam lets go.
 	private const float GlowTime = 0.15f;
@@ -124,6 +131,19 @@ public partial class Harvestables : Node3D
 		return shape * Mathf.Sqrt(item.Mass);
 	}
 
+	/// <summary>
+	/// How far below the plane the centre of an asteroid or piece of debris is drawn. Things can turn any
+	/// side up, so they sit low enough that their top stays just below the units, and ships, shots and
+	/// beams pass over them. Harvest beams aim at this point, so they end out of sight inside.
+	/// </summary>
+	public float HeightOf(int index)
+	{
+		ref Item item = ref _items[index];
+		return item.IsAsteroid
+			? -0.3f - Tuning.Asteroids.Size * Mathf.Sqrt(item.Mass) * Tuning.Asteroids.StretchMax
+			: -0.3f - Tuning.Harvesting.DebrisSize * Mathf.Sqrt(item.Mass) * DebrisExtent;
+	}
+
 	/// <summary>Distance from a point to the edge of an asteroid or piece of debris.</summary>
 	public float EdgeDistance(int index, Vector2 point) => _items[index].Position.DistanceTo(point) - RadiusOf(index);
 
@@ -156,6 +176,10 @@ public partial class Harvestables : Node3D
 		item.Mass -= taken;
 		item.Glow = GlowTime;
 		Fight.AddHarvest(taken);
+		// Used up: it pops. It is cleared away at the start of the next update.
+		if (item.Mass <= UsedUp && item.Mass + taken > UsedUp)
+			Fight.Effects.MaterialPop(item.Position, item.IsAsteroid ? Tuning.Asteroids.Color : Tuning.Harvesting.DebrisColor,
+				Tuning.Look.ExperienceColor);
 		return taken;
 	}
 
@@ -177,7 +201,7 @@ public partial class Harvestables : Node3D
 		// Clear away whatever was fully harvested last frame.
 		for (int i = _count - 1; i >= 0; i--)
 		{
-			if (_items[i].Mass <= 0.0001f)
+			if (_items[i].Mass <= UsedUp)
 				_items[i] = _items[--_count]; // Fill the gap with the last one.
 		}
 
@@ -234,17 +258,15 @@ public partial class Harvestables : Node3D
 					basis = new Basis(item.TumbleAxis, item.TumblePhase + item.TumbleSpeed * time) * basis;
 				basis = basis.Scaled(Vector3.One * scale);
 
-				// A rock can point any side up, so sit it far enough down that its top stays just
-				// below the units, so ships, shots and beams pass over it.
-				float height = -0.3f - scale * Tuning.Asteroids.StretchMax;
 				int v = item.Variant;
-				_asteroidBatches[v].SetBasis(_variantCounts[v]++, item.Position, height, basis, color);
+				_asteroidBatches[v].SetBasis(_variantCounts[v]++, item.Position, HeightOf(i), basis, color);
 			}
 			else
 			{
+				// Debris always tumbles, like a broken piece drifting.
 				float scale = Tuning.Harvesting.DebrisSize * Mathf.Sqrt(item.Mass);
-				float height = -0.3f - DebrisThickness * scale * 0.5f;
-				_debrisBatch.Set(debris++, item.Position, height, item.Yaw, scale, color);
+				Basis basis = new Basis(item.TumbleAxis, item.TumblePhase + item.TumbleSpeed * time) * item.Shape;
+				_debrisBatch.SetBasis(debris++, item.Position, HeightOf(i), basis.Scaled(Vector3.One * scale), color);
 			}
 		}
 
@@ -436,18 +458,21 @@ public partial class Harvestables : Node3D
 		if (_count == _items.Length)
 			Array.Resize(ref _items, _items.Length * 2);
 
-		bool tumbles = isAsteroid && Rng.Range(0f, 1f) < Tuning.Asteroids.TumbleChance;
+		// Some asteroids tumble; every piece of debris does.
+		bool tumbles = !isAsteroid || Rng.Range(0f, 1f) < Tuning.Asteroids.TumbleChance;
+		float tumbleSpeed = isAsteroid
+			? Rng.Range(Tuning.Asteroids.TumbleSpeedMin, Tuning.Asteroids.TumbleSpeedMax)
+			: Rng.Range(Tuning.Harvesting.DebrisTumbleSpeedMin, Tuning.Harvesting.DebrisTumbleSpeedMax);
 		_items[_count++] = new Item
 		{
-			TumbleAxis = tumbles ? RandomAxis() : Vector3.Zero,
-			TumbleSpeed = tumbles ? Mathf.DegToRad(Rng.Range(Tuning.Asteroids.TumbleSpeedMin, Tuning.Asteroids.TumbleSpeedMax)) * Rng.Sign() : 0f,
+			TumbleAxis = !tumbles ? Vector3.Zero : isAsteroid ? RandomAxis() : NearlyUpright(DebrisWobble),
+			TumbleSpeed = tumbles ? Mathf.DegToRad(tumbleSpeed) * Rng.Sign() : 0f,
 			TumblePhase = Rng.Range(0f, Mathf.Tau),
-			Shape = isAsteroid ? RandomShape() : Basis.Identity,
+			Shape = isAsteroid ? RandomShape() : DebrisShape(),
 			Variant = isAsteroid ? Rng.Int(0, _asteroidBatches.Length - 1) : 0,
 			Id = ++_lastId,
 			Position = position,
 			Mass = mass,
-			Yaw = Rng.Range(0f, Mathf.Tau),
 			IsAsteroid = isAsteroid,
 			Field = field,
 			Offset = offset,
@@ -462,6 +487,24 @@ public partial class Harvestables : Node3D
 			Rng.Range(Tuning.Asteroids.StretchMin, Tuning.Asteroids.StretchMax),
 			Rng.Range(Tuning.Asteroids.StretchMin, Tuning.Asteroids.StretchMax));
 		return new Basis(RandomAxis(), Rng.Range(0f, Mathf.Tau)) * Basis.FromScale(stretch);
+	}
+
+	/// <summary>
+	/// Debris lies roughly flat, turned to a random heading and tilted a little. With its tumble axis also
+	/// near upright, it spins and wobbles but never turns fully edge-on, where the plate is hard to see.
+	/// </summary>
+	private static Basis DebrisShape()
+	{
+		return new Basis(NearlyUpright(DebrisWobble), Rng.Range(0f, Mathf.Tau))
+			* new Basis(Vector3.Right, Mathf.DegToRad(Rng.Range(-DebrisWobble, DebrisWobble)));
+	}
+
+	/// <summary>A random direction within <paramref name="degrees"/> of straight up.</summary>
+	private static Vector3 NearlyUpright(float degrees)
+	{
+		float tilt = Mathf.DegToRad(Rng.Range(0f, degrees));
+		Vector2 flat = Rng.Direction() * Mathf.Sin(tilt);
+		return new Vector3(flat.X, Mathf.Cos(tilt), flat.Y);
 	}
 
 	/// <summary>A random direction in 3D, spread evenly over the sphere.</summary>

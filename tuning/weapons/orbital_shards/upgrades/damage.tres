@@ -8,6 +8,7 @@ script = ExtResource("1_script")
 Id = "orbital_shards_damage"
 Name = "Orbital Shards damage"
 Description = "Orbital Shards damage +{percent}."
+Category = 0
 Effect = 1
 Weapon = ExtResource("2_weapon")
 WeaponStat = 0

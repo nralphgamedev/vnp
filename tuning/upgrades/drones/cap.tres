@@ -7,6 +7,7 @@ script = ExtResource("1_script")
 Id = "drone_cap"
 Name = "Drone cap"
 Description = "Drone cap +{amount} for the rest of the fight."
+Category = 3
 Effect = 4
 Stat = 3
 Amount = 5.0
