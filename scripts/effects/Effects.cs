@@ -91,6 +91,16 @@ public partial class Effects : Node3D
 		Ring(at, color.Lerp(Colors.White, 0.4f), 0.3f, 2.4f * scale, 0.25f);
 	}
 
+	/// <summary>
+	/// A mine going off: an explosion, and a ring that spreads to exactly the blast radius, so the player
+	/// can see how far it reached whatever the effect size setting.
+	/// </summary>
+	public void Blast(Vector2 at, Color color, float radius, float scale = 1f)
+	{
+		Explosion(at, color, scale);
+		_rings.Emit(Room, at, Vector2.Zero, 0.3f, 0.3f, radius, color.Lerp(Colors.White, 0.3f), Gone, RingHeight);
+	}
+
 	/// <summary>A missile running out without hitting anything: a small, dim puff.</summary>
 	public void Fizzle(Vector2 at, Color color)
 	{

@@ -13,6 +13,9 @@ public static class Sound
 	public const string ScatterShotFire = "scatter_shot_fire";
 	public const string SeekerLaunch = "seeker_launch";
 	public const string SeekerHit = "seeker_hit";
+	public const string ShockwaveFire = "shockwave_fire";
+	public const string MineDrop = "mine_drop";
+	public const string MineExplode = "mine_explode";
 	public const string Hit = "hit";
 	public const string EnemyDeath = "enemy_death";
 	public const string DroneDeath = "drone_death";

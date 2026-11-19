@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/mine_layer/mine_layer.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "mine_layer_cooldown"
+Name = "Mine Layer cooldown"
+Description = "Mine Layer cooldown -{percent}, so mines are dropped more often."
+Category = 0
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 1
+Amount = -0.15
+Limit = 4

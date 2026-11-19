@@ -38,6 +38,8 @@ public abstract partial class VnpWeapon : Node3D
 			OrbitalShardsDefinition => new OrbitalShards(),
 			ScatterShotDefinition => new ScatterShot(),
 			SeekerMissilesDefinition => new SeekerMissiles(),
+			ShockwaveDefinition => new Shockwave(),
+			MineLayerDefinition => new MineLayer(),
 			_ => null,
 		};
 		if (weapon == null)

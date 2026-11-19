@@ -92,6 +92,10 @@ public partial class Fight : Node3D
 	public float EnemySpawnRateScale => (1f + Tuning.Difficulty.RampSpawnRatePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationSpawnRatePerStep * EscalationSteps);
 	public float EnemyAggroScale => 1f + Tuning.Difficulty.EscalationAggroRangePerStep * EscalationSteps;
 
+	/// <summary>Accuracy added to enemies spawned now, from the ramp and escalation, on the 0 to 1 scale.</summary>
+	public float EnemyAccuracyBonus => Tuning.Difficulty.RampEnemyAccuracyPerMinute * Minutes
+		+ Tuning.Difficulty.EscalationEnemyAccuracyPerStep * EscalationSteps;
+
 	private readonly List<VnpWeapon> _weapons = new();
 	private Node3D _weaponHolder;
 	private float _harvestTowardDrone;

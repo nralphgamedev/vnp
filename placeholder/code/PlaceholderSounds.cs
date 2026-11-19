@@ -187,6 +187,25 @@ public static class PlaceholderSounds
 			Noise(b, random, 0f, 0.22f, 5000f, 300f, 0.7f);
 			Tone(b, 0f, 0.18f, 180f, 60f, Wave.Sine, 0.5f);
 		}));
+
+		// ───────────── Stage 5 weapons ─────────────
+		Save(folder, "shockwave_fire", Make(0.5f, b =>
+		{
+			Tone(b, 0f, 0.4f, 160f, 50f, Wave.Sine, 0.8f);
+			Noise(b, random, 0f, 0.45f, 1200f, 300f, 0.35f);
+			Tone(b, 0f, 0.25f, 600f, 200f, Wave.Triangle, 0.15f);
+		}));
+		Save(folder, "mine_drop", Make(0.1f, b =>
+		{
+			Tone(b, 0f, 0.05f, 700f, 650f, Wave.Triangle, 0.5f);
+			Tone(b, 0.04f, 0.05f, 950f, 900f, Wave.Triangle, 0.35f);
+		}));
+		Save(folder, "mine_explode", Make(0.45f, b =>
+		{
+			Noise(b, random, 0f, 0.4f, 6000f, 200f, 0.8f);
+			Tone(b, 0f, 0.3f, 120f, 40f, Wave.Sine, 0.7f);
+			Tone(b, 0f, 0.12f, 300f, 120f, Wave.Square, 0.2f);
+		}));
 	}
 
 	/// <summary>

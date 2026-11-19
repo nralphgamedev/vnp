@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MineLayerDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/MineLayerDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+BlastRadius = 5.0
+TriggerRadius = 1.6
+MineLifetime = 12.0
+MaxMines = 10
+MinMoveSpeed = 3.0
+DropDistance = 2.0
+MineSize = 0.7
+Id = "mine_layer"
+Name = "Mine Layer"
+Damage = 22.0
+Cooldown = 0.9
+Color = Color(0.55, 1, 0.35, 1)

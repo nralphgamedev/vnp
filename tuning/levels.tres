@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LevelsTuning" load_steps=25 format=3]
+[gd_resource type="Resource" script_class="LevelsTuning" load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/schemas/LevelsTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/upgrades/equip.tres" id="2_orbital_shards"]
@@ -24,6 +24,14 @@
 [ext_resource type="Resource" path="res://tuning/weapons/seeker_missiles/upgrades/count.tres" id="22_seeker_missiles_count"]
 [ext_resource type="Resource" path="res://tuning/weapons/scatter_shot/upgrades/range.tres" id="23_scatter_shot_range"]
 [ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/upgrades/equip.tres" id="24_pulse_laser_equip"]
+[ext_resource type="Resource" path="res://tuning/weapons/shockwave/upgrades/equip.tres" id="25_shockwave_equip"]
+[ext_resource type="Resource" path="res://tuning/weapons/shockwave/upgrades/damage.tres" id="26_shockwave_damage"]
+[ext_resource type="Resource" path="res://tuning/weapons/shockwave/upgrades/cooldown.tres" id="27_shockwave_cooldown"]
+[ext_resource type="Resource" path="res://tuning/weapons/shockwave/upgrades/area.tres" id="28_shockwave_area"]
+[ext_resource type="Resource" path="res://tuning/weapons/mine_layer/upgrades/equip.tres" id="29_mine_layer_equip"]
+[ext_resource type="Resource" path="res://tuning/weapons/mine_layer/upgrades/damage.tres" id="30_mine_layer_damage"]
+[ext_resource type="Resource" path="res://tuning/weapons/mine_layer/upgrades/cooldown.tres" id="31_mine_layer_cooldown"]
+[ext_resource type="Resource" path="res://tuning/weapons/mine_layer/upgrades/area.tres" id="32_mine_layer_area"]
 
 [resource]
 script = ExtResource("1_script")
@@ -31,4 +39,4 @@ ExperienceForFirstLevel = 150.0
 ExperienceIncreasePerLevel = 75.0
 OptionsPerOffer = 3
 FreeRerolls = 1
-Upgrades = Array[ExtResource("14_upgrade_script")]([ExtResource("2_orbital_shards"), ExtResource("24_pulse_laser_equip"), ExtResource("3_pulse_laser_damage"), ExtResource("4_pulse_laser_cooldown"), ExtResource("5_orbital_shards_damage"), ExtResource("6_orbital_shards_area"), ExtResource("7_orbital_shards_speed"), ExtResource("15_scatter_shot_equip"), ExtResource("16_scatter_shot_damage"), ExtResource("17_scatter_shot_cooldown"), ExtResource("18_scatter_shot_count"), ExtResource("23_scatter_shot_range"), ExtResource("19_seeker_missiles_equip"), ExtResource("20_seeker_missiles_damage"), ExtResource("21_seeker_missiles_cooldown"), ExtResource("22_seeker_missiles_count"), ExtResource("8_beam"), ExtResource("9_health"), ExtResource("10_movement_speed"), ExtResource("11_harvest_rate"), ExtResource("12_drone_cap"), ExtResource("13_new_drones")])
+Upgrades = Array[ExtResource("14_upgrade_script")]([ExtResource("2_orbital_shards"), ExtResource("24_pulse_laser_equip"), ExtResource("3_pulse_laser_damage"), ExtResource("4_pulse_laser_cooldown"), ExtResource("5_orbital_shards_damage"), ExtResource("6_orbital_shards_area"), ExtResource("7_orbital_shards_speed"), ExtResource("15_scatter_shot_equip"), ExtResource("16_scatter_shot_damage"), ExtResource("17_scatter_shot_cooldown"), ExtResource("18_scatter_shot_count"), ExtResource("23_scatter_shot_range"), ExtResource("19_seeker_missiles_equip"), ExtResource("20_seeker_missiles_damage"), ExtResource("21_seeker_missiles_cooldown"), ExtResource("22_seeker_missiles_count"), ExtResource("25_shockwave_equip"), ExtResource("26_shockwave_damage"), ExtResource("27_shockwave_cooldown"), ExtResource("28_shockwave_area"), ExtResource("29_mine_layer_equip"), ExtResource("30_mine_layer_damage"), ExtResource("31_mine_layer_cooldown"), ExtResource("32_mine_layer_area"), ExtResource("8_beam"), ExtResource("9_health"), ExtResource("10_movement_speed"), ExtResource("11_harvest_rate"), ExtResource("12_drone_cap"), ExtResource("13_new_drones")])

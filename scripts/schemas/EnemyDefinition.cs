@@ -80,11 +80,30 @@ public partial class EnemyDefinition : Resource
 	/// <summary>Seconds an enemy projectile flies before it fizzles out. Speed times this is its reach.</summary>
 	[Export] public float ProjectileLifetime;
 
-	/// <summary>How well enemies aim at a moving target. 1 aims exactly where the target will be
-	/// when the shot arrives, so only a change of direction dodges it. 0 aims at where the target
-	/// is now, so anything moving is missed. The effect is steep: against a VNP circling at full
-	/// speed, roughly 70% of shots hit at 1, 50% at 0.75, and under 20% at 0.5.</summary>
-	[Export] public float AimLead;
+	// Accuracy. Each enemy rolls its own accuracy when it spawns, from 0 (the sloppiest) to 1 (a
+	// sharpshooter), and keeps it. Accuracy sets how far ahead it leads a moving target and how far
+	// each shot strays. The difficulty ramp and escalation steps raise the accuracy of enemies spawned
+	// later (see difficulty.tres), capped at 1.
+
+	/// <summary>How far ahead the sloppiest enemy leads a moving target. 1 aims exactly where the target
+	/// will be when the shot arrives, so only a change of direction dodges it; 0 aims at where it is
+	/// now, so anything moving is missed. Against a VNP circling at full speed, roughly 70% of shots
+	/// hit at 1, 50% at 0.75, and under 20% at 0.5, before any spread.</summary>
+	[ExportGroup("Accuracy")]
+	[Export] public float AimLeadMin;
+
+	/// <summary>How far ahead a sharpshooter leads a moving target, on the same scale.</summary>
+	[Export] public float AimLeadMax;
+
+	/// <summary>How far, in degrees, a shot from the sloppiest enemy can stray either side of its aim.</summary>
+	[Export] public float AimSpreadMax;
+
+	/// <summary>How far, in degrees, a shot from a sharpshooter can stray either side of its aim.</summary>
+	[Export] public float AimSpreadMin;
+
+	/// <summary>How rare sharpshooters are. 1 spreads accuracy evenly from 0 to 1; higher makes most
+	/// enemies sloppy and sharp ones rare. At 2.5, about 1 enemy in 12 rolls above 0.8.</summary>
+	[Export] public float SharpshooterRarity;
 
 	/// <summary>Enemies this close to each other count as flockmates.</summary>
 	[ExportGroup("Flocking")]

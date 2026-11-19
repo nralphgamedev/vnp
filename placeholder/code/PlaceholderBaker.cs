@@ -54,6 +54,21 @@ public partial class PlaceholderBaker : Node
 		new(-0.2f, -0.35f),
 	};
 
+	// Mine: a squat disc with eight short spikes.
+	private static readonly Vector2[] MineOutline = MineShape();
+
+	private static Vector2[] MineShape()
+	{
+		var points = new Vector2[16];
+		for (int i = 0; i < 16; i++)
+		{
+			float angle = i * Mathf.Tau / 16f;
+			float radius = i % 2 == 0 ? 1f : 0.62f;
+			points[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+		}
+		return points;
+	}
+
 	private static readonly Color VnpHullColor = new(0.62f, 0.7f, 0.9f);
 	private static readonly Color VnpCoreColor = new(1.0f, 0.72f, 0.2f);
 	private static readonly Color GatewayColor = new(0.2f, 0.95f, 0.85f);
@@ -81,6 +96,9 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.ExtrudedShape(ShardOutline, 0.4f), "meshes/orbital_shard.tres");
 		Save(PlaceholderShapes.ExtrudedShape(DebrisOutline, 0.5f), "meshes/debris.tres");
 		Save(PlaceholderShapes.ExtrudedShape(MissileOutline, 0.3f), "meshes/missile.tres");
+		Save(PlaceholderShapes.ExtrudedShape(MineOutline, 0.35f), "meshes/mine.tres");
+		// A thin flat ring, outer radius 1, for the Shockwave.
+		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
 		Save(new BoxMesh { Size = Vector3.One }, "meshes/unit_box.tres");
 		Save(new BoxMesh { Size = new Vector3(0.4f, 0.4f, 1.3f) }, "meshes/projectile.tres");

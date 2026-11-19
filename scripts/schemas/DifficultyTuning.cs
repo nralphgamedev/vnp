@@ -17,6 +17,10 @@ public partial class DifficultyTuning : Resource
 	/// <summary>Extra spawn rate per minute.</summary>
 	[Export] public float RampSpawnRatePerMinute;
 
+	/// <summary>Accuracy added per minute to newly spawned enemies, on the 0 to 1 accuracy scale. Unlike
+	/// the values above, this is added rather than a fraction: 0.06 a minute adds 0.3 by the time limit.</summary>
+	[Export] public float RampEnemyAccuracyPerMinute;
+
 	// At the limit, and again every step after it, difficulty rises by these amounts, on top of the
 	// ramp during the fight. Each is the fraction added per step: 0.6 means +60% at the limit,
 	// +120% a step later, and so on. Every step flashes the screen edges red with a "!".
@@ -37,6 +41,9 @@ public partial class DifficultyTuning : Resource
 	/// <summary>Extra aggro range per step, for every enemy. Wider aggro makes enemies come for the
 	/// VNP from farther away, which is what pushes the player to retreat.</summary>
 	[Export] public float EscalationAggroRangePerStep;
+
+	/// <summary>Accuracy added to newly spawned enemies at each step, on the 0 to 1 accuracy scale.</summary>
+	[Export] public float EscalationEnemyAccuracyPerStep;
 
 	/// <summary>Seconds the red edge flash and "!" last at each step.</summary>
 	[Export] public float EscalationAlertSeconds;

@@ -26,6 +26,7 @@ public partial class EnemySwarm : Node3D
 		public float Yaw;
 		public float Health;
 		public float ProjectileDamage;
+		public float Accuracy;          // From 0 (sloppy) to 1 (sharpshooter), rolled when it spawns.
 		public float FireTimer;         // Seconds until it can fire again.
 		public float OrbitSign;         // 1 or -1: which way it circles the VNP.
 		public float Flash;             // Seconds left of the hit flash.
@@ -298,11 +299,22 @@ public partial class EnemySwarm : Node3D
 		return Fight.Camera.DistanceOutOfView(vnpPosition, direction, Tuning.EnemySpawning.SpawnMargin) + extra;
 	}
 
+	/// <summary>
+	/// An enemy's accuracy, from 0 to 1. Rolled so that most are sloppy and sharpshooters are rare,
+	/// then raised by the difficulty ramp and escalation, and capped at 1.
+	/// </summary>
+	private static float RollAccuracy(float bonus)
+	{
+		float roll = Mathf.Pow(Rng.Value(), Mathf.Max(0.01f, Type.SharpshooterRarity));
+		return Mathf.Clamp(roll + bonus, 0f, 1f);
+	}
+
 	private void SpawnGroupAt(Vector2 home, bool hunting)
 	{
 		// Enemies spawned later in the fight are stronger, and keep that strength.
 		float health = Type.Health * Fight.EnemyHealthScale;
 		float damage = Type.ProjectileDamage * Fight.EnemyDamageScale;
+		float accuracyBonus = Fight.EnemyAccuracyBonus;
 
 		for (int i = 0; i < Tuning.EnemySpawning.GroupSize; i++)
 		{
@@ -320,6 +332,7 @@ public partial class EnemySwarm : Node3D
 				Yaw = PlaneMath.YawFacing(direction),
 				Health = health,
 				ProjectileDamage = damage,
+				Accuracy = RollAccuracy(accuracyBonus),
 				FireTimer = Rng.Range(0f, Type.FireCooldown), // So a group does not fire in unison.
 				OrbitSign = Rng.Sign(),
 				Aggro = hunting,
@@ -471,14 +484,18 @@ public partial class EnemySwarm : Node3D
 			enemy.FireTimer = Mathf.Max(0f, enemy.FireTimer - dt);
 			if (inAttackRange && enemy.FireTimer <= 0f)
 			{
-				// Aim ahead of a moving target. EnemyAimLead scales how far ahead: 1 aims exactly
-				// where the target will be, 0 aims at where it is now.
+				// Aim ahead of a moving target, by as much as this enemy's accuracy allows: 1 aims
+				// exactly where the target will be, 0 at where it is now. Then stray a little, less
+				// for more accurate enemies.
+				float lead = Mathf.Lerp(Type.AimLeadMin, Type.AimLeadMax, enemy.Accuracy);
 				Vector2 meetingPoint = PlaneMath.AimAhead(enemy.Position, targetPosition, targetVelocity,
 					Type.ProjectileSpeed, Type.ProjectileLifetime);
-				Vector2 aimAt = targetPosition.Lerp(meetingPoint, Type.AimLead);
+				Vector2 aimAt = targetPosition.Lerp(meetingPoint, lead);
 				Vector2 aim = aimAt.DistanceSquaredTo(enemy.Position) > 0.0001f
 					? (aimAt - enemy.Position).Normalized()
 					: directionToTarget;
+				float spread = Mathf.DegToRad(Mathf.Lerp(Type.AimSpreadMax, Type.AimSpreadMin, enemy.Accuracy));
+				aim = aim.Rotated(Rng.Range(-spread, spread));
 
 				Fight.Projectiles.Fire(enemy.Position, aim, enemy.ProjectileDamage,
 					Type.ProjectileSpeed, Type.ProjectileLifetime, fromEnemy: true, Type.ProjectileColor);
