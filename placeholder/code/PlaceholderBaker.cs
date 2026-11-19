@@ -47,6 +47,13 @@ public partial class PlaceholderBaker : Node
 		new(0f, -0.5f), new(0.4f, 0.35f), new(-0.05f, 0.2f), new(-0.4f, 0.4f),
 	};
 
+	// Seeker missile: a dart with small fins at the back.
+	private static readonly Vector2[] MissileOutline =
+	{
+		new(0f, -0.9f), new(0.2f, -0.35f), new(0.2f, 0.55f), new(0.42f, 0.9f), new(-0.42f, 0.9f), new(-0.2f, 0.55f),
+		new(-0.2f, -0.35f),
+	};
+
 	private static readonly Color VnpHullColor = new(0.62f, 0.7f, 0.9f);
 	private static readonly Color VnpCoreColor = new(1.0f, 0.72f, 0.2f);
 	private static readonly Color GatewayColor = new(0.2f, 0.95f, 0.85f);
@@ -73,6 +80,7 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.ExtrudedShape(EnemyOutline, 0.7f), "meshes/enemy.tres");
 		Save(PlaceholderShapes.ExtrudedShape(ShardOutline, 0.4f), "meshes/orbital_shard.tres");
 		Save(PlaceholderShapes.ExtrudedShape(DebrisOutline, 0.5f), "meshes/debris.tres");
+		Save(PlaceholderShapes.ExtrudedShape(MissileOutline, 0.3f), "meshes/missile.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
 		Save(new BoxMesh { Size = Vector3.One }, "meshes/unit_box.tres");
 		Save(new BoxMesh { Size = new Vector3(0.4f, 0.4f, 1.3f) }, "meshes/projectile.tres");

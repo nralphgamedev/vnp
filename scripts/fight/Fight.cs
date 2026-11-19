@@ -79,7 +79,7 @@ public partial class Fight : Node3D
 	public bool CanRetreat => OnGateway && GatewayTime >= Tuning.Fight.RetreatHoldSeconds;
 
 	/// <summary>The pause menu may open only during play, not over another menu or the result screen.</summary>
-	public bool CanPause => !IsOver && !_levelUpMenu.IsOpen;
+	public bool CanPause => !IsOver && !_levelUpMenu.IsOpen && !_startingWeaponMenu.IsOpen;
 
 	/// <summary>Escalation steps reached: 0 before the time limit, 1 at it, 2 one step later, and so on.</summary>
 	public int EscalationSteps => Elapsed < Tuning.Fight.TimeLimitSeconds
@@ -102,6 +102,7 @@ public partial class Fight : Node3D
 	private Label _debugLabel;
 	private HealthBar _healthBar;
 	private LevelUpMenu _levelUpMenu;
+	private StartingWeaponMenu _startingWeaponMenu;
 	private FightHud _fightHud;
 	private ResultScreen _resultScreen;
 	private double _debugRefresh;
@@ -147,8 +148,14 @@ public partial class Fight : Node3D
 		Drones.Fight = this;
 		Drones.Add(Tuning.Drones.StartingCount, Vnp.PlanePosition);
 		Projectiles.Fight = this;
-		foreach (WeaponDefinition weapon in Tuning.Vnp.StartingWeapons)
-			Equip(weapon);
+		// For testing, the player can choose the starting weapon; otherwise it comes from vnp.tres.
+		_startingWeaponMenu = GetNode<StartingWeaponMenu>("Hud/StartingWeaponMenu");
+		_startingWeaponMenu.Fight = this;
+		if (!Tuning.Vnp.ChooseStartingWeapon || Tuning.Vnp.StartingWeaponChoices.Count == 0)
+		{
+			foreach (WeaponDefinition weapon in Tuning.Vnp.StartingWeapons)
+				Equip(weapon);
+		}
 		VnpHarvester.Fight = this;
 		_healthBar = GetNode<HealthBar>("Hud/HealthBar");
 		_healthBar.Fight = this;
@@ -162,6 +169,9 @@ public partial class Fight : Node3D
 		_resultScreen.Fight = this;
 		DamageNumbers.Fight = this;
 		GetNode<WeaponSlots>("Hud/WeaponSlots").Fight = this;
+
+		if (Tuning.Vnp.ChooseStartingWeapon && Tuning.Vnp.StartingWeaponChoices.Count > 0)
+			_startingWeaponMenu.Open(Tuning.Vnp.StartingWeaponChoices);
 	}
 
 	/// <summary>Ends the fight: freezes it and shows the result screen.</summary>

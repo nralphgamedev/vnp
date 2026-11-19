@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/scatter_shot/scatter_shot.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "scatter_shot_count"
+Name = "Scatter Shot projectile count"
+Description = "Scatter Shot fires {amount} more pellets, in a wider cone."
+Category = 0
+Effect = 6
+Weapon = ExtResource("2_weapon")
+WeaponStat = 4
+Amount = 2.0
+Limit = 4

@@ -100,6 +100,17 @@ public partial class EnemySwarm : Node3D
 	/// <summary>A number that identifies an enemy for its whole life. Use it to remember a target between frames.</summary>
 	public int IdOf(int index) => _enemies[index].Id;
 
+	/// <summary>Where the living enemy with this ID is in the list right now, or -1 if it is gone.</summary>
+	public int IndexOfId(int id)
+	{
+		for (int i = 0; i < Count; i++)
+		{
+			if (_enemies[i].Id == id && _enemies[i].Health > 0f)
+				return i;
+		}
+		return -1;
+	}
+
 	/// <summary>The living enemy closest to a point, or -1 if none is within range.</summary>
 	public int FindNearest(Vector2 from, float range)
 	{

@@ -23,6 +23,10 @@ public enum UpgradeEffect
 
 	/// <summary>Builds Amount drones at once, up to the cap. Offered only while below the cap.</summary>
 	BuildDrones,
+
+	/// <summary>Adds Amount to one stat of an equipped weapon, such as +2 to Scatter Shot's projectile
+	/// count. Offered only while the weapon is equipped.</summary>
+	AddWeaponStat,
 }
 
 /// <summary>
@@ -56,6 +60,13 @@ public enum WeaponStat
 
 	/// <summary>How fast the weapon's shapes move. For Orbital Shards, how fast they circle.</summary>
 	Speed,
+
+	/// <summary>How many it fires or has: Scatter Shot's projectiles, Seeker Missiles per volley, or
+	/// Orbital Shards. Use with AddWeaponStat.</summary>
+	Count,
+
+	/// <summary>How far away the weapon can fire, and how far its shots fly. Used by Scatter Shot.</summary>
+	Range,
 }
 
 /// <summary>A stat of the VNP and its drones that upgrades can change.</summary>
@@ -89,7 +100,8 @@ public partial class UpgradeDefinition : Resource
 	[Export] public string Name;
 
 	/// <summary>The card text. {percent} is replaced by the amount as a percentage, such as 25%,
-	/// and {amount} by the amount as a number. For an Orbital Shards weapon, {count} is its shard count.
+	/// and {amount} by the amount as a number. {count} is the weapon's own count: Orbital Shards' shards,
+	/// Scatter Shot's projectiles, or Seeker Missiles' missiles per volley.
 	/// For BuildDrones, {drones} is how many it would build right now, such as "2 drones", which is
 	/// fewer than the amount when the cap is near.</summary>
 	[Export(PropertyHint.MultilineText)] public string Description;
@@ -99,10 +111,10 @@ public partial class UpgradeDefinition : Resource
 
 	[Export] public UpgradeEffect Effect;
 
-	/// <summary>The weapon it equips or changes. For EquipWeapon and ScaleWeaponStat.</summary>
+	/// <summary>The weapon it equips or changes. For EquipWeapon, ScaleWeaponStat and AddWeaponStat.</summary>
 	[Export] public WeaponDefinition Weapon;
 
-	/// <summary>The weapon stat it changes. For ScaleWeaponStat.</summary>
+	/// <summary>The weapon stat it changes. For ScaleWeaponStat and AddWeaponStat.</summary>
 	[Export] public WeaponStat WeaponStat;
 
 	/// <summary>The Drone Weapon it switches to. For SwitchDroneWeapon.</summary>

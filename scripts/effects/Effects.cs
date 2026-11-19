@@ -69,6 +69,34 @@ public partial class Effects : Node3D
 			Ring(at, color, 0.2f, 1.1f * scale, 0.15f);
 	}
 
+	/// <summary>A wide flash of sparks thrown across the cone a scatter shot fires into.</summary>
+	public void ScatterFlash(Vector2 at, Vector2 direction, Color color, float coneRadians, float scale = 1f)
+	{
+		Sparks(at, color, Mathf.RoundToInt(Feedback.MuzzleSparks * 2f * scale), 0.9f, 0.8f * scale, direction,
+			coneRadians * 0.5f);
+	}
+
+	/// <summary>A puff of smoke left behind a missile. It stays where it was left and fades.</summary>
+	public void MissileTrail(Vector2 at, Color color, float size)
+	{
+		_sparks.Emit(Room, at + RandomInCircle(0.1f), RandomDirection() * 0.6f, Feedback.SparkTime * 1.4f,
+			size * Feedback.EffectSize, 0f, color.Lerp(Colors.White, 0.4f) * 0.7f, Gone, SparkHeight * 0.6f);
+	}
+
+	/// <summary>A missile hitting: a burst of sparks, a hot core and a ring.</summary>
+	public void Explosion(Vector2 at, Color color, float scale = 1f)
+	{
+		Sparks(at, color, Mathf.RoundToInt(Feedback.ImpactSparks * 2f * scale), 1.2f, 1.3f * scale);
+		Sparks(at, new Color(1f, 0.85f, 0.5f), Mathf.RoundToInt(Feedback.ImpactSparks * scale), 0.6f, 1.6f * scale);
+		Ring(at, color.Lerp(Colors.White, 0.4f), 0.3f, 2.4f * scale, 0.25f);
+	}
+
+	/// <summary>A missile running out without hitting anything: a small, dim puff.</summary>
+	public void Fizzle(Vector2 at, Color color)
+	{
+		Sparks(at, color.Darkened(0.4f), 3, 0.4f, 0.7f);
+	}
+
 	// ───────────── Deaths and building ─────────────
 
 	/// <summary>A destroyed enemy bursts apart: pieces in its colour, hot sparks, and a flash ring.</summary>

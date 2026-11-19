@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ScatterShotDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/ScatterShotDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Range = 16.0
+ProjectileCount = 5
+ConeDegrees = 25.0
+ConeWidenPerProjectile = 4.0
+MaxConeDegrees = 60.0
+ProjectileSpeed = 40.0
+ProjectileSize = 0.5
+Id = "scatter_shot"
+Name = "Scatter Shot"
+Damage = 5.0
+Cooldown = 1.1
+Color = Color(1, 0.92, 0.45, 1)

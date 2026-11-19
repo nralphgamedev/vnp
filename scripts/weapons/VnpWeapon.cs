@@ -20,6 +20,12 @@ public abstract partial class VnpWeapon : Node3D
 	/// <summary>How fast the weapon's shapes move, as a multiple of the definition's speed. Starts at 1.</summary>
 	public float Speed = 1f;
 
+	/// <summary>Range, as a multiple of the definition's range. Starts at 1.</summary>
+	public float Range = 1f;
+
+	/// <summary>Added to the definition's count: extra projectiles, missiles or shards from upgrades.</summary>
+	public int ExtraCount;
+
 	/// <summary>
 	/// Makes the weapon a definition describes. The kind of definition decides which behaviour it gets.
 	/// Returns null, with an error, for a kind of definition no weapon is written for.
@@ -30,6 +36,8 @@ public abstract partial class VnpWeapon : Node3D
 		{
 			PulseLaserDefinition => new PulseLaser(),
 			OrbitalShardsDefinition => new OrbitalShards(),
+			ScatterShotDefinition => new ScatterShot(),
+			SeekerMissilesDefinition => new SeekerMissiles(),
 			_ => null,
 		};
 		if (weapon == null)
@@ -46,6 +54,20 @@ public abstract partial class VnpWeapon : Node3D
 		return weapon;
 	}
 
+	/// <summary>Adds to one of this weapon's stats, for an upgrade.</summary>
+	public void AddStat(WeaponStat stat, float amount)
+	{
+		switch (stat)
+		{
+			case WeaponStat.Damage: Damage += amount; break;
+			case WeaponStat.Cooldown: Cooldown = Mathf.Max(0.01f, Cooldown + amount); break;
+			case WeaponStat.Area: Area += amount; break;
+			case WeaponStat.Speed: Speed += amount; break;
+			case WeaponStat.Count: ExtraCount += Mathf.RoundToInt(amount); break;
+			case WeaponStat.Range: Range += amount; break;
+		}
+	}
+
 	/// <summary>Multiplies one of this weapon's stats, for an upgrade.</summary>
 	public void ScaleStat(WeaponStat stat, float factor)
 	{
@@ -55,6 +77,7 @@ public abstract partial class VnpWeapon : Node3D
 			case WeaponStat.Cooldown: Cooldown *= factor; break;
 			case WeaponStat.Area: Area *= factor; break;
 			case WeaponStat.Speed: Speed *= factor; break;
+			case WeaponStat.Range: Range *= factor; break;
 		}
 	}
 }

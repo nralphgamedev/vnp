@@ -15,6 +15,7 @@ public partial class Projectiles : Node3D
 		public float Life;      // Seconds left before it fizzles out.
 		public bool FromEnemy;
 		public Color Color;
+		public float Size;
 	}
 
 	public Fight Fight;
@@ -32,8 +33,10 @@ public partial class Projectiles : Node3D
 			Placeholders.Material("instanced_unshaded"));
 	}
 
-	/// <summary>Launches a projectile from a point in a direction.</summary>
-	public void Fire(Vector2 from, Vector2 direction, float damage, float speed, float lifetime, bool fromEnemy, Color color)
+	/// <summary>Launches a projectile from a point in a direction. <paramref name="size"/> scales the shot;
+	/// 0 uses the usual size for its side.</summary>
+	public void Fire(Vector2 from, Vector2 direction, float damage, float speed, float lifetime, bool fromEnemy, Color color,
+		float size = 0f)
 	{
 		if (Count == _shots.Length)
 			Array.Resize(ref _shots, _shots.Length * 2);
@@ -46,6 +49,7 @@ public partial class Projectiles : Node3D
 			Life = lifetime,
 			FromEnemy = fromEnemy,
 			Color = color,
+			Size = size > 0f ? size : fromEnemy ? 1f : 0.6f,
 		};
 	}
 
@@ -78,8 +82,7 @@ public partial class Projectiles : Node3D
 		{
 			ref Shot shot = ref _shots[i];
 			// Drone shots are smaller and a different colour, so the two sides are easy to tell apart.
-			_batch.Set(i, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity),
-				shot.FromEnemy ? 1f : 0.6f, shot.Color);
+			_batch.Set(i, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity), shot.Size, shot.Color);
 		}
 		_batch.Commit(Count);
 	}

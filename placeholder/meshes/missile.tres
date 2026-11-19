@@ -1,0 +1,11 @@
+[gd_resource type="ArrayMesh" format=4]
+
+[resource]
+_surfaces = [{
+"aabb": AABB(-0.42, -0.15, -0.9, 0.84, 0.3, 1.8),
+"format": 34359738375,
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 72,
+"vertex_data": PackedByteArray("zcxMvpqZGT4zM7O+AAAAAJqZGT5mZma/zcxMPpqZGT4zM7O+zcxMvpqZGb4zM7O+zcxMPpqZGb4zM7O+AAAAAJqZGb5mZma/zcxMPpqZGT7NzAw/PQrXPpqZGT5mZmY/PQrXvpqZGT5mZmY/zcxMPpqZGb7NzAw/PQrXvpqZGb5mZmY/PQrXPpqZGb5mZmY/zcxMvpqZGT7NzAw/zcxMvpqZGT4zM7O+zcxMPpqZGT4zM7O+zcxMvpqZGb7NzAw/zcxMPpqZGb4zM7O+zcxMvpqZGb4zM7O+zcxMPpqZGT7NzAw/PQrXvpqZGT5mZmY/zcxMvpqZGT7NzAw/zcxMPpqZGb7NzAw/zcxMvpqZGb7NzAw/PQrXvpqZGb5mZmY/zcxMvpqZGT7NzAw/zcxMPpqZGT4zM7O+zcxMPpqZGT7NzAw/zcxMvpqZGb7NzAw/zcxMPpqZGb7NzAw/zcxMPpqZGb4zM7O+AAAAAJqZGT5mZma/zcxMPpqZGb4zM7O+zcxMPpqZGT4zM7O+AAAAAJqZGT5mZma/AAAAAJqZGb5mZma/zcxMPpqZGb4zM7O+zcxMPpqZGT4zM7O+zcxMPpqZGb7NzAw/zcxMPpqZGT7NzAw/zcxMPpqZGT4zM7O+zcxMPpqZGb4zM7O+zcxMPpqZGb7NzAw/zcxMPpqZGT7NzAw/PQrXPpqZGb5mZmY/PQrXPpqZGT5mZmY/zcxMPpqZGT7NzAw/zcxMPpqZGb7NzAw/PQrXPpqZGb5mZmY/PQrXPpqZGT5mZmY/PQrXvpqZGb5mZmY/PQrXvpqZGT5mZmY/PQrXPpqZGT5mZmY/PQrXPpqZGb5mZmY/PQrXvpqZGb5mZmY/PQrXvpqZGT5mZmY/zcxMvpqZGb7NzAw/zcxMvpqZGT7NzAw/PQrXvpqZGT5mZmY/PQrXvpqZGb5mZmY/zcxMvpqZGb7NzAw/zcxMvpqZGT7NzAw/zcxMvpqZGb4zM7O+zcxMvpqZGT4zM7O+zcxMvpqZGT7NzAw/zcxMvpqZGb7NzAw/zcxMvpqZGb4zM7O+zcxMvpqZGT4zM7O+AAAAAJqZGb5mZma/AAAAAJqZGT5mZma/zcxMvpqZGT4zM7O+zcxMvpqZGb4zM7O+AAAAAJqZGb5mZma//3///wAA/7//f///AAD/v/9///8AAP+//38AAAAA/7//fwAAAAD/v/9/AAAAAP+//3///wAA/7//f///AAD/v/9///8AAP+//38AAAAA/7//fwAAAAD/v/9/AAAAAP+//3///wAA/7//f///AAD/v/9///8AAP+//38AAAAA/7//fwAAAAD/v/9/AAAAAP+//3///wAA/7//f///AAD/v/9///8AAP+//38AAAAA/7//fwAAAAD/v/9/AAAAAP+//3///wAA/7//f///AAD/v/9///8AAP+//38AAAAA/7//fwAAAAD/v/9/AAAAAP+///8hoh2fVrr//yGiHZ9Wuv//IaIdn1a6//8hoh2fVrr//yGiHZ9Wuv//IaIdn1a6////f/9//7////9//3//v////3//f/+/////f/9//7////9//3//v////3//f/+///9mscGngLP//2axwaeAs///ZrHBp4Cz//9mscGngLP//2axwaeAs///ZrHBp4Cz/3//f/9/AID/f/9//38AgP9//3//fwCA/3//f/9/AID/f/9//38AgP9//3//fwCAAABmsT1YgLMAAGaxPViAswAAZrE9WICzAABmsT1YgLMAAGaxPViAswAAZrE9WICzAAD/f/9//78AAP9//3//vwAA/3//f/+/AAD/f/9//78AAP9//3//vwAA/3//f/+/AAAhouFgVroAACGi4WBWugAAIaLhYFa6AAAhouFgVroAACGi4WBWugAAIaLhYFa6")
+}]

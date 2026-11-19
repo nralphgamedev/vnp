@@ -169,6 +169,24 @@ public static class PlaceholderSounds
 			Tone(b, 0.1f, 0.7f, 1200f, 1800f, Wave.Triangle, 0.15f);
 			Tone(b, 0.5f, 0.5f, C4 * 2f, C4 * 2f, Wave.Triangle, 0.3f);
 		}));
+
+		// ───────────── Stage 4 weapons ─────────────
+		// Added last, so the sounds above keep the same random noise when baked again.
+		Save(folder, "scatter_shot_fire", Make(0.16f, b =>
+		{
+			Noise(b, random, 0f, 0.13f, 6000f, 1200f, 0.7f);
+			Tone(b, 0f, 0.08f, 220f, 110f, Wave.Square, 0.3f);
+		}));
+		Save(folder, "seeker_launch", Make(0.28f, b =>
+		{
+			Noise(b, random, 0f, 0.26f, 800f, 3000f, 0.5f);
+			Tone(b, 0f, 0.2f, 300f, 600f, Wave.Sine, 0.2f);
+		}));
+		Save(folder, "seeker_hit", Make(0.26f, b =>
+		{
+			Noise(b, random, 0f, 0.22f, 5000f, 300f, 0.7f);
+			Tone(b, 0f, 0.18f, 180f, 60f, Wave.Sine, 0.5f);
+		}));
 	}
 
 	/// <summary>

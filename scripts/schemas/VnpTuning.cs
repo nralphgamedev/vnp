@@ -34,8 +34,17 @@ public partial class VnpTuning : Resource
 	[ExportGroup("Weapons")]
 	[Export] public int WeaponSlots;
 
-	/// <summary>VNP Weapons the VNP starts the fight with, in slot order. One folder each in res://tuning/weapons/.</summary>
+	/// <summary>VNP Weapons the VNP starts the fight with, in slot order. One folder each in res://tuning/weapons/.
+	/// Not used while ChooseStartingWeapon is on.</summary>
 	[Export] public Godot.Collections.Array<WeaponDefinition> StartingWeapons = new();
+
+	/// <summary>For testing: each fight starts with a menu to choose the starting VNP Weapon from
+	/// StartingWeaponChoices, in place of StartingWeapons. Turn off for normal play.</summary>
+	[ExportGroup("Testing")]
+	[Export] public bool ChooseStartingWeapon;
+
+	/// <summary>The weapons offered when ChooseStartingWeapon is on, in the order shown.</summary>
+	[Export] public Godot.Collections.Array<WeaponDefinition> StartingWeaponChoices = new();
 
 	/// <summary>Scale of the VNP model. 1 is about 3 units long.</summary>
 	[ExportGroup("Look")]

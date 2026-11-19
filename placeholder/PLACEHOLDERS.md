@@ -16,9 +16,10 @@ All made by `code/PlaceholderBaker.cs`.
 | `enemy.tres` | Pincer-shaped slab | Enemies (`EnemySwarm.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
-| `projectile.tres` | 0.4 × 0.4 × 1.3 box | Drone and enemy projectiles (`Projectiles.cs`) |
+| `projectile.tres` | 0.4 × 0.4 × 1.3 box | Drone, enemy and Scatter Shot projectiles (`Projectiles.cs`) |
 | `unit_box.tres` | 1 × 1 × 1 box, stretched into beams | Pulse Laser beam, VNP harvest beam, drone harvest and attack beams, and effect sparks |
 | `fragment.tres` | Small jagged triangle slab | Pieces of destroyed enemies and used-up material (`Effects.cs`) |
+| `missile.tres` | Small dart with fins at the back | Seeker Missiles (`SeekerMissiles.cs`) |
 | `ring.tres` | Flat ring, outer radius 1 | Spreading rings in effects: deaths, hits, new drones, pops (`Effects.cs`) |
 | `ground_sheet.tres` | 800 × 800 plane | Ground grid (`GroundGrid.cs`) |
 | `vnp_hull.tres`, `vnp_pod.tres`, `vnp_core.tres` | Prism, box and sphere | VNP model |
@@ -65,7 +66,7 @@ Scenes that put meshes and materials together. Both are made by `code/Placeholde
 | File | What it is | Used by |
 |---|---|---|
 | `icon.svg` | Godot's default project icon | Project settings (window and file icon) |
-| `icons/pulse_laser.svg`, `icons/orbital_shards.svg`, `icons/projectile.svg`, `icons/beam.svg` | White weapon icons, tinted with the weapon's colour. Drawn by hand. Each is named after its weapon's ID, so a new weapon's icon is `icons/<id>.svg`; a weapon without one shows its first letter. | HUD weapon slots and Drone Weapon box (`WeaponSlots.cs`) |
+| `icons/pulse_laser.svg`, `icons/orbital_shards.svg`, `icons/scatter_shot.svg`, `icons/seeker_missiles.svg`, `icons/projectile.svg`, `icons/beam.svg` | White weapon icons, tinted with the weapon's colour. Drawn by hand. Each is named after its weapon's ID, so a new weapon's icon is `icons/<id>.svg`; a weapon without one shows its first letter. | HUD weapon slots and Drone Weapon box (`WeaponSlots.cs`) |
 
 ## Audio (`audio/`)
 
@@ -79,6 +80,9 @@ Every sound is listed in `tuning/audio.tres`, which sets its category, volume, c
 | `shard_hit.wav` | Bright tink | An Orbital Shard hits an enemy |
 | `drone_projectile_fire.wav` | Tiny blip | A drone fires a projectile |
 | `drone_beam_tick.wav` | Soft buzz | A drone's Beam deals a tick of damage |
+| `scatter_shot_fire.wav` | Short shotgun blast | Scatter Shot fires |
+| `seeker_launch.wav` | Rising whoosh | Seeker Missiles launch a volley |
+| `seeker_hit.wav` | Small explosion | A seeker missile hits |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |
@@ -115,5 +119,5 @@ These are not saved as files. Each is listed with the script that makes it.
 | Offer card colours by category | `LevelUpMenu.cs` | Colours are in `tuning/look.tres` |
 | Screen shake | `CameraRig.cs` | Strength and timing in `tuning/feedback.tres` |
 | Gateway indicator arrow | `GatewayIndicator.cs` | Drawn in code each frame |
-| Menu panels and labels: level-up cards, pause menu and its settings page, result screen, and the upgrade list on the right | `Ui.cs`, `LevelUpMenu.cs`, `PauseMenu.cs`, `ResultScreen.cs`, `UpgradeList.cs` | Styles built in code |
+| Menu panels and labels: level-up cards, pause menu and its settings page, result screen, the upgrade list on the right, and the starting weapon menu | `Ui.cs`, `LevelUpMenu.cs`, `PauseMenu.cs`, `ResultScreen.cs`, `UpgradeList.cs`, `StartingWeaponMenu.cs` | Styles built in code |
 | Font | Godot's built-in default font | No font file is used |

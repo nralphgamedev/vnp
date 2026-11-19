@@ -88,6 +88,12 @@ These change or add to the screens in the phase 1 spec.
   - Flat upgrades add up and are plain numbers: two +25 health upgrades show as +50.
   - Upgrades that equip or switch a weapon have neither a count nor a number, since they can only be taken once.
 
+### Starting weapon choice (testing)
+
+- A testing aid, not part of the design. While `ChooseStartingWeapon` is on in `vnp.tres`, each fight starts paused on a menu to choose the starting VNP Weapon, with one card per weapon in `StartingWeaponChoices`: Pulse Laser, Orbital Shards, Scatter Shot, and Seeker Missiles. A/D or the stick picks, Space or A chooses, and the mouse works too.
+- The chosen weapon takes the first slot in place of the Pulse Laser. Its upgrades are offered as usual, and the other weapons can still be taken for the second slot. The Pulse Laser then has its own equip upgrade, offered for a free slot like the other new weapons. In a normal fight it is already equipped, so that upgrade is never offered.
+- With `ChooseStartingWeapon` off, the fight starts with `StartingWeapons` (the Pulse Laser), as the phase 1 spec describes.
+
 ### Endless mode
 
 - After a win, the result screen offers two buttons side by side: New fight, and Continue (endless). A line under them reads "Endless mode: keep fighting for as long as you last. No additional rewards." A/D or the stick picks, Space or A chooses, and the mouse works too.
@@ -104,7 +110,7 @@ Each new weapon comes with its own firing and impact effects and sounds.
 |---|---|---|
 | Pulse Laser (existing) | A straight beam that fires at the nearest enemy and damages only it | Damage, cooldown |
 | Orbital Shards (existing) | Shapes that circle the VNP and damage what they touch | Damage, area of effect, speed, count, blocking |
-| Scatter Shot | Fires a cone of small projectiles toward the nearest enemy | Damage, cooldown, projectile count |
+| Scatter Shot | Fires a cone of small projectiles toward the nearest enemy | Damage, cooldown, projectile count, range |
 | Seeker Missiles | Fires slow missiles that home in on enemies | Damage, cooldown, missiles per volley |
 | Shockwave | Sends out a ring from the VNP at intervals, damaging enemies it passes through | Damage, cooldown, area of effect |
 | Mine Layer | Drops mines behind the VNP as it moves. A mine explodes when an enemy touches it | Damage, cooldown, area of effect |
@@ -121,20 +127,22 @@ Each new weapon comes with its own firing and impact effects and sounds.
 
 ## Upgrade pool
 
-The pool grows from 12 upgrades to 35. Each upgrade step should be large enough that the player notices it.
+The pool grows from 12 upgrades to 37. Each upgrade step should be large enough that the player notices it.
 
 | Upgrade | Effect | Condition | Limit |
 |---|---|---|---|
+| Pulse Laser | New VNP Weapon. Only offered when a fight started without it, through the starting weapon choice | A weapon slot is free and the Pulse Laser is not equipped | Once |
 | Orbital Shards | New VNP Weapon | A weapon slot is free | Once |
 | Scatter Shot | New VNP Weapon | A weapon slot is free | Once |
 | Seeker Missiles | New VNP Weapon | A weapon slot is free | Once |
 | Shockwave | New VNP Weapon | A weapon slot is free | Once |
 | Mine Layer | New VNP Weapon | A weapon slot is free | Once |
-| Pulse Laser damage, cooldown | Raises damage, shortens cooldown | | 4 each |
+| Pulse Laser damage, cooldown | Raises damage, shortens cooldown | Pulse Laser equipped (it always is, unless the fight started with another weapon) | 4 each |
 | Orbital Shards damage, area of effect, speed | As phase 1 | Orbital Shards equipped | 4 each |
 | Orbital Shards count | Adds more shards | Orbital Shards equipped | 4 |
 | Orbital Shards blocking | The shards also block enemy projectiles they touch. A blocked projectile pops | Orbital Shards equipped | Once |
 | Scatter Shot damage, cooldown, projectile count | More projectiles widen or fill the cone | Scatter Shot equipped | 4 each |
+| Scatter Shot range | Fires at enemies further away, and the pellets fly further | Scatter Shot equipped | 4 |
 | Seeker Missiles damage, cooldown, missiles per volley | More missiles fire at once | Seeker Missiles equipped | 4 each |
 | Shockwave damage, cooldown, area of effect | A larger area of effect makes the ring reach farther | Shockwave equipped | 4 each |
 | Mine Layer damage, cooldown, area of effect | A shorter cooldown drops mines more often; a larger area of effect widens the blast | Mine Layer equipped | 4 each |
@@ -184,7 +192,6 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **Drone damage and attack rate:** they apply to whichever Drone Weapon the drones are using and carry over when the drones switch.
 - **Ramming damage to drones:** drones take no damage from ramming itself, only from enemy attacks.
 - **Mines:** mines are dropped only while the VNP is moving. Each lasts a set time, and if a new mine would go over the most allowed at once, the oldest one disappears.
-- **Seeker Missiles targets:** each missile heads for the nearest enemy when fired and picks a new nearest enemy if its target is destroyed first.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 
@@ -192,12 +199,13 @@ For design questions this file does not answer, ask the designer rather than inv
 
 These were open when this file was written. The prototype now does the following; any of them can still change.
 
+- **Seeker Missiles targets:** each missile heads for the nearest enemy when fired and picks a new nearest enemy if its target is destroyed first.
 - **Full weapon slots:** once every weapon slot is filled, new VNP Weapons are no longer offered.
 - **How offers are drawn:** evenly at random from every upgrade whose condition is met and whose limit isn't reached.
 - **When tuning changes take effect:** each tuning file is read when the game starts. A change applies from the next run, not during a running fight.
-- **Tuning files:** one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, `look` (colours shared by several systems, the gateway indicator, and offer card colours), `feedback` (hit flash, damage numbers, screen shake, low health, and the amounts and size of every effect), and `audio` (volumes, repeated sounds, and the list of every sound). Weapons, Drone Weapons, enemy types, and upgrades are definitions in folders beside them, organized by what they affect: each weapon and Drone Weapon has its own folder holding its definition and, in `upgrades/`, its upgrades (`weapons/pulse_laser/`, `weapons/orbital_shards/`, `drone_weapons/projectile/`, `drone_weapons/beam/`). The other upgrades are in `upgrades/drones/`, `upgrades/vnp_stats/`, and `upgrades/harvesting/`, and enemy types in `enemies/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
-- **How upgrades are described as data:** each upgrade uses one of a fixed set of effects written in code: equip a weapon, scale a weapon stat, switch the Drone Weapon, scale a player stat, add to a player stat, or build drones. Each effect has its own built-in condition, such as "weapon equipped" or "drones below the cap". An upgrade that reuses an effect is a new file. An upgrade that needs new behaviour, such as Orbital Shards blocking, needs a new effect added in code.
-- **Card text:** each upgrade's card text is in its file. `{percent}`, `{amount}`, and `{count}` (the Orbital Shards shard count) are filled in from the numbers, so the text follows the tuning. `{drones}` is how many drones New drones would build right now. Near the cap that is fewer than its amount: at a cap of 30 with 28 drones, the card says "Gain 2 drones right away." The upgrade list shows the drones it actually built.
+- **Tuning files:** one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, `look` (colours shared by several systems, the gateway indicator, and offer card colours), `feedback` (hit flash, damage numbers, screen shake, low health, and the amounts and size of every effect), and `audio` (volumes, repeated sounds, and the list of every sound). Weapons, Drone Weapons, enemy types, and upgrades are definitions in folders beside them, organized by what they affect: each weapon and Drone Weapon has its own folder holding its definition and, in `upgrades/`, its upgrades (`weapons/pulse_laser/`, `weapons/orbital_shards/`, `weapons/scatter_shot/`, `weapons/seeker_missiles/`, `drone_weapons/projectile/`, `drone_weapons/beam/`). The other upgrades are in `upgrades/drones/`, `upgrades/vnp_stats/`, and `upgrades/harvesting/`, and enemy types in `enemies/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
+- **How upgrades are described as data:** each upgrade uses one of a fixed set of effects written in code: equip a weapon, scale a weapon stat, add to a weapon stat, switch the Drone Weapon, scale a player stat, add to a player stat, or build drones. Adding to a weapon stat was added for the count upgrades (Scatter Shot projectiles, Seeker Missiles per volley, and Orbital Shards count to come), which add a flat number. Each effect has its own built-in condition, such as "weapon equipped" or "drones below the cap". An upgrade that reuses an effect is a new file. An upgrade that needs new behaviour, such as Orbital Shards blocking, needs a new effect added in code.
+- **Card text:** each upgrade's card text is in its file. `{percent}`, `{amount}`, and `{count}` (the weapon's own count: Orbital Shards' shards, Scatter Shot's projectiles, or Seeker Missiles per volley) are filled in from the numbers, so the text follows the tuning. `{drones}` is how many drones New drones would build right now. Near the cap that is fewer than its amount: at a cap of 30 with 28 drones, the card says "Gain 2 drones right away." The upgrade list shows the drones it actually built.
 - **Placeholder files:** the meshes, materials, and models in `res://placeholder/` are made by `res://placeholder/code/PlaceholderBaker.cs`. Change a shape or colour there and bake again, rather than editing the files. The asteroid rocks are still made in code when the fight starts, because their shape follows tuning values.
 - **Offer card colours:** see Offer card colours below.
 - **Damage numbers:** hits on the same enemy within a quarter of a second are added into one number, so fast beams don't fill the screen with ones. A number pops slightly larger, rises, and fades. At most 80 are shown at once.
@@ -216,9 +224,12 @@ These were open when this file was written. The prototype now does the following
 - **Placeholder sounds:** every sound is synthesised from simple tones and noise by `res://placeholder/code/PlaceholderSounds.cs` (run by the baker) and saved as a .wav in `res://placeholder/audio/`. None are downloaded.
 - **Sound list and volumes:** `audio.tres` lists every sound with its file, category, volume, copy limit, and whether it varies in pitch or loops. Volumes run from 0 to 1. A sound plays at its own volume times its category volume, times the player's master and effects volumes from the pause menu's settings. The categories are weapons, hits, deaths, player (VNP damage and low health), harvesting, drones, alerts (wave warning and time limit), menus, and results. Effects covers every sound and is kept separate from master so music can be added later.
 - **Repeated sounds:** each sound has its own copy limit (`MaxCopies`, or `DefaultMaxCopies` if unset). While that many copies are playing, it is skipped rather than cutting one off. The same sound is also not restarted within `MinRepeatSeconds` (0.04), so a burst of hits in one moment plays once rather than stacking into one loud sound. Sounds marked `VaryPitch` play up to 6% higher or lower each time (`PitchVariation`). Tunes, alarms, and menu sounds do not vary.
-- **Which events play sounds:** the Pulse Laser plays a sound when it fires, and Orbital Shards play one on each hit, since they never fire. Drone projectiles play one when fired, and the drone Beam on each damage tick. Enemy shots play one when fired. Both enemies and drones being hit play the hit sound, with drones quieter. The low-health heartbeat, two soft low thumps, plays with each low-health flash. The menu move sound plays when the level-up highlight moves. The menu select sound plays on a reroll and when the pause menu opens or closes.
+- **Which events play sounds:** the Pulse Laser plays a sound when it fires, and Orbital Shards play one on each hit, since they never fire. Scatter Shot plays a short blast when it fires. Seeker Missiles play a whoosh when a volley launches and a small explosion when a missile hits. Drone projectiles play one when fired, and the drone Beam on each damage tick. Enemy shots play one when fired. Both enemies and drones being hit play the hit sound, with drones quieter. The low-health heartbeat, two soft low thumps, plays with each low-health flash. The menu move sound plays when the level-up highlight moves. The menu select sound plays on a reroll and when the pause menu opens or closes.
 - **Harvesting loop:** it plays while any harvest beam, the VNP's or a drone's, is working. It fades in and out over `LoopFadeSeconds` (0.25), so short gaps between beams don't click.
 - **Sounds while paused:** sounds keep playing while the fight is paused, so menu sounds work during level-up offers and the pause menu.
+- **Scatter Shot:** fires when an enemy is within 16 units, aiming at the nearest. It fires 5 pellets (4 damage each) every 1.1 seconds, spread evenly across a 30° cone. Each extra pellet from the count upgrade (+2 a time) widens the cone by 4°, up to 60°, after which more pellets fill it more densely. Pellets are pale gold, use the projectile system (so they hit the first enemy in their path, with the usual hit sparks), and fly a little past the range. Firing throws a wide flash of sparks across the cone. Damage upgrades make the pellets larger and whiter. The range upgrade (+20% a time, added after playtesting) lets it fire at enemies further away, and carries the pellets further to match.
+- **Seeker Missiles:** fires a volley of 3 missiles (14 damage each) every 2.2 seconds when an enemy is within 30 units. The volley fans out over 70° at launch, then each missile turns toward its target at up to 200° a second at a speed of 18, so it visibly curves in. Each missile heads for the nearest enemy when fired. If that enemy is destroyed first, it picks the nearest enemy to itself within range, and flies straight on if there is none. A missile hits the first enemy in its path, even if it was not its target, and fizzles out after 3.5 seconds. Missiles are pink, leave a smoke trail, and explode with sparks and a ring. Damage upgrades make the missiles and explosions larger. The count upgrade adds 1 missile per volley.
+- **Weapon colours:** the Pulse Laser is cyan, Orbital Shards white, Scatter Shot pale gold, and Seeker Missiles pink, so each is recognisable in a crowded fight. Enemy shots stay orange.
 - **Model colours:** the VNP, gateway, and ground grid colours, and the grid's line spacing, are in their material files rather than in tuning. `GatewayColor` in `look.tres` colours only the gateway arrow and text on screen.
 
 ## Offer card colours
@@ -235,14 +246,14 @@ The highlighted card has a thicker, full-strength border and a stronger tint. Th
 
 | Category | Colour (`look.tres`) | What belongs in it | Upgrades now |
 |---|---|---|---|
-| VNP Weapon | Orange, `VnpWeaponCardColor` | New VNP Weapons and upgrades to a VNP Weapon | Orbital Shards; Pulse Laser damage and cooldown; Orbital Shards damage, area of effect and speed |
+| VNP Weapon | Orange, `VnpWeaponCardColor` | New VNP Weapons and upgrades to a VNP Weapon | Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles; Pulse Laser damage and cooldown; Orbital Shards damage, area of effect and speed; Scatter Shot damage, cooldown, projectile count and range; Seeker Missiles damage, cooldown and missiles per volley |
 | Drone Weapon | Blue, `DroneWeaponCardColor` | New Drone Weapons and upgrades to how drones attack | Beam |
 | Stats | Green, `StatsCardColor` | The VNP's own stats, and harvesting | Health, Movement speed, Harvest rate |
 | Drones | Pink, `DronesCardColor` | How many drones there are | Drone cap, New drones |
 
 **Filing a new upgrade.** Upgrades to a weapon go with that weapon's kind, so its card matches the weapon it improves. The upgrades still to come in this phase are filed as follows:
 
-- **VNP Weapon:** the four new VNP Weapons and their upgrades, plus Orbital Shards count and blocking.
+- **VNP Weapon:** Shockwave, Mine Layer and their upgrades, plus Orbital Shards count and blocking.
 - **Drone Weapon:** Ram, Drone damage and Drone attack rate.
 - **Stats:** Armor and Debris reward.
 

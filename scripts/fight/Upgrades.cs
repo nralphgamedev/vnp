@@ -46,7 +46,7 @@ public static class Upgrades
 		{
 			UpgradeEffect.EquipWeapon => upgrade.Weapon != null
 				&& fight.FindWeapon(upgrade.Weapon) == null && fight.WeaponCount < Tuning.Vnp.WeaponSlots,
-			UpgradeEffect.ScaleWeaponStat => fight.FindWeapon(upgrade.Weapon) != null,
+			UpgradeEffect.ScaleWeaponStat or UpgradeEffect.AddWeaponStat => fight.FindWeapon(upgrade.Weapon) != null,
 			UpgradeEffect.SwitchDroneWeapon => upgrade.DroneWeapon != null && fight.Drones.Weapon.Id != upgrade.DroneWeapon.Id,
 			// Drones already being built count, so it is not offered when they would fill the cap anyway.
 			UpgradeEffect.BuildDrones => fight.Drones.CountWithBuilds < fight.Drones.Cap,
@@ -63,6 +63,9 @@ public static class Upgrades
 				break;
 			case UpgradeEffect.ScaleWeaponStat:
 				fight.FindWeapon(upgrade.Weapon)?.ScaleStat(upgrade.WeaponStat, 1f + upgrade.Amount);
+				break;
+			case UpgradeEffect.AddWeaponStat:
+				fight.FindWeapon(upgrade.Weapon)?.AddStat(upgrade.WeaponStat, upgrade.Amount);
 				break;
 			case UpgradeEffect.SwitchDroneWeapon:
 				fight.Drones.SwitchWeapon(upgrade.DroneWeapon);
@@ -104,8 +107,15 @@ public static class Upgrades
 			int drones = DronesToBuild(fight, upgrade);
 			text = text.Replace("{drones}", drones == 1 ? "1 drone" : $"{drones} drones");
 		}
-		if (upgrade.Weapon is OrbitalShardsDefinition shards)
-			text = text.Replace("{count}", shards.Count.ToString());
+		int? count = upgrade.Weapon switch
+		{
+			OrbitalShardsDefinition shards => shards.Count,
+			ScatterShotDefinition scatter => scatter.ProjectileCount,
+			SeekerMissilesDefinition seekers => seekers.MissilesPerVolley,
+			_ => null,
+		};
+		if (count != null)
+			text = text.Replace("{count}", count.Value.ToString());
 		return text;
 	}
 
@@ -127,6 +137,7 @@ public static class Upgrades
 				float percent = (Mathf.Pow(1f + upgrade.Amount, times) - 1f) * 100f;
 				return $"{(percent >= 0f ? "+" : "-")}{Mathf.Abs(percent):0}%";
 			case UpgradeEffect.AddStat:
+			case UpgradeEffect.AddWeaponStat:
 				float total = upgrade.Amount * times;
 				return $"{(total >= 0f ? "+" : "-")}{Mathf.Abs(total):0.##}";
 			default:

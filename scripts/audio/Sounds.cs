@@ -10,6 +10,9 @@ public static class Sound
 	public const string DroneProjectileFire = "drone_projectile_fire";
 	public const string DroneBeamTick = "drone_beam_tick";
 	public const string EnemyFire = "enemy_fire";
+	public const string ScatterShotFire = "scatter_shot_fire";
+	public const string SeekerLaunch = "seeker_launch";
+	public const string SeekerHit = "seeker_hit";
 	public const string Hit = "hit";
 	public const string EnemyDeath = "enemy_death";
 	public const string DroneDeath = "drone_death";

@@ -43,7 +43,7 @@ public partial class OrbitalShards : VnpWeapon
 
 		_angle += Mathf.DegToRad(Shards.OrbitSpeed * Speed) * (float)delta;
 
-		int count = Shards.Count;
+		int count = Shards.Count + ExtraCount;
 		float orbit = Shards.OrbitRadius * Area;
 		float reach = Shards.HitRadius * Area + Tuning.EnemySpawning.Enemy.HitRadius;
 		double now = Fight.Elapsed;

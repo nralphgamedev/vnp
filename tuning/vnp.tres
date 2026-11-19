@@ -1,8 +1,11 @@
-[gd_resource type="Resource" script_class="VnpTuning" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="VnpTuning" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/schemas/VnpTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://tuning/weapons/pulse_laser/pulse_laser.tres" id="2_pulse_laser"]
 [ext_resource type="Script" path="res://scripts/schemas/WeaponDefinition.cs" id="3_weapon_script"]
+[ext_resource type="Resource" path="res://tuning/weapons/orbital_shards/orbital_shards.tres" id="4_orbital_shards"]
+[ext_resource type="Resource" path="res://tuning/weapons/scatter_shot/scatter_shot.tres" id="5_scatter_shot"]
+[ext_resource type="Resource" path="res://tuning/weapons/seeker_missiles/seeker_missiles.tres" id="6_seeker_missiles"]
 
 [resource]
 script = ExtResource("1_script")
@@ -16,3 +19,5 @@ HitRadius = 1.4
 WeaponSlots = 2
 Size = 1.0
 StartingWeapons = Array[ExtResource("3_weapon_script")]([ExtResource("2_pulse_laser")])
+ChooseStartingWeapon = true
+StartingWeaponChoices = Array[ExtResource("3_weapon_script")]([ExtResource("2_pulse_laser"), ExtResource("4_orbital_shards"), ExtResource("5_scatter_shot"), ExtResource("6_seeker_missiles")])
