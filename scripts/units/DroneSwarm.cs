@@ -16,7 +16,8 @@ using System;
 /// </summary>
 public partial class DroneSwarm : Node3D
 {
-	private struct Drone
+	/// <summary>One drone. Public so Drone Weapon attacks in scripts/drone_weapons/ can work on it.</summary>
+	public struct Drone
 	{
 		public int Id;            // Stays the same for its whole life, unlike its place in the array.
 		public Vector2 Position;
@@ -30,24 +31,9 @@ public partial class DroneSwarm : Node3D
 		public float Age;         // Seconds since it was built.
 		public int TargetId;      // The enemy it is attacking, or 0.
 		public int HarvestId;     // The asteroid or debris it is harvesting, or 0.
-		public RamState Ram;      // Where it is in the Ram cycle, when the drones use Ram.
-		public float RamTime;     // Seconds in the current Ram state.
+		public int AttackState;   // For the Drone Weapon's attack to use, such as where it is in the Ram cycle. 0 to start.
+		public float AttackTime;  // For the Drone Weapon's attack to use, such as seconds in the current Ram state.
 	}
-
-	/// <summary>The Ram cycle: close in on the target, then charge through it and arc back round to charge again.</summary>
-	private enum RamState { Circling, Arcing, Charging, Finishing }
-
-	// A charge that has not reached its target in this long gives up and arcs round.
-	private const float MaxChargeSeconds = 1f;
-	// After a charge, a drone arcs for at least this long before charging again, so it carries on through.
-	private const float MinArcSeconds = 0.25f;
-	// A drone charges only once it is heading within this many degrees of its target.
-	private const float ChargeAlignmentDegrees = 15f;
-	// While on cooldown, a ramming drone circles its target at this many of its own turning radii, so the
-	// target stays outside the circle it turns on and it can turn straight in. Above 2 is needed.
-	private const float RamOrbitTurns = 2.2f;
-	// Once lined up, a ramming drone charges from up to this many times its weapon range.
-	private const float MaxChargeRangeScale = 1.5f;
 
 	/// <summary>A destroyed drone, shown briefly while it disintegrates. It cannot be harvested.</summary>
 	private struct Wreck
@@ -86,6 +72,9 @@ public partial class DroneSwarm : Node3D
 	/// <summary>The Drone Weapon every drone uses.</summary>
 	public DroneWeaponDefinition Weapon { get; private set; } = Tuning.Drones.StartingWeapon;
 
+	/// <summary>How the drones attack with that weapon. Swapped when they switch.</summary>
+	private DroneAttack _attack;
+
 	/// <summary>Drone damage upgrades, as a multiple starting at 1. Applies to whichever Drone Weapon the
 	/// drones use, and carries over when they switch.</summary>
 	public float DamageMultiplier = 1f;
@@ -98,17 +87,11 @@ public partial class DroneSwarm : Node3D
 	public float WeaponCooldown => Weapon.Cooldown / Mathf.Max(0.01f, AttackRateMultiplier);
 	public float WeaponRange = Tuning.Drones.StartingWeapon.Range;
 
-	/// <summary>Ram's turn rate while arcing back round, in degrees a second. Attack rate upgrades raise it,
-	/// so the loop gets tighter and quicker along with the cooldown: otherwise the loop, not the cooldown,
-	/// sets how often a drone rams, and attack rate would barely help.</summary>
-	private float ArcTurnRate => Weapon.ArcTurnRate * AttackRateMultiplier;
-
-	/// <summary>How quickly a ramming drone slows back to normal speed after a charge. Raised by attack rate
-	/// upgrades with the turn rate, so the tighter loop keeps its shape.</summary>
-	private float ArcSlowdown => Weapon.ArcSlowdown * AttackRateMultiplier;
-
 	/// <summary>Damage compared with the weapon's own, so damage upgrades show as bigger shots, beams and impacts.</summary>
-	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, DamageMultiplier));
+	public float Power => Mathf.Sqrt(Mathf.Max(0.01f, DamageMultiplier));
+
+	/// <summary>How fast a drone normally flies. Rises with the VNP's movement speed upgrades, so drones keep up.</summary>
+	public float Speed => _speed;
 
 	/// <summary>How far from its target a drone sits while surrounding it. Depends on the weapon.</summary>
 	public float AttackDistance = Tuning.Drones.StartingWeapon.AttackDistance;
@@ -122,10 +105,14 @@ public partial class DroneSwarm : Node3D
 		if (weapon == null)
 			return;
 		Weapon = weapon;
+		_attack = DroneAttack.Create(this, weapon);
 		WeaponRange = weapon.Range;
 		AttackDistance = weapon.AttackDistance;
 		for (int i = 0; i < Count; i++)
-			_drones[i].Ram = RamState.Circling;
+		{
+			_drones[i].AttackState = 0;
+			_drones[i].AttackTime = 0f;
+		}
 	}
 
 	private Drone[] _drones = new Drone[64];
@@ -150,6 +137,7 @@ public partial class DroneSwarm : Node3D
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Drones;
+		_attack ??= DroneAttack.Create(this, Weapon);
 		_batch = new InstanceBatch(this, "DroneShapes", Placeholders.Mesh("drone"), Placeholders.Material("instanced_lit"));
 		_beamBatch = new InstanceBatch(this, "HarvestBeams", Placeholders.Mesh("unit_box"), Placeholders.Material("instanced_unshaded"));
 	}
@@ -353,16 +341,15 @@ public partial class DroneSwarm : Node3D
 
 			Vector2 separation = Separation(i);
 			Vector2 wantedVelocity;
-			bool ramming = false;
+			bool attackSteers = false;
 
 			int enemy = PickEnemyTarget(ref drone, enemyCount, vnpPosition);
 			if (enemy >= 0)
 			{
 				// 1. Attack, and harvest at the same time.
 				int targetId = enemies.IdOf(enemy);
-				// A new target ends a charge, but the drone keeps its momentum and arcs round toward the new one.
-				if (drone.TargetId != targetId && drone.Ram == RamState.Charging)
-					drone.Ram = RamState.Arcing;
+				if (drone.TargetId != targetId)
+					_attack.TargetChanged(ref drone);
 				drone.TargetId = targetId;
 				drone.HarvestId = 0;
 
@@ -370,10 +357,7 @@ public partial class DroneSwarm : Node3D
 				wantedVelocity = SteerToSlot(ref drone, enemyPosition, enemies.VelocityOf(enemy),
 					AttackDistance, separation, dt);
 				Face(ref drone, enemyPosition, turnStep);
-				if (Weapon.Kind == DroneWeaponKind.Ram)
-					ramming = Ram(ref drone, enemy, ref wantedVelocity, dt);
-				else if (drone.Position.DistanceTo(enemyPosition) <= WeaponRange)
-					TryFire(ref drone, enemy);
+				attackSteers = _attack.Attack(ref drone, enemy, ref wantedVelocity, dt);
 
 				// Beam whatever is already within reach, without moving for it.
 				int nearby = NearestHarvestInBeamRange(drone.Position, harvestCount);
@@ -415,14 +399,13 @@ public partial class DroneSwarm : Node3D
 						drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(drone.Velocity), turnStep);
 				}
 
-				// A ramming drone that has lost its target finishes its arc before it steers normally again.
-				if (drone.Ram != RamState.Circling)
-					ramming = FinishRam(ref drone, ref wantedVelocity, dt);
+				// The attack can finish a move first, such as a ramming drone finishing its arc.
+				attackSteers = _attack.WithoutTarget(ref drone, ref wantedVelocity, dt);
 			}
 
-			if (ramming)
+			if (attackSteers)
 			{
-				// Ram steers the drone itself: charges faster than a drone normally flies, and arcs smoothly.
+				// The attack steers the drone itself, such as Ram charging faster than a drone normally flies.
 				drone.Velocity = wantedVelocity;
 			}
 			else
@@ -616,206 +599,6 @@ public partial class DroneSwarm : Node3D
 			drone.Yaw = Mathf.RotateToward(drone.Yaw, PlaneMath.YawFacing(toward), turnStep);
 	}
 
-	/// <summary>
-	/// The Ram cycle for one drone. Circling: it closes in like the other Drone Weapons until the target is
-	/// within range. Arcing: it never stops or turns on the spot; it eases back to normal speed and turns at
-	/// a limited rate, circling the target while on cooldown, and swinging round to face it when ready.
-	/// Charging: once it faces the target, it flies at it at charge speed, homing a little, and damages it on
-	/// contact, then carries on through and arcs round again. Ramming does not hurt the drone. Returns true
-	/// once the drone is ramming, as Ram then sets its velocity directly.
-	/// </summary>
-	private bool Ram(ref Drone drone, int enemy, ref Vector2 wantedVelocity, float dt)
-	{
-		EnemySwarm enemies = Fight.Enemies;
-		Vector2 enemyPosition = enemies.PositionOf(enemy);
-		Vector2 toEnemy = enemyPosition - drone.Position;
-		float distance = toEnemy.Length();
-		Vector2 direction = distance > 0.001f ? toEnemy / distance : Vector2.Up;
-		drone.RamTime += dt;
-
-		float speed = drone.Velocity.Length();
-		Vector2 heading = speed > 0.1f ? drone.Velocity / speed : direction;
-
-		// A drone finishing its arc after losing a target picks the arc up again for a new one.
-		if (drone.Ram == RamState.Finishing)
-			drone.Ram = RamState.Arcing;
-
-		switch (drone.Ram)
-		{
-			case RamState.Circling:
-				if (distance > WeaponRange)
-					return false;
-				drone.Ram = RamState.Arcing;
-				drone.RamTime = MinArcSeconds;
-				goto case RamState.Arcing;
-
-			case RamState.Arcing:
-			{
-				bool ready = drone.FireTimer <= 0f;
-				float turnRate = Mathf.DegToRad(ArcTurnRate);
-				// Start turning in a quarter turn before the cooldown ends, so the drone is lined up when it does.
-				bool turningIn = drone.FireTimer <= Mathf.Pi * 0.5f / Mathf.Max(0.01f, turnRate);
-				Vector2 desired = direction;
-				if (turningIn)
-				{
-					// If the target is inside the circle the drone turns on, turning toward it only circles it.
-					// Fly straight instead to open up room, then turn in once the turn can line up a charge.
-					float turnRadius = speed / Mathf.Max(0.01f, turnRate);
-					float side = heading.Cross(direction) >= 0f ? 1f : -1f;
-					Vector2 turnCentre = drone.Position + new Vector2(-heading.Y, heading.X) * side * turnRadius;
-					if (turnCentre.DistanceTo(enemyPosition) < turnRadius)
-						desired = heading;
-				}
-				else
-				{
-					// On cooldown: circle the target. Wide enough that the target stays outside the circle the
-					// drone turns on, so it can turn straight in when it is ready, rather than having to fly
-					// out and back first.
-					float orbit = Mathf.Max(AttackDistance, RamOrbitTurns * _speed / Mathf.Max(0.01f, turnRate));
-					var tangent = new Vector2(-direction.Y, direction.X) * drone.OrbitSign;
-					float radial = Mathf.Clamp((distance - orbit) / orbit, -1f, 1f);
-					desired = (tangent + direction * radial).Normalized();
-				}
-				heading = TurnToward(heading, desired, turnRate * dt, drone.OrbitSign);
-				speed = Mathf.MoveToward(speed, _speed, ArcSlowdown * dt);
-
-				// Range only decides when ramming starts. Once lined up, a drone charges from a little further.
-				if (ready && distance <= WeaponRange * MaxChargeRangeScale && drone.RamTime >= MinArcSeconds
-					&& Mathf.RadToDeg(Mathf.Abs(heading.AngleTo(direction))) <= ChargeAlignmentDegrees)
-				{
-					drone.Ram = RamState.Charging;
-					drone.RamTime = 0f;
-					speed = Weapon.ChargeSpeed;
-				}
-				break;
-			}
-
-			case RamState.Charging:
-				if (distance <= Tuning.EnemySpawning.Enemy.HitRadius + Tuning.Drones.HitRadius)
-				{
-					// A hit: the drone keeps going, straight through the target, then arcs round.
-					enemies.Damage(enemy, WeaponDamage);
-					Fight.Effects.Impact(enemyPosition - direction * 0.5f, Weapon.Color, 0.9f * Power);
-					Fight.Sounds.Play(Sound.RamHit);
-					drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
-					drone.Ram = RamState.Arcing;
-					drone.RamTime = 0f;
-				}
-				else if (drone.RamTime > MaxChargeSeconds)
-				{
-					drone.Ram = RamState.Arcing;
-					drone.RamTime = 0f;
-				}
-				else
-				{
-					heading = TurnToward(heading, direction, Mathf.DegToRad(Weapon.ChargeTurnRate) * dt, drone.OrbitSign);
-					speed = Weapon.ChargeSpeed;
-				}
-				break;
-		}
-
-		wantedVelocity = heading * speed;
-		drone.Yaw = PlaneMath.YawFacing(wantedVelocity);
-		return true;
-	}
-
-	/// <summary>
-	/// For a ramming drone whose target is gone with no other enemy in reach: rather than snapping round to
-	/// wherever it now wants to go, it keeps arcing, turning and slowing at Ram's own rates, until it is
-	/// heading the way it wants at normal speed, or for at most the time it takes to turn half a circle.
-	/// It then steers normally again. Returns true while it is
-	/// still arcing, as it then sets its velocity directly.
-	/// </summary>
-	private bool FinishRam(ref Drone drone, ref Vector2 wantedVelocity, float dt)
-	{
-		float speed = drone.Velocity.Length();
-		Vector2 wanted = wantedVelocity.LimitLength(_speed);
-		if (speed < 0.1f)
-		{
-			drone.Ram = RamState.Circling;
-			return false;
-		}
-
-		if (drone.Ram != RamState.Finishing)
-		{
-			drone.Ram = RamState.Finishing;
-			drone.RamTime = 0f;
-		}
-		drone.RamTime += dt;
-
-		Vector2 heading = drone.Velocity / speed;
-		Vector2 wantedHeading = wanted.LengthSquared() > 0.01f ? wanted.Normalized() : heading;
-		heading = TurnToward(heading, wantedHeading, Mathf.DegToRad(ArcTurnRate) * dt, drone.OrbitSign);
-		speed = Mathf.MoveToward(speed, _speed, ArcSlowdown * dt);
-
-		// Close enough to steer normally from here without a visible snap. Or it has had time to turn
-		// half a circle: a nearby spot it wants, such as beside a rock it will harvest, can be inside the
-		// circle it turns on, so it would loop round it forever without ever lining up.
-		float halfTurnSeconds = 180f / Mathf.Max(1f, ArcTurnRate);
-		if ((Mathf.RadToDeg(Mathf.Abs(heading.AngleTo(wantedHeading))) <= 20f && speed <= _speed + 1f)
-			|| drone.RamTime > halfTurnSeconds)
-		{
-			drone.Ram = RamState.Circling;
-			return false;
-		}
-
-		wantedVelocity = heading * speed;
-		drone.Yaw = PlaneMath.YawFacing(wantedVelocity);
-		return true;
-	}
-
-	/// <summary>
-	/// Turns a heading toward another by at most <paramref name="maxStep"/> radians. When the wanted
-	/// heading is nearly behind, it turns the drone's own way round, so drones split both ways rather than
-	/// all choosing the same side.
-	/// </summary>
-	private static Vector2 TurnToward(Vector2 heading, Vector2 wanted, float maxStep, float sideSign)
-	{
-		float difference = heading.AngleTo(wanted);
-		if (Mathf.Abs(difference) > Mathf.DegToRad(150f))
-			difference = Mathf.Abs(difference) * sideSign;
-		return heading.Rotated(Mathf.Clamp(difference, -maxStep, maxStep));
-	}
-
-	/// <summary>Fires the Drone Weapon at an enemy within its range, if it is off cooldown.</summary>
-	private void TryFire(ref Drone drone, int enemy)
-	{
-		EnemySwarm enemies = Fight.Enemies;
-
-		if (Weapon.Kind == DroneWeaponKind.Beam)
-		{
-			// The beam shows the whole time it is on target, and deals damage in ticks.
-			AddBeam(drone.Position, enemies.PositionOf(enemy), 0.6f, isAttack: true);
-			if (drone.FireTimer <= 0f)
-			{
-				Fight.Effects.Impact(enemies.PositionOf(enemy), Weapon.Color, 0.4f);
-				Fight.Sounds.Play(Sound.DroneBeamTick);
-				enemies.Damage(enemy, WeaponDamage);
-				drone.FireTimer = WeaponCooldown;
-			}
-			return;
-		}
-
-		if (drone.FireTimer > 0f)
-			return;
-
-		// Let the shot fly a little past the weapon's range before it fizzles out.
-		float lifetime = WeaponRange * 1.5f / Weapon.ProjectileSpeed;
-
-		// Aim ahead of a moving enemy, at where it will be when the shot arrives.
-		Vector2 aimAt = PlaneMath.AimAhead(drone.Position, enemies.PositionOf(enemy), enemies.VelocityOf(enemy),
-			Weapon.ProjectileSpeed, lifetime);
-		Vector2 toAim = aimAt - drone.Position;
-		if (toAim.LengthSquared() < 0.0001f)
-			return;
-
-		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), WeaponDamage,
-			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color, 0.6f * Power);
-		Fight.Effects.MuzzleFlash(drone.Position, toAim, Weapon.Color, 0.5f);
-		Fight.Sounds.Play(Sound.DroneProjectileFire);
-		drone.FireTimer = WeaponCooldown * Rng.Range(0.9f, 1.1f);
-	}
-
 	/// <summary>Sends harvest particles from the edge of the material to the drone, and keeps the harvesting sound going.</summary>
 	private void HarvestFlow(Vector2 dronePosition, Vector2 itemPosition, float itemRadius, float dt)
 	{
@@ -836,8 +619,9 @@ public partial class DroneSwarm : Node3D
 		_beamCount++;
 	}
 
-	/// <summary>Records an attack beam to draw, ending just inside the edge of its target.</summary>
-	private void AddBeam(Vector2 from, Vector2 to, float targetRadius, bool isAttack = false)
+	/// <summary>Records an attack beam to draw this frame, ending just inside the edge of its target. For
+	/// Drone Weapon attacks that use a beam.</summary>
+	public void AddAttackBeam(Vector2 from, Vector2 to, float targetRadius)
 	{
 		Vector2 along = to - from;
 		float distance = along.Length();
@@ -846,7 +630,7 @@ public partial class DroneSwarm : Node3D
 
 		_beamFrom[_beamCount] = from;
 		_beamTo[_beamCount] = from + along / distance * Mathf.Max(0f, distance - targetRadius * 0.5f);
-		_beamIsAttack[_beamCount] = isAttack;
+		_beamIsAttack[_beamCount] = true;
 		_beamCount++;
 	}
 
