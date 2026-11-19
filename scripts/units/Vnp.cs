@@ -14,6 +14,9 @@ public partial class Vnp : Node3D
 	public float Health { get; private set; } = Tuning.Vnp.MaxHealth;
 	public bool IsDestroyed { get; private set; }
 
+	/// <summary>How much of each hit the VNP takes, as a multiple starting at 1. Armor upgrades lower it.</summary>
+	public float DamageTaken = 1f;
+
 	/// <summary>Top speed. Starts from Tuning; upgrades raise it for this fight.</summary>
 	public float MoveSpeed = Tuning.Vnp.MoveSpeed;
 
@@ -63,6 +66,7 @@ public partial class Vnp : Node3D
 		if (IsDestroyed)
 			return;
 
+		amount *= DamageTaken;
 		Health = Mathf.Max(0f, Health - amount);
 		_flash = Tuning.Feedback.HitFlashTime;
 		Damaged?.Invoke(amount);

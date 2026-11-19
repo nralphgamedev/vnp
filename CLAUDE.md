@@ -15,6 +15,7 @@ It builds on the phase 1 spec, which describes the fight that is already built: 
 - Every placeholder visual and audio asset goes in `res://placeholder/`, saved as its own file rather than embedded in a gameplay scene, and is listed in `res://placeholder/PLACEHOLDERS.md` with what uses it and where it came from. Written text is not a placeholder asset and stays where it is.
 - Keep every tuning value in one place, as the spec describes. The point of the prototype is to adjust these numbers by playing, so none of them should be buried in scripts.
 - Tuning values and content definitions (weapons, upgrades, enemy types) are data-only custom Resources in `res://tuning/`, split by system. Modding may be supported later, so keep logic out of them.
+- Playtest cheats go in `scripts/cheats/`, which `VNP.csproj` compiles only in the editor's Debug configuration. Wrap the cheat code and every line that uses it in `#if TOOLS`, so a cheat can never reach an exported game.
 
 ## How we work
 

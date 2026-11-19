@@ -8,6 +8,9 @@ public enum DroneWeaponKind
 
 	/// <summary>A short-range beam that never misses and deals damage in ticks.</summary>
 	Beam,
+
+	/// <summary>The drones charge through enemies, damaging them on impact, then arc back round and charge again.</summary>
+	Ram,
 }
 
 /// <summary>
@@ -26,13 +29,14 @@ public partial class DroneWeaponDefinition : Resource
 
 	[Export] public DroneWeaponKind Kind;
 
-	/// <summary>Damage of one shot or beam tick.</summary>
+	/// <summary>Damage of one shot, beam tick or ram.</summary>
 	[Export] public float Damage;
 
-	/// <summary>Seconds between shots or beam ticks from one drone.</summary>
+	/// <summary>Seconds between shots, beam ticks or rams from one drone.</summary>
 	[Export] public float Cooldown;
 
-	/// <summary>A drone attacks once its target is this close. Keep it above the attack distance.</summary>
+	/// <summary>A drone attacks once its target is this close: fires, beams, or starts a charge. Keep it
+	/// above the attack distance.</summary>
 	[Export] public float Range;
 
 	/// <summary>How far from its target a drone sits while surrounding it.</summary>
@@ -40,6 +44,21 @@ public partial class DroneWeaponDefinition : Resource
 
 	/// <summary>Speed of a projectile. Only used by the Projectile kind.</summary>
 	[Export] public float ProjectileSpeed;
+
+	/// <summary>How fast a drone charges, in units per second. Only used by the Ram kind.</summary>
+	[Export] public float ChargeSpeed;
+
+	/// <summary>How fast a charging drone turns to follow its target, in degrees a second. Low, so a charge
+	/// runs nearly straight. Only used by the Ram kind.</summary>
+	[Export] public float ChargeTurnRate;
+
+	/// <summary>How fast a drone turns while it arcs back round after a charge, in degrees a second. Higher
+	/// makes a tighter loop. Only used by the Ram kind.</summary>
+	[Export] public float ArcTurnRate;
+
+	/// <summary>How quickly a drone slows from charge speed to its normal speed as it arcs round, in units
+	/// a second per second. Lower makes it glide further past the target. Only used by the Ram kind.</summary>
+	[Export] public float ArcSlowdown;
 
 	/// <summary>Colour of the projectiles or beam.</summary>
 	[Export] public Color Color;

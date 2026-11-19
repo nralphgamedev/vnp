@@ -175,7 +175,7 @@ public partial class Harvestables : Node3D
 
 		item.Mass -= taken;
 		item.Glow = GlowTime;
-		Fight.AddHarvest(taken);
+		Fight.AddHarvest(taken, fromDebris: !item.IsAsteroid);
 		// Used up: it pops. It is cleared away at the start of the next update.
 		if (item.Mass <= UsedUp && item.Mass + taken > UsedUp)
 		{

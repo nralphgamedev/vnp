@@ -174,8 +174,8 @@ public partial class Fight : Node3D
 		DamageNumbers.Fight = this;
 		GetNode<WeaponSlots>("Hud/WeaponSlots").Fight = this;
 
-		if (Tuning.Vnp.ChooseStartingWeapon && Tuning.Vnp.StartingWeaponChoices.Count > 0)
-			_startingWeaponMenu.Open(Tuning.Vnp.StartingWeaponChoices);
+		if (Tuning.Vnp.ChooseStartingWeapon)
+			_startingWeaponMenu.Open(Tuning.Vnp.StartingWeaponChoices, Tuning.Vnp.StartingDroneWeaponChoices);
 	}
 
 	/// <summary>Ends the fight: freezes it and shows the result screen.</summary>
@@ -203,9 +203,10 @@ public partial class Fight : Node3D
 	/// Called by harvest beams with the mass they drew out. Turns it into fight experience, and
 	/// builds temporary drones until the cap is reached. At the cap it gives only fight experience.
 	/// </summary>
-	public void AddHarvest(float mass)
+	public void AddHarvest(float mass, bool fromDebris = false)
 	{
-		Experience += mass * Tuning.Harvesting.ExperiencePerMass;
+		// Debris reward upgrades raise the experience from enemy debris only, not from asteroids.
+		Experience += mass * Tuning.Harvesting.ExperiencePerMass * (fromDebris ? DebrisExperience : 1f);
 
 		// Several level ups can arrive at once. Each gets its own offer, one after another.
 		while (ExperienceIntoLevel >= ExperienceForNextLevel)
@@ -265,6 +266,9 @@ public partial class Fight : Node3D
 			Drones.Build();
 		return built;
 	}
+
+	/// <summary>Fight experience from enemy debris, as a multiple starting at 1. Debris reward upgrades raise it.</summary>
+	public float DebrisExperience = 1f;
 
 	/// <summary>Drones built by upgrades so far, which can be fewer than they offered if the cap was near.</summary>
 	public int DronesBuiltByUpgrades;

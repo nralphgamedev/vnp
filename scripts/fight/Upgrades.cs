@@ -47,6 +47,7 @@ public static class Upgrades
 			UpgradeEffect.EquipWeapon => upgrade.Weapon != null
 				&& fight.FindWeapon(upgrade.Weapon) == null && fight.WeaponCount < Tuning.Vnp.WeaponSlots,
 			UpgradeEffect.ScaleWeaponStat or UpgradeEffect.AddWeaponStat => fight.FindWeapon(upgrade.Weapon) != null,
+			UpgradeEffect.UnlockWeaponFeature => fight.FindWeapon(upgrade.Weapon) is VnpWeapon weapon && !weapon.HasFeature(upgrade.Feature),
 			UpgradeEffect.SwitchDroneWeapon => upgrade.DroneWeapon != null && fight.Drones.Weapon.Id != upgrade.DroneWeapon.Id,
 			// Drones already being built count, so it is not offered when they would fill the cap anyway.
 			UpgradeEffect.BuildDrones => fight.Drones.CountWithBuilds < fight.Drones.Cap,
@@ -66,6 +67,9 @@ public static class Upgrades
 				break;
 			case UpgradeEffect.AddWeaponStat:
 				fight.FindWeapon(upgrade.Weapon)?.AddStat(upgrade.WeaponStat, upgrade.Amount);
+				break;
+			case UpgradeEffect.UnlockWeaponFeature:
+				fight.FindWeapon(upgrade.Weapon)?.Unlock(upgrade.Feature);
 				break;
 			case UpgradeEffect.SwitchDroneWeapon:
 				fight.Drones.SwitchWeapon(upgrade.DroneWeapon);
@@ -166,6 +170,18 @@ public static class Upgrades
 			case PlayerStat.DroneCap:
 				fight.Drones.Cap = Mathf.RoundToInt(fight.Drones.Cap * factor);
 				break;
+			case PlayerStat.DamageTaken:
+				fight.Vnp.DamageTaken *= factor;
+				break;
+			case PlayerStat.DroneDamage:
+				fight.Drones.DamageMultiplier *= factor;
+				break;
+			case PlayerStat.DroneAttackRate:
+				fight.Drones.AttackRateMultiplier *= factor;
+				break;
+			case PlayerStat.DebrisExperience:
+				fight.DebrisExperience *= factor;
+				break;
 		}
 	}
 
@@ -186,6 +202,18 @@ public static class Upgrades
 				break;
 			case PlayerStat.DroneCap:
 				fight.Drones.Cap += Mathf.RoundToInt(amount);
+				break;
+			case PlayerStat.DamageTaken:
+				fight.Vnp.DamageTaken = Mathf.Max(0f, fight.Vnp.DamageTaken + amount);
+				break;
+			case PlayerStat.DroneDamage:
+				fight.Drones.DamageMultiplier += amount;
+				break;
+			case PlayerStat.DroneAttackRate:
+				fight.Drones.AttackRateMultiplier += amount;
+				break;
+			case PlayerStat.DebrisExperience:
+				fight.DebrisExperience += amount;
 				break;
 		}
 	}

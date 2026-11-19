@@ -9,6 +9,7 @@ OrbitRadius = 7.0
 OrbitSpeed = 200.0
 HitRadius = 0.8
 Size = 0.8
+BlockingColor = Color(0.72, 1.0, 0.9, 1)
 Id = "orbital_shards"
 Name = "Orbital Shards"
 Damage = 12.0

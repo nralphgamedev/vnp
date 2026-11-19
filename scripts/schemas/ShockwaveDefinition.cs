@@ -13,8 +13,4 @@ public partial class ShockwaveDefinition : WeaponDefinition
 
 	/// <summary>How fast the ring spreads, in units per second.</summary>
 	[Export] public float RingSpeed;
-
-	/// <summary>Only sends out a ring when an enemy is within this many units, so it doesn't fire at nothing.
-	/// 0 sends rings out regardless.</summary>
-	[Export] public float TriggerRange;
 }

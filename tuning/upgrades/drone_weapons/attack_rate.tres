@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/schemas/UpgradeDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "drone_attack_rate"
+Name = "Drone attack rate"
+Description = "Drones attack {percent} more often, whichever weapon they use."
+Category = 1
+Effect = 3
+Stat = 6
+Amount = 0.2
+Limit = 4

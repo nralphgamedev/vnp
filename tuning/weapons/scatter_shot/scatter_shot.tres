@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1_script")
-Range = 16.0
-ProjectileCount = 5
-ConeDegrees = 25.0
+Range = 17.0
+ProjectileCount = 6
+ConeDegrees = 22.0
 ConeWidenPerProjectile = 4.0
 MaxConeDegrees = 60.0
 ProjectileSpeed = 40.0

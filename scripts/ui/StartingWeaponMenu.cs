@@ -1,10 +1,12 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// For testing: at the start of a fight, a menu to choose which VNP Weapon the VNP starts with, from the
-/// choices in vnp.tres. The fight waits, paused, until one is picked. A/D or the stick picks, Space or A
-/// chooses, and the mouse works too. Turned on and off by ChooseStartingWeapon in vnp.tres.
+/// For testing: at the start of a fight, a menu to choose the starting VNP Weapon, then the starting Drone
+/// Weapon, from the choices in vnp.tres. The fight waits, paused, until both are picked. A page with no
+/// choices is skipped. A/D or the stick picks, Space or A chooses, and the mouse works too. Turned on and
+/// off by ChooseStartingWeapon in vnp.tres.
 /// </summary>
 public partial class StartingWeaponMenu : Control
 {
@@ -12,12 +14,30 @@ public partial class StartingWeaponMenu : Control
 	private static readonly Vector2 CardSize = new(260f, 230f);
 	private const float IconSize = 96f;
 
+	/// <summary>One card: a weapon's ID (which also names its icon), its name and colour, and what picking it does.</summary>
+	private sealed class Choice
+	{
+		public string Id;
+		public string Name;
+		public Color Color;
+		public Action Pick;
+	}
+
+	/// <summary>One page of the menu: a title and its cards.</summary>
+	private sealed class Page
+	{
+		public string Title;
+		public List<Choice> Choices;
+	}
+
 	public Fight Fight;
 
 	public bool IsOpen => Visible;
 
-	private readonly List<WeaponDefinition> _choices = new();
+	private readonly Queue<Page> _pages = new();
+	private Page _page;
 	private readonly List<PanelContainer> _cards = new();
+	private Label _title;
 	private HBoxContainer _row;
 	private int _selected;
 	private bool _openedThisFrame;
@@ -29,7 +49,8 @@ public partial class StartingWeaponMenu : Control
 		Visible = false;
 
 		VBoxContainer column = Ui.DimmedColumn(this, 0.6f, 26);
-		column.AddChild(Ui.Label("CHOOSE A STARTING WEAPON", 56, Colors.White));
+		_title = Ui.Label("", 56, Colors.White);
+		column.AddChild(_title);
 		column.AddChild(Ui.Label("For testing. Turn this off with ChooseStartingWeapon in vnp.tres.", 24, new Color(1f, 1f, 1f, 0.6f)));
 
 		_row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
@@ -39,28 +60,44 @@ public partial class StartingWeaponMenu : Control
 		column.AddChild(Ui.Label("A/D to choose  ·  Space or A to pick", 22, new Color(1f, 1f, 1f, 0.5f)));
 	}
 
-	/// <summary>Shows the choices and pauses the fight until one is picked.</summary>
-	public void Open(IEnumerable<WeaponDefinition> choices)
+	/// <summary>
+	/// Pauses the fight and asks for the starting VNP Weapon, then the starting Drone Weapon. A list that
+	/// is empty is skipped; with both empty, nothing opens.
+	/// </summary>
+	public void Open(IEnumerable<WeaponDefinition> weapons, IEnumerable<DroneWeaponDefinition> droneWeapons)
 	{
-		_choices.Clear();
-		foreach (WeaponDefinition weapon in choices)
+		_pages.Clear();
+
+		var weaponChoices = new List<Choice>();
+		foreach (WeaponDefinition weapon in weapons)
 		{
 			if (weapon != null)
-				_choices.Add(weapon);
+				weaponChoices.Add(new Choice { Id = weapon.Id, Name = weapon.Name, Color = weapon.Color, Pick = () => Fight.Equip(weapon) });
 		}
-		BuildCards();
-		_selected = 0;
-		Refresh();
+		if (weaponChoices.Count > 0)
+			_pages.Enqueue(new Page { Title = "CHOOSE A STARTING WEAPON", Choices = weaponChoices });
+
+		var droneChoices = new List<Choice>();
+		foreach (DroneWeaponDefinition weapon in droneWeapons)
+		{
+			if (weapon != null)
+				droneChoices.Add(new Choice { Id = weapon.Id, Name = weapon.Name, Color = weapon.Color, Pick = () => Fight.Drones.SwitchWeapon(weapon) });
+		}
+		if (droneChoices.Count > 0)
+			_pages.Enqueue(new Page { Title = "CHOOSE A DRONE WEAPON", Choices = droneChoices });
+
+		if (_pages.Count == 0)
+			return;
 		Visible = true;
-		_openedThisFrame = true;
 		GetTree().Paused = true;
+		NextPage();
 	}
 
 	public override void _Process(double delta)
 	{
 		if (!Visible)
 			return;
-		// Ignore a key already held when the fight started.
+		// Ignore a key already held when the page appeared.
 		if (_openedThisFrame)
 		{
 			_openedThisFrame = false;
@@ -72,9 +109,26 @@ public partial class StartingWeaponMenu : Control
 		if (Input.IsActionJustPressed("menu_select")) Choose(_selected);
 	}
 
+	/// <summary>Shows the next page, or closes the menu and starts the fight when there are none left.</summary>
+	private void NextPage()
+	{
+		if (_pages.Count == 0)
+		{
+			Visible = false;
+			GetTree().Paused = false;
+			return;
+		}
+		_page = _pages.Dequeue();
+		_title.Text = _page.Title;
+		BuildCards();
+		_selected = 0;
+		_openedThisFrame = true;
+		Refresh();
+	}
+
 	private void Select(int index)
 	{
-		index = Mathf.Clamp(index, 0, _choices.Count - 1);
+		index = Mathf.Clamp(index, 0, _page.Choices.Count - 1);
 		if (index == _selected)
 			return;
 		_selected = index;
@@ -84,19 +138,18 @@ public partial class StartingWeaponMenu : Control
 
 	private void Choose(int index)
 	{
-		if (index < 0 || index >= _choices.Count)
+		if (index < 0 || index >= _page.Choices.Count)
 			return;
 		Fight.Sounds.Play(Sound.UpgradeChoose);
-		Visible = false;
-		GetTree().Paused = false;
-		Fight.Equip(_choices[index]);
+		_page.Choices[index].Pick();
+		NextPage();
 	}
 
 	private void Refresh()
 	{
 		for (int i = 0; i < _cards.Count; i++)
 		{
-			Color color = _choices[i].Color;
+			Color color = _page.Choices[i].Color;
 			var background = new Color(0.07f, 0.09f, 0.15f, 0.96f);
 			StyleBoxFlat style = i == _selected
 				? Ui.Panel(background.Lerp(color, 0.2f), color)
@@ -111,12 +164,15 @@ public partial class StartingWeaponMenu : Control
 	private void BuildCards()
 	{
 		foreach (Node child in _row.GetChildren())
+		{
+			_row.RemoveChild(child);
 			child.QueueFree();
+		}
 		_cards.Clear();
 
-		for (int i = 0; i < _choices.Count; i++)
+		for (int i = 0; i < _page.Choices.Count; i++)
 		{
-			WeaponDefinition weapon = _choices[i];
+			Choice choice = _page.Choices[i];
 			int index = i;
 			var card = new PanelContainer { CustomMinimumSize = CardSize };
 			card.MouseEntered += () => Select(index);
@@ -132,23 +188,22 @@ public partial class StartingWeaponMenu : Control
 			inside.AddThemeConstantOverride("separation", 18);
 			card.AddChild(inside);
 
-			string iconPath = $"res://placeholder/textures/icons/{weapon.Id}.svg";
+			string iconPath = $"res://placeholder/textures/icons/{choice.Id}.svg";
 			if (ResourceLoader.Exists(iconPath))
 			{
-				var icon = new TextureRect
+				inside.AddChild(new TextureRect
 				{
-					Texture = Placeholders.Icon(weapon.Id),
-					Modulate = weapon.Color,
+					Texture = Placeholders.Icon(choice.Id),
+					Modulate = choice.Color,
 					ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 					StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 					CustomMinimumSize = new Vector2(IconSize, IconSize),
 					SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
 					MouseFilter = MouseFilterEnum.Ignore,
-				};
-				inside.AddChild(icon);
+				});
 			}
 
-			Label name = Ui.Label(weapon.Name, 30, Colors.White);
+			Label name = Ui.Label(choice.Name, 30, Colors.White);
 			name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			name.CustomMinimumSize = new Vector2(CardSize.X - 50f, 0f);
 			inside.AddChild(name);

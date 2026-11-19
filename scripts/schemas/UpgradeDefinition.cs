@@ -27,6 +27,17 @@ public enum UpgradeEffect
 	/// <summary>Adds Amount to one stat of an equipped weapon, such as +2 to Scatter Shot's projectile
 	/// count. Offered only while the weapon is equipped.</summary>
 	AddWeaponStat,
+
+	/// <summary>Switches on a new behaviour for an equipped weapon, such as Orbital Shards blocking enemy
+	/// shots. Offered only while the weapon is equipped and the feature is not already on.</summary>
+	UnlockWeaponFeature,
+}
+
+/// <summary>A behaviour a weapon can gain from an upgrade. Each is written in code for its weapon.</summary>
+public enum WeaponFeature
+{
+	/// <summary>Orbital Shards also destroy enemy shots they touch.</summary>
+	Blocking,
 }
 
 /// <summary>
@@ -83,6 +94,18 @@ public enum PlayerStat
 
 	/// <summary>Most drones the VNP can have.</summary>
 	DroneCap,
+
+	/// <summary>How much of each hit the VNP takes, as a multiple starting at 1. Armor lowers it.</summary>
+	DamageTaken,
+
+	/// <summary>The damage of the drones' weapon, as a multiple starting at 1, whichever weapon they use.</summary>
+	DroneDamage,
+
+	/// <summary>How often the drones attack, as a multiple starting at 1, whichever weapon they use.</summary>
+	DroneAttackRate,
+
+	/// <summary>Fight experience from harvesting enemy debris, as a multiple starting at 1.</summary>
+	DebrisExperience,
 }
 
 /// <summary>
@@ -111,11 +134,14 @@ public partial class UpgradeDefinition : Resource
 
 	[Export] public UpgradeEffect Effect;
 
-	/// <summary>The weapon it equips or changes. For EquipWeapon, ScaleWeaponStat and AddWeaponStat.</summary>
+	/// <summary>The weapon it equips or changes. For EquipWeapon, ScaleWeaponStat, AddWeaponStat and UnlockWeaponFeature.</summary>
 	[Export] public WeaponDefinition Weapon;
 
 	/// <summary>The weapon stat it changes. For ScaleWeaponStat and AddWeaponStat.</summary>
 	[Export] public WeaponStat WeaponStat;
+
+	/// <summary>The behaviour it switches on. For UnlockWeaponFeature.</summary>
+	[Export] public WeaponFeature Feature;
 
 	/// <summary>The Drone Weapon it switches to. For SwitchDroneWeapon.</summary>
 	[Export] public DroneWeaponDefinition DroneWeapon;

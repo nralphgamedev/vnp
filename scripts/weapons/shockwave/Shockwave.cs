@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// A VNP Weapon that sends out a ring at intervals. Each ring spreads from where the VNP was when it went
+/// A VNP Weapon that sends out a ring every cooldown, whether or not an enemy is near. Each ring spreads from where the VNP was when it went
 /// out, at a set speed, until it reaches its radius, damaging each enemy once as it passes through. More
 /// than one ring can be spreading at a time. Area of effect upgrades make the ring reach further; damage
 /// upgrades make it brighter.
@@ -45,7 +45,7 @@ public partial class Shockwave : VnpWeapon
 
 		float dt = (float)delta;
 		_cooldownLeft = Mathf.Max(0f, _cooldownLeft - dt);
-		if (_cooldownLeft <= 0f && !Fight.Vnp.IsDestroyed && EnemyNear())
+		if (_cooldownLeft <= 0f && !Fight.Vnp.IsDestroyed)
 		{
 			SendRing();
 			_cooldownLeft = Cooldown;
@@ -53,12 +53,6 @@ public partial class Shockwave : VnpWeapon
 
 		Spread(dt);
 		Draw();
-	}
-
-	/// <summary>Whether an enemy is close enough to be worth a ring.</summary>
-	private bool EnemyNear()
-	{
-		return Wave.TriggerRange <= 0f || Fight.Enemies.FindNearest(Fight.Vnp.PlanePosition, Wave.TriggerRange * Area) >= 0;
 	}
 
 	private void SendRing()

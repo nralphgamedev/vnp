@@ -36,6 +36,9 @@ public partial class LevelUpMenu : Control
 	private StyleBoxFlat _selectedStyle;
 	private StyleBoxFlat _disabledStyle;
 	private LevelUpPulse _pulse;
+#if TOOLS
+	private bool _cheatShown; // Editor only: whether the reroll currently shows the Alt cheat.
+#endif
 
 	// Card styles for each category, normal and highlighted, made on first use.
 	private readonly Dictionary<(UpgradeCategory, bool), StyleBoxFlat> _cardStyles = new();
@@ -111,9 +114,16 @@ public partial class LevelUpMenu : Control
 	/// <summary>Swaps the offer for a new draw, avoiding the upgrades just shown where possible.</summary>
 	public void Reroll()
 	{
-		if (Fight.Rerolls <= 0)
-			return;
-		Fight.Rerolls--;
+		bool free = false;
+#if TOOLS
+		free = PlaytestCheats.FreeRerolls; // Editor only: Alt held rerolls for free.
+#endif
+		if (!free)
+		{
+			if (Fight.Rerolls <= 0)
+				return;
+			Fight.Rerolls--;
+		}
 		Fight.Sounds.Play(Sound.MenuSelect);
 		_options = Upgrades.Draw(Fight, Tuning.Levels.OptionsPerOffer, _options);
 		Refresh();
@@ -129,6 +139,11 @@ public partial class LevelUpMenu : Control
 		if (Input.IsActionJustPressed("move_down")) MoveSelection(0, 1);
 		if (Input.IsActionJustPressed("move_up")) MoveSelection(0, -1);
 		if (Input.IsActionJustPressed("menu_select")) Confirm();
+#if TOOLS
+		// Editor only: show the free reroll as soon as Alt is pressed or let go.
+		if (PlaytestCheats.FreeRerolls != _cheatShown)
+			Refresh();
+#endif
 	}
 
 	private void Refresh()
@@ -150,6 +165,14 @@ public partial class LevelUpMenu : Control
 
 		bool canReroll = Fight.Rerolls > 0;
 		_rerollLabel.Text = canReroll ? $"Reroll   ({Fight.Rerolls} free)" : "No rerolls left";
+#if TOOLS
+		_cheatShown = PlaytestCheats.FreeRerolls;
+		if (_cheatShown)
+		{
+			canReroll = true;
+			_rerollLabel.Text = "Reroll   (Alt: free, playtest cheat)";
+		}
+#endif
 		_rerollLabel.Modulate = new Color(1f, 1f, 1f, canReroll ? 1f : 0.4f);
 		StyleBoxFlat rerollStyle = !canReroll ? _disabledStyle : _selected == _options.Count ? _selectedStyle : _normalStyle;
 		_rerollCard.AddThemeStyleboxOverride("panel", rerollStyle);

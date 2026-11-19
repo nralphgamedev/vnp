@@ -39,12 +39,17 @@ public partial class VnpTuning : Resource
 	[Export] public Godot.Collections.Array<WeaponDefinition> StartingWeapons = new();
 
 	/// <summary>For testing: each fight starts with a menu to choose the starting VNP Weapon from
-	/// StartingWeaponChoices, in place of StartingWeapons. Turn off for normal play.</summary>
+	/// StartingWeaponChoices, in place of StartingWeapons, then the starting Drone Weapon from
+	/// StartingDroneWeaponChoices, in place of the one in drones.tres. Turn off for normal play.</summary>
 	[ExportGroup("Testing")]
 	[Export] public bool ChooseStartingWeapon;
 
 	/// <summary>The weapons offered when ChooseStartingWeapon is on, in the order shown.</summary>
 	[Export] public Godot.Collections.Array<WeaponDefinition> StartingWeaponChoices = new();
+
+	/// <summary>The Drone Weapons offered when ChooseStartingWeapon is on, in the order shown. Leave it
+	/// empty to skip that page and start with the Drone Weapon in drones.tres.</summary>
+	[Export] public Godot.Collections.Array<DroneWeaponDefinition> StartingDroneWeaponChoices = new();
 
 	/// <summary>Scale of the VNP model. 1 is about 3 units long.</summary>
 	[ExportGroup("Look")]

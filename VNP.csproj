@@ -5,4 +5,8 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+  <!-- Playtest cheats: compiled only in the editor's Debug configuration, never in an export. -->
+  <ItemGroup Condition=" '$(Configuration)' != 'Debug' ">
+    <Compile Remove="scripts/cheats/**" />
+  </ItemGroup>
 </Project>

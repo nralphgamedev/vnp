@@ -67,6 +67,16 @@ public partial class EnemyDefinition : Resource
 	/// 0 makes it keep charging.</summary>
 	[Export] public float HoldDistance;
 
+	/// <summary>Over this many units either side of the hold distance, an enemy blends from closing in to
+	/// circling, rather than switching at one exact distance. Stops enemies twitching when their target
+	/// moves back and forth across the hold distance.</summary>
+	[Export] public float HoldBlendDistance;
+
+	/// <summary>Seconds an enemy keeps chasing the same drone, or the VNP, before it looks again for
+	/// whichever is nearest. It looks again sooner if its target is destroyed or gets out of reach. Stops
+	/// enemies flicking between drones that fly past them, such as ramming drones.</summary>
+	[Export] public float TargetHoldSeconds;
+
 	/// <summary>Seconds between shots from one enemy.</summary>
 	[Export] public float FireCooldown;
 

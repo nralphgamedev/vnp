@@ -12,6 +12,9 @@ public partial class OrbitalShards : VnpWeapon
 
 	private OrbitalShardsDefinition Shards => (OrbitalShardsDefinition)Definition;
 
+	/// <summary>The shards' colour: tinted once they can block enemy shots.</summary>
+	private Color ShardColor => HasFeature(WeaponFeature.Blocking) ? Shards.BlockingColor : Shards.Color;
+
 	/// <summary>Damage compared with the start of the fight, so damage upgrades show in the trails and hits.</summary>
 	private float Power => Mathf.Max(0.01f, Damage / Shards.Damage);
 
@@ -69,15 +72,21 @@ public partial class OrbitalShards : VnpWeapon
 					if (_nextHitAt.TryGetValue(key, out double readyAt) && readyAt > now)
 						continue;
 					_nextHitAt[key] = now + Cooldown;
-					Fight.Effects.Impact(enemies.PositionOf(enemy), Shards.Color, 0.7f * Mathf.Sqrt(Power));
+					Fight.Effects.Impact(enemies.PositionOf(enemy), ShardColor, 0.7f * Mathf.Sqrt(Power));
 					Fight.Sounds.Play(Sound.ShardHit);
 					enemies.Damage(enemy, Damage);
 				}
 			}
 
+			// With the blocking upgrade, a shard also destroys enemy shots it touches. A shot moves about
+			// half a unit a frame, so the reach allows a little for that.
+			if (HasFeature(WeaponFeature.Blocking) && !Fight.Vnp.IsDestroyed
+				&& Fight.Projectiles.BlockEnemyShots(position, Shards.HitRadius * Area + 0.6f) > 0)
+				Fight.Sounds.Play(Sound.ShardBlock);
+
 			// Point each shard along its path.
 			float yaw = PlaneMath.YawFacing(new Vector2(-around.Y, around.X));
-			_batch.Set(s, position, ShardHeight, yaw, Shards.Size * Area, Shards.Color);
+			_batch.Set(s, position, ShardHeight, yaw, Shards.Size * Area, ShardColor);
 
 			if (trails)
 				DrawTrail(s, center, angle, orbit);
@@ -112,7 +121,7 @@ public partial class OrbitalShards : VnpWeapon
 		float time = Mathf.Min(trailTime * 3f, trailTime * Power);
 		float turnRate = Mathf.DegToRad(Shards.OrbitSpeed * Speed);
 		float size = 0.25f * Shards.Size * Area;
-		Color color = Shards.Color.Darkened(0.2f);
+		Color color = ShardColor.Darkened(0.2f);
 
 		for (int p = 0; p < TrailPieces; p++)
 		{

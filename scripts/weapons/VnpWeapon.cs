@@ -26,6 +26,14 @@ public abstract partial class VnpWeapon : Node3D
 	/// <summary>Added to the definition's count: extra projectiles, missiles or shards from upgrades.</summary>
 	public int ExtraCount;
 
+	private readonly System.Collections.Generic.HashSet<WeaponFeature> _features = new();
+
+	/// <summary>Whether an upgrade has switched on this behaviour for this weapon.</summary>
+	public bool HasFeature(WeaponFeature feature) => _features.Contains(feature);
+
+	/// <summary>Switches on a behaviour, for an upgrade.</summary>
+	public void Unlock(WeaponFeature feature) => _features.Add(feature);
+
 	/// <summary>
 	/// Makes the weapon a definition describes. The kind of definition decides which behaviour it gets.
 	/// Returns null, with an error, for a kind of definition no weapon is written for.

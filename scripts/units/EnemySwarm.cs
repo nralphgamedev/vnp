@@ -32,6 +32,10 @@ public partial class EnemySwarm : Node3D
 		public float Flash;             // Seconds left of the hit flash.
 		public bool Aggro;
 		public bool Hunting;            // Part of a wave: chases from any distance and never gives up.
+		public int TargetDroneId;       // The drone it is chasing, or 0 for the VNP.
+		public float TargetTimer;       // Seconds until it looks again for whichever is nearest.
+		public Vector2 TrackDirection;  // Its sense of where its target is, turning at its turn rate.
+		public float TrackTurnSign;     // Which way it last turned to follow its target: 1, -1, or 0.
 	}
 
 	/// <summary>The enemy type that spawns, from enemy_spawning.tres.</summary>
@@ -330,6 +334,7 @@ public partial class EnemySwarm : Node3D
 				WanderDirection = direction,
 				WanderTimer = Rng.Range(1.5f, 4f),
 				Yaw = PlaneMath.YawFacing(direction),
+				TrackDirection = direction,
 				Health = health,
 				ProjectileDamage = damage,
 				Accuracy = RollAccuracy(accuracyBonus),
@@ -364,23 +369,57 @@ public partial class EnemySwarm : Node3D
 				? float.MaxValue
 				: (enemy.Aggro ? Type.LoseAggroRange : Type.AggroRange) * Fight.EnemyAggroScale;
 
-			// Go after whichever is nearest: the VNP or one of its drones.
+			// Go after whichever is nearest: the VNP or one of its drones. Keep after the same one for a
+			// while (TargetHoldSeconds), so drones flying past do not make the enemy flick between them.
 			float vnpDistance = enemy.Position.DistanceTo(vnpPosition);
 			Vector2 targetPosition = vnpPosition;
 			Vector2 targetVelocity = vnpVelocity;
 			float distance = vnpAlive ? vnpDistance : float.MaxValue;
-			// Skip the drone search when even the farthest drone could not be near enough.
-			if (vnpDistance - drones.Reach <= noticeRange
-				&& drones.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
-					out Vector2 dronePosition, out Vector2 droneVelocity, out float droneDistance))
+			enemy.TargetTimer -= dt;
+			bool keptDrone = false;
+			if (enemy.TargetDroneId != 0 && enemy.TargetTimer > 0f
+				&& drones.TryGet(enemy.TargetDroneId, out Vector2 heldPosition, out Vector2 heldVelocity))
 			{
-				targetPosition = dronePosition;
-				targetVelocity = droneVelocity;
-				distance = droneDistance;
+				float heldDistance = enemy.Position.DistanceTo(heldPosition);
+				if (heldDistance <= noticeRange)
+				{
+					targetPosition = heldPosition;
+					targetVelocity = heldVelocity;
+					distance = heldDistance;
+					keptDrone = true;
+				}
+			}
+			if (!keptDrone && (enemy.TargetDroneId != 0 || enemy.TargetTimer <= 0f))
+			{
+				// Look again: the hold ran out, or the drone it was chasing is gone or out of reach.
+				enemy.TargetDroneId = 0;
+				enemy.TargetTimer = Type.TargetHoldSeconds * Rng.Range(0.8f, 1.2f);
+				// Skip the drone search when even the farthest drone could not be near enough.
+				if (vnpDistance - drones.Reach <= noticeRange
+					&& drones.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
+						out Vector2 dronePosition, out Vector2 droneVelocity, out float droneDistance, out int droneId))
+				{
+					targetPosition = dronePosition;
+					targetVelocity = droneVelocity;
+					distance = droneDistance;
+					enemy.TargetDroneId = droneId;
+				}
 			}
 
 			Vector2 toTarget = targetPosition - enemy.Position;
 			Vector2 directionToTarget = distance > 0.001f ? toTarget / distance : Vector2.Up;
+			// Turn its sense of where the target is at its turn rate, so a target that darts past or
+			// through it, like a ramming drone, makes it swing round rather than jerk. While the target is
+			// nearly behind, keep turning the way it already was, so a target crossing behind it does not
+			// make it swing back and forth.
+			float trackDifference = enemy.TrackDirection.AngleTo(directionToTarget);
+			if (Mathf.Abs(trackDifference) > Mathf.DegToRad(150f) && enemy.TrackTurnSign != 0f)
+				trackDifference = Mathf.Abs(trackDifference) * enemy.TrackTurnSign;
+			float trackStep = Mathf.Clamp(trackDifference, -turnStep, turnStep);
+			if (Mathf.Abs(trackStep) > 0.0001f)
+				enemy.TrackTurnSign = Mathf.Sign(trackStep);
+			enemy.TrackDirection = enemy.TrackDirection.Rotated(trackStep);
+			Vector2 trackDirection = enemy.TrackDirection;
 
 			bool aggro = distance <= noticeRange;
 			if (enemy.Aggro && !aggro)
@@ -393,15 +432,14 @@ public partial class EnemySwarm : Node3D
 			if (aggro)
 			{
 				speed = Type.Speed;
-				if (distance > Type.HoldDistance)
-				{
-					goal = directionToTarget;
-				}
-				else
-				{
-					// Close enough: stop closing in and circle the target at half speed.
-					goal = new Vector2(-directionToTarget.Y, directionToTarget.X) * enemy.OrbitSign * 0.5f;
-				}
+				// Close enough: stop closing in and circle the target at half speed. Blend between the
+				// two around the hold distance, so a target moving back and forth across it does not
+				// make the enemy flip between them.
+				float blend = Type.HoldBlendDistance > 0f
+					? Mathf.Clamp((distance - Type.HoldDistance) / (2f * Type.HoldBlendDistance) + 0.5f, 0f, 1f)
+					: (distance > Type.HoldDistance ? 1f : 0f);
+				Vector2 circle = new Vector2(-trackDirection.Y, trackDirection.X) * enemy.OrbitSign * 0.5f;
+				goal = trackDirection * blend + circle * (1f - blend);
 			}
 			else
 			{
@@ -469,7 +507,7 @@ public partial class EnemySwarm : Node3D
 			// Face the target while in firing range, otherwise face the direction of travel.
 			bool inAttackRange = aggro && distance <= Type.AttackRange;
 			if (inAttackRange)
-				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(directionToTarget), turnStep);
+				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(trackDirection), turnStep);
 			else if (aggro && enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
 			else if (!aggro && enemy.Velocity.Length() > Type.WanderSpeed * 0.5f)

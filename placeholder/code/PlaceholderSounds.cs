@@ -206,6 +206,19 @@ public static class PlaceholderSounds
 			Tone(b, 0f, 0.3f, 120f, 40f, Wave.Sine, 0.7f);
 			Tone(b, 0f, 0.12f, 300f, 120f, Wave.Square, 0.2f);
 		}));
+
+		// ───────────── Stage 6 ─────────────
+		Save(folder, "ram_hit", Make(0.16f, b =>
+		{
+			Noise(b, random, 0f, 0.08f, 4000f, 900f, 0.5f);
+			Tone(b, 0f, 0.12f, 420f, 180f, Wave.Square, 0.35f);
+			Tone(b, 0f, 0.1f, 900f, 700f, Wave.Triangle, 0.2f);
+		}));
+		Save(folder, "shard_block", Make(0.1f, b =>
+		{
+			Tone(b, 0f, 0.08f, 2600f, 2300f, Wave.Triangle, 0.5f);
+			Noise(b, random, 0f, 0.03f, 9000f, 6000f, 0.25f);
+		}));
 	}
 
 	/// <summary>

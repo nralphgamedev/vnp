@@ -25,4 +25,8 @@ public partial class OrbitalShardsDefinition : WeaponDefinition
 
 	/// <summary>Scale of a shard. 1 is 2 units long.</summary>
 	[Export] public float Size;
+
+	/// <summary>Colour of the shards, their trails and hit sparks once the blocking upgrade is taken, so
+	/// the player can see they now block shots. Keep it close to Color: a subtle tint, not a new weapon.</summary>
+	[Export] public Color BlockingColor;
 }

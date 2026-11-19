@@ -68,7 +68,7 @@ Scenes that put meshes and materials together. Both are made by `code/Placeholde
 | File | What it is | Used by |
 |---|---|---|
 | `icon.svg` | Godot's default project icon | Project settings (window and file icon) |
-| `icons/pulse_laser.svg`, `icons/orbital_shards.svg`, `icons/scatter_shot.svg`, `icons/seeker_missiles.svg`, `icons/shockwave.svg`, `icons/mine_layer.svg`, `icons/projectile.svg`, `icons/beam.svg` | White weapon icons, tinted with the weapon's colour. Drawn by hand. Each is named after its weapon's ID, so a new weapon's icon is `icons/<id>.svg`; a weapon without one shows its first letter. | HUD weapon slots and Drone Weapon box (`WeaponSlots.cs`) |
+| `icons/pulse_laser.svg`, `icons/orbital_shards.svg`, `icons/scatter_shot.svg`, `icons/seeker_missiles.svg`, `icons/shockwave.svg`, `icons/mine_layer.svg`, `icons/projectile.svg`, `icons/beam.svg`, `icons/ram.svg` | White weapon icons, tinted with the weapon's colour. Drawn by hand. Each is named after its weapon's ID, so a new weapon's icon is `icons/<id>.svg`; a weapon without one shows its first letter. | HUD weapon slots and Drone Weapon box (`WeaponSlots.cs`) |
 
 ## Audio (`audio/`)
 
@@ -88,6 +88,8 @@ Every sound is listed in `tuning/audio.tres`, which sets its category, volume, c
 | `shockwave_fire.wav` | Low boom with a rush of air | A Shockwave ring goes out |
 | `mine_drop.wav` | Two soft rising clicks | A mine is dropped |
 | `mine_explode.wav` | Bigger explosion | A mine goes off |
+| `ram_hit.wav` | Short metallic clank | A ramming drone hits an enemy |
+| `shard_block.wav` | Bright glassy tink | An Orbital Shard destroys an enemy shot |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

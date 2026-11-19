@@ -53,6 +53,26 @@ public partial class Projectiles : Node3D
 		};
 	}
 
+	/// <summary>
+	/// Destroys every enemy shot within <paramref name="radius"/> of a point, each with a small pop.
+	/// Returns how many it destroyed. Used by Orbital Shards blocking.
+	/// </summary>
+	public int BlockEnemyShots(Vector2 at, float radius)
+	{
+		int blocked = 0;
+		float radiusSquared = radius * radius;
+		for (int i = Count - 1; i >= 0; i--)
+		{
+			ref Shot shot = ref _shots[i];
+			if (!shot.FromEnemy || shot.Position.DistanceSquaredTo(at) > radiusSquared)
+				continue;
+			Fight.Effects.Impact(shot.Position, shot.Color, 0.5f);
+			_shots[i] = _shots[--Count];
+			blocked++;
+		}
+		return blocked;
+	}
+
 	public override void _Process(double delta)
 	{
 		if (Fight == null)
