@@ -108,15 +108,16 @@ public static class PlaceholderSounds
 				Tone(b, i * 0.35f, 0.4f, 190f, 280f, Wave.Sine, 0.3f);
 			}
 		}));
-		// Two low, harsh pulses, slightly out of tune with each other so they beat.
-		Save(folder, "time_limit", Make(1.0f, b =>
+		// Two low, round tones, each falling a little and dying away, the second lower: a sober warning.
+		// After playtesting, this replaced two held, buzzy pulses a semitone apart, which were too jarring.
+		Save(folder, "time_limit", Make(1.1f, b =>
 		{
 			for (int i = 0; i < 2; i++)
 			{
-				float at = i * 0.5f;
-				Tone(b, at, 0.35f, 220f, 220f, Wave.Saw, 0.4f, Shape.Hold);
-				Tone(b, at, 0.35f, 233f, 233f, Wave.Saw, 0.3f, Shape.Hold);
-				Tone(b, at, 0.35f, 110f, 110f, Wave.Sine, 0.4f, Shape.Hold);
+				float at = i * 0.45f;
+				float pitch = i == 0 ? A3 : 196f;
+				Tone(b, at, 0.55f, pitch, pitch * 0.9f, Wave.Triangle, 0.45f);
+				Tone(b, at, 0.55f, pitch * 0.5f, pitch * 0.45f, Wave.Sine, 0.35f);
 			}
 		}));
 

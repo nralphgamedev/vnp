@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ScatterShotDefinition" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/schemas/ScatterShotDefinition.cs" id="1_script"]
+[ext_resource type="Script" path="res://scripts/weapons/scatter_shot/ScatterShotDefinition.cs" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")

@@ -100,7 +100,7 @@ Every sound is listed in `tuning/audio.tres`, which sets its category, volume, c
 | `material_pop.wav` | Rising pop | An asteroid or piece of debris is used up |
 | `drone_built.wav` | Rising chirp | A temporary drone is built |
 | `wave_warning.wav` | Two soft rising sweeps | The wave warning appears |
-| `time_limit.wav` | Two low, harsh pulses | The time limit and each escalation step |
+| `time_limit.wav` | Two low, round falling tones | The time limit and each escalation step |
 | `level_up.wav` | Rising four-note arpeggio | A level-up offer appears |
 | `upgrade_choose.wav` | Two rising notes | An upgrade is chosen |
 | `menu_move.wav` | Tick | The highlight moves in the level-up offer |
