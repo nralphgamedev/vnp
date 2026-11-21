@@ -278,10 +278,14 @@ public partial class PlaceholderBaker : Node
 
 	private static void SetOwner(Node node, Node owner)
 	{
-		foreach (Node child in node.GetChildren())
+		var children = node.GetChildren();
+		using ((Godot.Collections.Array)children)
 		{
-			child.Owner = owner;
-			SetOwner(child, owner);
+			foreach (Node child in children)
+			{
+				child.Owner = owner;
+				SetOwner(child, owner);
+			}
 		}
 	}
 }

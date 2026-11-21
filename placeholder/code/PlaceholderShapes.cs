@@ -209,7 +209,7 @@ public static class PlaceholderShapes
 		for (int i = 0; i < normals.Length; i++)
 			normals[i] = normals[i].Normalized();
 
-		var arrays = new Godot.Collections.Array();
+		using var arrays = new Godot.Collections.Array();
 		arrays.Resize((int)Mesh.ArrayType.Max);
 		arrays[(int)Mesh.ArrayType.Vertex] = corners.ToArray();
 		arrays[(int)Mesh.ArrayType.Normal] = normals;

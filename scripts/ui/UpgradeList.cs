@@ -44,8 +44,14 @@ public partial class UpgradeList : Control
 	/// <summary>Fills the panel with the upgrades taken in this fight.</summary>
 	public void ShowUpgrades(Fight fight)
 	{
-		foreach (Node child in _lines.GetChildren())
-			child.QueueFree();
+		// Disposed straight away: a Godot array left for .NET to clean up later can be cleaned up after Godot has
+		// shut down, which crashes the game as it quits.
+		var children = _lines.GetChildren();
+		using ((Godot.Collections.Array)children)
+		{
+			foreach (Node child in children)
+				child.QueueFree();
+		}
 
 		AddLine("FIGHT UPGRADES", 24, new Color(1f, 1f, 1f, 0.8f));
 		IReadOnlyList<UpgradeDefinition> taken = fight.TakenUpgrades;

@@ -293,6 +293,9 @@ public partial class EnemySwarm : Node3D
 		return -1;
 	}
 
+	/// <summary>Whether an enemy absorbs drones that touch it, as the Goo does.</summary>
+	public bool AbsorbsDronesOf(int index) => _types[_enemies[index].Type].AbsorbsDrones;
+
 	/// <summary>Which enemy type an enemy is, by the type's ID.</summary>
 	public string TypeIdOf(int index) => _types[_enemies[index].Type].Definition.Id;
 

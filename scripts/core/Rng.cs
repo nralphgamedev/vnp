@@ -8,13 +8,30 @@ using System;
 /// </summary>
 public static class Rng
 {
-	private static Random Random = new();
+	private static Random _random = new();
+
+	/// <summary>How many random numbers have been drawn since the last seed. Two runs of the same fight that
+	/// should match can be compared by this, to find where one of them first drew differently.</summary>
+	public static long Draws { get; private set; }
+
+	private static Random Random
+	{
+		get
+		{
+			Draws++;
+			return _random;
+		}
+	}
 
 	/// <summary>Starts the sequence of random numbers again from a seed.</summary>
-	public static void Seed(int seed) => Random = new Random(seed);
+	public static void Seed(int seed)
+	{
+		_random = new Random(seed);
+		Draws = 0;
+	}
 
 	/// <summary>A seed picked at random, for a fight nobody asked to repeat.</summary>
-	public static int NewSeed() => Random.Shared.Next(1, int.MaxValue);
+	public static int NewSeed() => System.Random.Shared.Next(1, int.MaxValue);
 
 	/// <summary>A random number from 0 up to 1.</summary>
 	public static float Value() => Random.NextSingle();

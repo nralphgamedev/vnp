@@ -210,8 +210,8 @@ public partial class FightLog : Node
 			{
 				["seed"] = _fight.Seed,
 				["player"] = _player,
-				["pilot"] = null,
-				["build"] = null,
+				["pilot"] = _fight.Pilot?.Skill.Id,
+				["build"] = _fight.Pilot?.Build.Id,
 				["startingWeapons"] = _startingWeapons ?? new List<string>(),
 				["startingDroneWeapon"] = _startingDroneWeapon,
 				["tuningVariant"] = null,
@@ -338,12 +338,12 @@ public partial class FightLog : Node
 		if (_gitVersion != null)
 			return _gitVersion;
 		string root = ProjectSettings.GlobalizePath("res://");
-		var output = new Godot.Collections.Array();
+		using var output = new Godot.Collections.Array();
 		_gitVersion = "unknown";
 		if (OS.Execute("git", new[] { "-C", root, "rev-parse", "--short", "HEAD" }, output) == 0 && output.Count > 0)
 		{
 			_gitVersion = output[0].AsString().Trim();
-			var status = new Godot.Collections.Array();
+			using var status = new Godot.Collections.Array();
 			if (OS.Execute("git", new[] { "-C", root, "status", "--porcelain" }, status) == 0
 				&& status.Count > 0 && status[0].AsString().Trim().Length > 0)
 				_gitVersion += "+changes";

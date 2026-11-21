@@ -45,8 +45,14 @@ public partial class DamageBreakdown : Control
 	/// <summary>Fills the panel from this fight's statistics.</summary>
 	public void ShowFight(Fight fight)
 	{
-		foreach (Node child in _lines.GetChildren())
-			child.QueueFree();
+		// Disposed straight away: a Godot array left for .NET to clean up later can be cleaned up after Godot has
+		// shut down, which crashes the game as it quits.
+		var children = _lines.GetChildren();
+		using ((Godot.Collections.Array)children)
+		{
+			foreach (Node child in children)
+				child.QueueFree();
+		}
 
 		FightStats stats = fight.Stats;
 		var enemyNames = fight.Enemies.Types.ToDictionary(t => t.Definition.Id, t => t.Definition.Name);

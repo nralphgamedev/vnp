@@ -16,6 +16,11 @@ public partial class CameraRig : Camera3D
 	// How much shake is left, from 0 to 1. It dies away over ShakeTime.
 	private float _shake;
 	private readonly Random _shakeRandom = new();
+	// Where the screen's four corners land on the plane, from the camera's steady position, before any shake.
+	// Gameplay measures from these, so the shake, which uses its own randomness, never changes where enemies
+	// spawn or what a pilot sees: a fight then repeats exactly from its seed.
+	private readonly Vector2[] _steadyCorners = new Vector2[4];
+	private bool _cornersReady;
 
 	public override void _Ready()
 	{
@@ -69,7 +74,8 @@ public partial class CameraRig : Camera3D
 
 		// Sit above the focus and slightly toward the bottom of the screen, looking back at it.
 		// Pitching by -(90 - tilt) keeps the top of the screen pointing along -Z.
-		GlobalPosition = Focus + new Vector3(0f, height, height * Mathf.Tan(tilt)) + ShakeOffset();
+		Vector3 steady = Focus + new Vector3(0f, height, height * Mathf.Tan(tilt));
+		GlobalPosition = steady;
 		RotationDegrees = new Vector3(-(90f - Tuning.Camera.Tilt), 0f, 0f);
 
 		Near = 1f;
@@ -87,6 +93,52 @@ public partial class CameraRig : Camera3D
 			Projection = ProjectionType.Perspective;
 			Fov = Tuning.Camera.Fov;
 		}
+
+		// Measure the screen from the steady camera, then add the shake, which only changes what is drawn.
+		MeasureSteadyCorners();
+		GlobalPosition = steady + ShakeOffset();
+	}
+
+	/// <summary>
+	/// Works out where the screen's corners land on the plane from the camera's own settings (where it sits, its
+	/// tilt, its field of view or size) at the project's reference screen shape, rather than from the window.
+	/// Gameplay measures from these, so a fight plays the same headless or in a window of any size, and on any
+	/// computer. The camera keeps the screen's height fixed, so a window wider than the reference shows a
+	/// little more at the sides than this counts as visible.
+	/// </summary>
+	private void MeasureSteadyCorners()
+	{
+		float aspect = ReferenceAspect();
+		float tilt = Mathf.DegToRad(Tuning.Camera.Tilt);
+		float height = Tuning.Camera.Height;
+		var position = new Vector3(Focus.X, height, Focus.Z + height * Mathf.Tan(tilt));
+		Basis basis = Basis.FromEuler(new Vector3(-(Mathf.Pi * 0.5f - tilt), 0f, 0f));
+		Vector3 right = basis.X, up = basis.Y, forward = -basis.Z;
+		float distance = height / Mathf.Cos(tilt);
+		float halfHeight = Tuning.Camera.Orthographic
+			? distance * Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f)
+			: Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f);
+
+		// Top left, top right, bottom right, bottom left: around the screen in order.
+		Vector2[] corners = { new(-1f, 1f), new(1f, 1f), new(1f, -1f), new(-1f, -1f) };
+		for (int i = 0; i < 4; i++)
+		{
+			Vector3 across = right * corners[i].X * halfHeight * aspect + up * corners[i].Y * halfHeight;
+			// A perspective camera fans its rays out from one point; an orthographic one sends them in parallel.
+			Vector3 origin = Tuning.Camera.Orthographic ? position + across : position;
+			Vector3 ray = Tuning.Camera.Orthographic ? forward : forward + across;
+			Vector3 hit = origin + ray * (-origin.Y / ray.Y);
+			_steadyCorners[i] = new Vector2(hit.X, hit.Z);
+		}
+		_cornersReady = true;
+	}
+
+	/// <summary>The screen shape the game is made for: width over height, from the project's viewport size.</summary>
+	private static float ReferenceAspect()
+	{
+		float width = ProjectSettings.GetSetting("display/window/size/viewport_width", 1920).AsSingle();
+		float height = ProjectSettings.GetSetting("display/window/size/viewport_height", 1080).AsSingle();
+		return height > 0f ? width / height : 16f / 9f;
 	}
 
 	/// <summary>A random nudge sideways on the plane. Squaring the shake makes it die away smoothly.</summary>
@@ -102,17 +154,49 @@ public partial class CameraRig : Camera3D
 	/// How far to go from a point on the plane, in a direction, to be out of sight with at least
 	/// <paramref name="margin"/> to spare from every edge of the screen. With the tilt the visible
 	/// area is wider at the top than the bottom, so this differs by direction. Uses the camera as it
-	/// was last placed.
+	/// was last placed, without its screen shake: the shake uses its own randomness, and if it moved where
+	/// enemies spawn, a fight would no longer repeat from its seed.
 	/// </summary>
+	/// <summary>
+	/// Whether a point on the plane is on screen, in the steady view at the reference screen shape that
+	/// gameplay measures from (see MeasureSteadyCorners). Pilots see only what this says is on screen.
+	/// </summary>
+	public bool IsOnScreen(Vector2 point)
+	{
+		if (!_cornersReady)
+			MeasureSteadyCorners();
+		// Inside the four-sided view when on the same side of every edge.
+		float side = 0f;
+		for (int i = 0; i < 4; i++)
+		{
+			Vector2 a = _steadyCorners[i];
+			Vector2 b = _steadyCorners[(i + 1) % 4];
+			float cross = (b - a).Cross(point - a);
+			if (side == 0f)
+				side = Mathf.Sign(cross);
+			else if (cross != 0f && Mathf.Sign(cross) != side)
+				return false;
+		}
+		return true;
+	}
+
+	/// <summary>How far the farthest point on screen is from a point on the plane: the most a pilot there could see.</summary>
+	public float FarthestOnScreen(Vector2 from)
+	{
+		if (!_cornersReady)
+			MeasureSteadyCorners();
+		float farthest = 0f;
+		foreach (Vector2 corner in _steadyCorners)
+			farthest = Mathf.Max(farthest, corner.DistanceTo(from));
+		return farthest;
+	}
+
 	public float DistanceOutOfView(Vector2 from, Vector2 direction, float margin)
 	{
-		// Where the four screen corners land on the plane.
-		Vector2 screen = GetViewport().GetVisibleRect().Size;
-		Span<Vector2> corners = stackalloc Vector2[4];
-		corners[0] = OnPlane(Vector2.Zero);
-		corners[1] = OnPlane(new Vector2(screen.X, 0f));
-		corners[2] = OnPlane(screen);
-		corners[3] = OnPlane(new Vector2(0f, screen.Y));
+		// Where the four screen corners land on the plane, measured from the steady camera.
+		if (!_cornersReady)
+			MeasureSteadyCorners();
+		Vector2[] corners = _steadyCorners;
 		Vector2 center = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
 
 		// Push every edge of the visible area out by the margin, and find where the ray leaves the
@@ -134,15 +218,6 @@ public partial class CameraRig : Camera3D
 			leave = Mathf.Min(leave, t);
 		}
 		return Mathf.Max(0f, leave);
-	}
-
-	/// <summary>Where a point on the screen lands on the gameplay plane.</summary>
-	private Vector2 OnPlane(Vector2 screenPoint)
-	{
-		Vector3 origin = ProjectRayOrigin(screenPoint);
-		Vector3 normal = ProjectRayNormal(screenPoint);
-		Vector3 hit = origin + normal * (-origin.Y / normal.Y);
-		return new Vector2(hit.X, hit.Z);
 	}
 
 	private static Vector3 PlaneOnly(Vector3 world) => new(world.X, 0f, world.Z);

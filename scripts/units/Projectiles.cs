@@ -56,6 +56,23 @@ public partial class Projectiles : Node3D
 	}
 
 	/// <summary>
+	/// Fills <paramref name="results"/> with the position and velocity of every enemy shot within a distance of
+	/// a point, and returns how many. For pilots, to notice shots coming at them.
+	/// </summary>
+	public int CollectEnemyShots(Vector2 center, float radius, System.Collections.Generic.List<(Vector2 Position, Vector2 Velocity)> results)
+	{
+		results.Clear();
+		float radiusSquared = radius * radius;
+		for (int i = 0; i < Count; i++)
+		{
+			ref Shot shot = ref _shots[i];
+			if (shot.FromEnemy && shot.Position.DistanceSquaredTo(center) <= radiusSquared)
+				results.Add((shot.Position, shot.Velocity));
+		}
+		return results.Count;
+	}
+
+	/// <summary>
 	/// Destroys every enemy shot within <paramref name="radius"/> of a point, each with a small pop.
 	/// Returns how many it destroyed. Used by Orbital Shards blocking.
 	/// </summary>

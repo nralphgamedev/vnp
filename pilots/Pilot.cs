@@ -1,0 +1,548 @@
+using Godot;
+using System.Collections.Generic;
+
+/// <summary>
+/// Flies a VNP in place of a player: it chooses a direction to move each moment, and picks from level-up
+/// offers. How skilled it is comes from a PilotDefinition, and what it picks from a BuildDefinition.
+///
+/// It sees only what a player could: enemies, enemy shots and material within its awareness, which is never
+/// farther than the screen shows, plus its own health, drones and level. It never reads hidden information,
+/// such as when the next wave comes.
+///
+/// Each decision weighs four wants:
+/// - Back off: pull away from a fight it can't afford. Threat comes from each enemy near it, closer ones more,
+///   and an enemy that eats drones counts for more while it relies on drones. What it can afford grows with
+///   its health, drones and level, and shrinks with caution.
+/// - Dodge: move aside from a shot it noticed coming at it.
+/// - Fight: while the fight is affordable, keep its preferred distance from the nearest enemy, circling it.
+///   It wants this less the fewer drones it has: without them, it would rather rebuild than fight alone.
+/// - Harvest: head for the most worthwhile material that is affordable to reach, preferring clusters, and hold
+///   still beside it while the beam works. It wants this most while its drones are below their cap, since
+///   harvesting builds them, and less at the cap.
+/// With nothing to harvest or fight, it either returns to material it remembers seeing, choosing where by the
+/// mass there, or explores for more: the more mass it remembers, the likelier it returns.
+/// It never retreats through the gateway.
+///
+/// It flies any VNP it is given, and doesn't assume it is the player's or the only one. For now it only flies
+/// the player's VNP in the scenario harness and batches; nothing in a normal fight uses it. Rival VNPs and
+/// escort VNPs in the full game are meant to be flown by the same logic.
+/// </summary>
+public partial class Pilot : Node, IVnpController
+{
+	public PilotDefinition Skill { get; private set; }
+	public BuildDefinition Build { get; private set; }
+
+	public Vector2 Move { get; private set; }
+
+	/// <summary>
+	/// Why it moved as it did at its latest decision, in a line a person can read: the threat it felt against what
+	/// it could afford, and which wants won. For checking its behavior, such as with the scenario harness's
+	/// explain option. Nothing in the game reads it.
+	/// </summary>
+	public string Reasoning { get; private set; } = "";
+
+	/// <summary>How many decisions it has made, so a reader can tell when there is a new one.</summary>
+	public int Decisions { get; private set; }
+
+	private Fight _fight;
+	private Vnp _vnp;
+	private DroneSwarm _drones;
+	private Vector2 _wanted;
+	private float _decisionTimer;
+	private int _harvestTargetId;
+	private Vector2 _exploreHeading = Vector2.Up;
+	private float _orbitSign = 1f;
+	private float _lastTargetDanger;
+
+	// Material it has seen, by ID: where and how much. Forgotten once it is used up, or found gone on return.
+	private readonly Dictionary<int, (Vector2 Position, float Mass)> _known = new();
+	private readonly HashSet<int> _seen = new();
+	// While it has nothing to do: where it is returning to, if anywhere, and how long it has roamed.
+	private Vector2? _returnTo;
+	private float _roamTime;
+	private bool _wasIdle;
+
+	private readonly int[] _enemies = new int[512];
+	private readonly int[] _material = new int[512];
+	private readonly List<(Vector2 Position, Vector2 Velocity)> _shots = new();
+
+	// How quickly the pilot's "stick" moves to a new direction, in full turns of the stick a second, so its
+	// movement is smooth rather than snapping between decisions.
+	private const float StickSpeed = 6f;
+
+	/// <summary>Has a new pilot fly a VNP: it steers the VNP and is added to the fight to run each frame.</summary>
+	public static Pilot Fly(Fight fight, Vnp vnp, DroneSwarm drones, PilotDefinition skill, BuildDefinition build)
+	{
+		var pilot = new Pilot
+		{
+			Name = $"Pilot_{skill.Id}_{build.Id}",
+			Skill = skill,
+			Build = build,
+			_fight = fight,
+			_vnp = vnp,
+			_drones = drones,
+			ProcessPriority = UpdateOrder.Pilots,
+		};
+		pilot._exploreHeading = Rng.Direction();
+		pilot._orbitSign = Rng.Sign();
+		vnp.Controller = pilot;
+		fight.AddChild(pilot);
+		return pilot;
+	}
+
+	public override void _Process(double delta)
+	{
+		float dt = (float)delta;
+		if (_vnp.IsDestroyed)
+		{
+			Move = Vector2.Zero;
+			return;
+		}
+
+		_decisionTimer -= dt;
+		if (_decisionTimer <= 0f)
+		{
+			Decide();
+			_decisionTimer = Skill.ReactionSeconds * Rng.Range(0.8f, 1.2f);
+		}
+		Move = Move.MoveToward(_wanted, StickSpeed * dt);
+	}
+
+	// ───────────── Moving ─────────────
+
+	private void Decide()
+	{
+		Vector2 me = _vnp.PlanePosition;
+		float awareness = Mathf.Min(Skill.AwarenessRadius, ScreenReach(me));
+		EnemySwarm enemies = _fight.Enemies;
+		int enemyCount = OnScreenOnly(enemies.CollectNear(me, awareness, _enemies), _enemies, i => enemies.PositionOf(i));
+
+		// Threat, and which way it comes from.
+		float droneReliance = _drones.Cap > 0 ? Mathf.Clamp((float)_drones.Count / _drones.Cap, 0f, 1f) : 0f;
+		float threat = 0f;
+		Vector2 away = Vector2.Zero;
+		int nearest = -1;
+		float nearestDistance = float.MaxValue;
+		for (int c = 0; c < enemyCount; c++)
+		{
+			int e = _enemies[c];
+			Vector2 offset = me - enemies.PositionOf(e);
+			float distance = Mathf.Max(0.5f, offset.Length() - enemies.RadiusOf(e));
+			float closeness = Mathf.Clamp(1f - distance / Mathf.Max(1f, Skill.ThreatRange), 0f, 1f);
+			float weight = enemies.AbsorbsDronesOf(e) ? Mathf.Lerp(1f, Skill.DroneEaterThreat, droneReliance) : 1f;
+			threat += weight * closeness * closeness;
+			away += offset / distance * weight * closeness;
+			// Fight the nearest enemy, but leave drone eaters to the weapons while the drones matter.
+			bool worthApproaching = !enemies.AbsorbsDronesOf(e) || droneReliance < 0.25f;
+			if (worthApproaching && distance < nearestDistance)
+			{
+				nearestDistance = distance;
+				nearest = e;
+			}
+		}
+
+		float pressure = threat / Mathf.Max(0.01f, Affordable());
+		// Back off more and more as the fight stops being affordable, fully once it is well past.
+		float backOff = Mathf.Clamp((pressure - 0.75f) / 0.5f, 0f, 1f);
+		float engage = 1f - backOff;
+
+		Vector2 want = Vector2.Zero;
+		if (backOff > 0f && away != Vector2.Zero)
+			want += away.Normalized() * Skill.BackOffWeight * backOff;
+
+		Vector2 dodge = Dodge(me, awareness);
+		want += dodge * Skill.DodgeWeight;
+
+		bool fighting = nearest >= 0 && engage > 0f;
+		float fightWeight = Skill.FightWeight * Mathf.Lerp(Skill.FightWithoutDrones, 1f, droneReliance);
+		if (fighting)
+			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance) * fightWeight * engage;
+
+		// Harvesting: toward the best material, and holding still beside it once the beam reaches. It carries on
+		// while backing off, since material near enemies is already scored down: a hurt pilot keeps harvesting
+		// rocks away from the fight, as a player would, rather than only fleeing.
+		Vector2 harvest = HarvestMove(me, awareness, enemyCount, droneReliance, out bool holding, out float targetWorth,
+			out float targetEdge, out float targetDanger);
+		float harvestWeight = Skill.HarvestWeight * (_drones.Count < _drones.Cap ? 1f : Skill.HarvestAtCap);
+		// Harvest rate upgrades make harvesting worth more of its time.
+		float rateMultiplier = _drones.HarvestRate / Mathf.Max(0.001f, Tuning.Harvesting.DroneRate);
+		harvestWeight *= Mathf.Max(0f, 1f + Skill.HarvestRateInfluence * (rateMultiplier - 1f));
+		// A rich concentration pulls harder than a lone rock.
+		harvestWeight *= 1f + Skill.ConcentrationPull * Mathf.Clamp(targetWorth / Mathf.Max(1f, Skill.ConcentrationMass), 0f, 1f);
+		// While backing off, material with enemies around it stops pulling: it keeps harvesting rocks away from the
+		// fight, but doesn't head into the danger it is backing away from for the rich debris inside it. Before
+		// this, it flew into a crowd of Goos for the debris among them, and was destroyed in half a second.
+		harvestWeight /= 1f + backOff * targetDanger * Skill.HarvestDangerWhenBackingOff;
+		want += harvest * harvestWeight;
+
+		// Close to its target and not backing off: commit, and close the last few units into beam reach. Blended
+		// with the other wants, the pull toward a nearby rock could balance against keeping fighting distance,
+		// leaving it hovering just out of reach in the middle of a concentration.
+		bool committing = harvest != Vector2.Zero && backOff <= 0f
+			&& targetEdge <= _fight.Harvestables.BeamRange + Skill.HarvestCommitDistance;
+		if (committing)
+			want = harvest + dodge * Skill.DodgeWeight;
+
+		bool idle = want.LengthSquared() < 0.01f && !holding && !fighting;
+		if (idle)
+			want = WhenIdle(me, awareness);
+		else
+			_returnTo = null;
+		_wasIdle = idle;
+
+		_lastTargetDanger = targetDanger;
+		Decisions++;
+		Reasoning = Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
+			harvest, targetWorth, targetEdge, holding, committing, idle, dodge, want, enemyCount, me);
+
+		if (want.LengthSquared() > 0.0001f)
+		{
+			// The weights above decide which way to go. How fast: full speed, as a player holds the stick right
+			// over, with two exceptions. It eases off as it arrives at the material it is about to harvest, so it
+			// doesn't overshoot. And when its wants balance out, with no clear direction, it slows to match.
+			// Speed used to follow the strength of its wants, and wants pulling different ways, such as rocks
+			// ahead and enemies behind, left it crawling: below 80% of top speed for two-thirds of a fight.
+			bool arriving = harvest != Vector2.Zero && (committing || (!fighting && backOff <= 0f && dodge == Vector2.Zero));
+			const float ClearDirection = 0.25f;
+			float speed = arriving
+				? harvest.Length()
+				: Mathf.Min(1f, want.Length() / ClearDirection);
+			float wander = Mathf.DegToRad(Skill.WanderDegrees);
+			want = want.Normalized().Rotated(Rng.Range(-wander, wander)) * speed;
+		}
+		_wanted = want.LimitLength(1f);
+	}
+
+	private string Explain(float threat, float pressure, float backOff, float droneReliance, int fightTarget,
+		float fightDistance, Vector2 harvest, float targetWorth, float targetEdge, bool holding, bool committing,
+		bool idle, Vector2 dodge, Vector2 want, int enemyCount, Vector2 me)
+	{
+		EnemySwarm enemies = _fight.Enemies;
+		int drainers = 0;
+		float nearestDrainer = float.MaxValue;
+		for (int c = 0; c < enemyCount; c++)
+		{
+			int e = _enemies[c];
+			if (!enemies.AbsorbsDronesOf(e))
+				continue;
+			drainers++;
+			nearestDrainer = Mathf.Min(nearestDrainer, me.DistanceTo(enemies.PositionOf(e)) - enemies.RadiusOf(e));
+		}
+		string doing = committing ? $"committing to harvest (edge {targetEdge:0.0})"
+			: holding ? "holding to harvest"
+			: idle ? (_returnTo != null ? "returning to remembered material" : "exploring")
+			: harvest != Vector2.Zero ? $"heading for material (worth {targetWorth:0}, edge {targetEdge:0}, danger {_lastTargetDanger:0.0})"
+			: "no material in sight";
+		string fight = fightTarget >= 0 ? $"fighting {enemies.TypeIdOf(fightTarget)} at {fightDistance:0.0}" : "not fighting";
+		return $"threat {threat:0.00} / affordable {Affordable():0.00} = pressure {pressure:0.00}, back off {backOff:0.00}" +
+			$" | {fight} | {doing}" + (dodge != Vector2.Zero ? " | dodging" : "") +
+			$" | drones {_drones.Count} (reliance {droneReliance:0.00}) | drone eaters on screen {drainers}" +
+			(drainers > 0 ? $", nearest edge {nearestDrainer:0.0}" : "") +
+			$" | health {_vnp.Health:0} | stick {want.Length():0.00}";
+	}
+
+	/// <summary>The threat it can afford right now: more with health, drones and level, less with caution.</summary>
+	private float Affordable()
+	{
+		float health = _vnp.MaxHealth > 0f ? _vnp.Health / _vnp.MaxHealth : 0f;
+		float strength = 1f + Skill.StrengthPerDrone * _drones.Count + Skill.StrengthPerLevel * (_fight.Level - 1);
+		return Skill.AffordableThreat * health * strength * (1f - 0.5f * Skill.Caution);
+	}
+
+	/// <summary>Sideways away from a shot it noticed that would hit it soon, or nothing.</summary>
+	private Vector2 Dodge(Vector2 me, float awareness)
+	{
+		Vector2 dodge = Vector2.Zero;
+		_fight.Projectiles.CollectEnemyShots(me, awareness, _shots);
+		foreach ((Vector2 position, Vector2 velocity) in _shots)
+		{
+			if (!OnScreen(position))
+				continue;
+			float speedSquared = velocity.LengthSquared();
+			if (speedSquared < 0.01f)
+				continue;
+			// When the shot passes closest, and how close.
+			Vector2 toMe = me - position;
+			float time = toMe.Dot(velocity) / speedSquared;
+			if (time <= 0f || time > 1.2f)
+				continue;
+			Vector2 miss = toMe - velocity * time;
+			if (miss.Length() > Tuning.Vnp.HitRadius + 1.5f || Rng.Value() > Skill.DodgeChance)
+				continue;
+			Vector2 side = miss.LengthSquared() > 0.01f ? miss.Normalized() : new Vector2(-velocity.Y, velocity.X).Normalized();
+			dodge += side * (1f - time / 1.2f);
+		}
+		return dodge.LimitLength(1f);
+	}
+
+	/// <summary>Keep the preferred distance from an enemy: close in from farther, edge away from closer, circling it.</summary>
+	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance)
+	{
+		Vector2 toEnemy = enemy - me;
+		Vector2 direction = toEnemy.LengthSquared() > 0.0001f ? toEnemy.Normalized() : Vector2.Up;
+		float preferred = Skill.PreferredEnemyDistance;
+		float radial = Mathf.Clamp((distance - preferred) / (preferred * 0.5f), -1f, 1f);
+		Vector2 circle = new Vector2(-direction.Y, direction.X) * _orbitSign * 0.6f;
+		return direction * radial + circle;
+	}
+
+	/// <summary>
+	/// Toward the best material it can afford to reach: more mass is better, farther is worse, and material
+	/// with enemies around it is discounted by caution. Once the beam reaches it, it holds still.
+	/// </summary>
+	private Vector2 HarvestMove(Vector2 me, float awareness, int enemyCount, float droneReliance, out bool holding,
+		out float targetWorth, out float targetEdge, out float targetDanger)
+	{
+		holding = false;
+		targetWorth = 0f;
+		targetEdge = float.MaxValue;
+		targetDanger = 0f;
+		Harvestables harvestables = _fight.Harvestables;
+		int count = OnScreenOnly(harvestables.CollectNear(me, awareness, _material), _material, i => harvestables.PositionOf(i));
+		Remember(harvestables, me, awareness, count);
+		int best = -1;
+		float bestScore = 0f;
+		float bestWorth = 0f;
+		float bestDanger = 0f;
+		EnemySwarm enemies = _fight.Enemies;
+		float clusterRadiusSquared = Skill.ClusterRadius * Skill.ClusterRadius;
+		for (int c = 0; c < count; c++)
+		{
+			int m = _material[c];
+			Vector2 position = harvestables.PositionOf(m);
+			float distance = harvestables.EdgeDistance(m, me);
+
+			// Its worth: its own mass, plus part of the material around it, so clusters beat lone rocks. Nearby
+			// asteroids count more than nearby debris: debris piles up where enemies died, usually in the middle of a
+			// fight, and counting it as fully as asteroids drew pilots into fights and cost them their drones.
+			float worth = harvestables.MassOf(m) * ValueOf(harvestables, m);
+			if (Skill.ClusterWeight > 0f || Skill.DebrisClusterWeight > 0f)
+			{
+				for (int o = 0; o < count; o++)
+				{
+					int other = _material[o];
+					if (other == m || harvestables.PositionOf(other).DistanceSquaredTo(position) > clusterRadiusSquared)
+						continue;
+					float share = harvestables.IsAsteroidOf(other) ? Skill.ClusterWeight : Skill.DebrisClusterWeight;
+					worth += share * harvestables.MassOf(other) * ValueOf(harvestables, other);
+				}
+			}
+			float score = Mathf.Sqrt(Mathf.Max(0.01f, worth)) / (distance + 10f);
+			if (harvestables.IdOf(m) == _harvestTargetId)
+				score *= 1.5f; // Finish what it started, rather than dithering between rocks.
+
+			float danger = 0f;
+			for (int e = 0; e < enemyCount; e++)
+			{
+				int enemy = _enemies[e];
+				float near = Mathf.Clamp(1f - enemies.PositionOf(enemy).DistanceTo(position) / 12f, 0f, 1f);
+				danger += near * (enemies.AbsorbsDronesOf(enemy) ? Mathf.Lerp(1f, Skill.DroneEaterThreat, droneReliance) : 1f);
+			}
+			score /= 1f + danger * Skill.Caution;
+
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = m;
+				bestWorth = worth;
+				bestDanger = danger;
+			}
+		}
+		if (best < 0)
+		{
+			_harvestTargetId = 0;
+			return Vector2.Zero;
+		}
+
+		_harvestTargetId = harvestables.IdOf(best);
+		targetWorth = bestWorth;
+		targetDanger = bestDanger;
+		float edge = harvestables.EdgeDistance(best, me);
+		targetEdge = edge;
+		if (edge <= harvestables.BeamRange * 0.6f)
+		{
+			holding = true;
+			return Vector2.Zero;
+		}
+		Vector2 toward = harvestables.PositionOf(best) - me;
+		// Ease in as it arrives, so it stops beside the material rather than overshooting.
+		float urgency = Mathf.Clamp((edge - harvestables.BeamRange * 0.6f) / 6f, 0.3f, 1f);
+		return toward.Normalized() * urgency;
+	}
+
+	/// <summary>
+	/// Keeps track of material it has seen: adds or updates what is in sight, and forgets what it should see but
+	/// doesn't, because it was used up. Material moves with its field, so a remembered spot is approximate.
+	/// </summary>
+	private void Remember(Harvestables harvestables, Vector2 me, float awareness, int count)
+	{
+		_seen.Clear();
+		for (int c = 0; c < count; c++)
+		{
+			int m = _material[c];
+			int id = harvestables.IdOf(m);
+			_seen.Add(id);
+			_known[id] = (harvestables.PositionOf(m), harvestables.MassOf(m));
+		}
+		// Well inside its awareness and not seen: gone. Near the edge, it may just have drifted out of sight.
+		float forgetWithin = awareness * 0.8f;
+		List<int> gone = null;
+		foreach ((int id, (Vector2 position, float _)) in _known)
+		{
+			if (!_seen.Contains(id) && position.DistanceTo(me) < forgetWithin && OnScreen(position))
+				(gone ??= new List<int>()).Add(id);
+		}
+		if (gone != null)
+		{
+			foreach (int id in gone)
+				_known.Remove(id);
+		}
+	}
+
+	/// <summary>
+	/// With nothing to fight or harvest: return to remembered material, or explore for more. It decides when it
+	/// first has nothing to do, and again every so often while roaming. The chance of returning grows with the
+	/// mass it remembers, and where it returns to is picked in proportion to the mass there.
+	/// </summary>
+	private Vector2 WhenIdle(Vector2 me, float awareness)
+	{
+		_roamTime += Skill.ReactionSeconds;
+		if (!_wasIdle || (_returnTo == null && _roamTime >= Skill.ExploreRethinkSeconds))
+		{
+			_roamTime = 0f;
+			_returnTo = PickReturn();
+		}
+
+		if (_returnTo is Vector2 spot)
+		{
+			// Arrived, and nothing here to harvest: forgotten already by Remember, so pick again next time.
+			if (spot.DistanceTo(me) < awareness * 0.5f)
+			{
+				_returnTo = null;
+				_roamTime = Skill.ExploreRethinkSeconds;
+			}
+			else
+			{
+				return (spot - me).Normalized();
+			}
+		}
+
+		_exploreHeading = _exploreHeading.Rotated(Rng.Range(-0.35f, 0.35f));
+		return _exploreHeading;
+	}
+
+	/// <summary>
+	/// Where to return to, or null to explore instead. Each remembered piece of material counts by its mass,
+	/// scaled down by distance: one ReturnHalfDistance away counts half as much as one beside the pilot. The
+	/// chance of returning at all grows with what the remembered material counts for, and where it returns to
+	/// is picked in proportion to it.
+	/// </summary>
+	private Vector2? PickReturn()
+	{
+		Vector2 me = _vnp.PlanePosition;
+		float halfDistance = Mathf.Max(1f, Skill.ReturnHalfDistance);
+		float Worth(Vector2 position, float mass) => mass / (1f + position.DistanceTo(me) / halfDistance);
+
+		float total = 0f;
+		foreach ((Vector2 position, float mass) in _known.Values)
+			total += Worth(position, mass);
+		if (total <= 0f || Rng.Value() >= total / (total + Mathf.Max(0.001f, Skill.ExploreUrge)))
+			return null;
+
+		float roll = Rng.Range(0f, total);
+		foreach ((Vector2 position, float mass) in _known.Values)
+		{
+			roll -= Worth(position, mass);
+			if (roll <= 0f)
+				return position;
+		}
+		return null;
+	}
+
+	/// <summary>How far the farthest point on screen is from the VNP: the most it could see in any direction.
+	/// What it actually sees is then narrowed to what is on screen.</summary>
+	private float ScreenReach(Vector2 me)
+	{
+		CameraRig camera = _fight.Camera;
+		return camera == null ? Skill.AwarenessRadius : Mathf.Max(5f, camera.FarthestOnScreen(me));
+	}
+
+	/// <summary>
+	/// How much a unit of this material's mass is worth to it: 1 for asteroids, and for debris, more as Debris
+	/// reward upgrades make debris give more fight experience.
+	/// </summary>
+	private float ValueOf(Harvestables harvestables, int item)
+	{
+		if (harvestables.IsAsteroidOf(item))
+			return 1f;
+		return Mathf.Max(0f, 1f + Skill.DebrisRewardInfluence * (_fight.DebrisExperience - 1f));
+	}
+
+	/// <summary>Whether a point is on screen, as a player would see it.</summary>
+	private bool OnScreen(Vector2 point) => _fight.Camera == null || _fight.Camera.IsOnScreen(point);
+
+	/// <summary>Keeps only the found items that are on screen, in their order, and returns how many are left.</summary>
+	private int OnScreenOnly(int count, int[] items, System.Func<int, Vector2> positionOf)
+	{
+		int kept = 0;
+		for (int c = 0; c < count; c++)
+		{
+			if (OnScreen(positionOf(items[c])))
+				items[kept++] = items[c];
+		}
+		return kept;
+	}
+
+	// ───────────── Choosing upgrades ─────────────
+
+	/// <summary>
+	/// Picks from a level-up offer by the build's weights, with some randomness. Returns the index of the
+	/// option to take, or -1 to reroll: when nothing scores well enough, a reroll is left, and it hasn't
+	/// rerolled this offer yet.
+	/// </summary>
+	public int ChooseUpgrade(IReadOnlyList<UpgradeDefinition> options, int rerollsLeft, bool alreadyRerolled)
+	{
+		int best = -1;
+		float bestScore = float.MinValue;
+		for (int i = 0; i < options.Count; i++)
+		{
+			float score = Score(options[i]) + Rng.Range(0f, Build.Randomness + Skill.PickNoise);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = i;
+			}
+		}
+		if (rerollsLeft > 0 && !alreadyRerolled && Build.RerollBelow > 0f && bestScore < Build.RerollBelow)
+			return -1;
+		return best;
+	}
+
+	private float Score(UpgradeDefinition upgrade)
+	{
+		float score = Build.UpgradeWeights.TryGetValue(upgrade.Id, out float own)
+			? own
+			: upgrade.Category switch
+			{
+				UpgradeCategory.VnpWeapon => Build.VnpWeaponWeight,
+				UpgradeCategory.DroneWeapon => Build.DroneWeaponWeight,
+				UpgradeCategory.Stats => Build.StatsWeight,
+				_ => Build.DronesWeight,
+			};
+		if (ImprovesOwned(upgrade))
+			score += Build.FavourOwned;
+		if (upgrade.Effect is UpgradeEffect.EquipWeapon or UpgradeEffect.SwitchDroneWeapon)
+			score += Build.NewWeaponWeight;
+		return score;
+	}
+
+	/// <summary>Whether an upgrade improves something the VNP already has: an equipped weapon, or its drones.</summary>
+	private bool ImprovesOwned(UpgradeDefinition upgrade) => upgrade.Effect switch
+	{
+		UpgradeEffect.ScaleWeaponStat or UpgradeEffect.AddWeaponStat or UpgradeEffect.UnlockWeaponFeature
+			=> _fight.FindWeapon(upgrade.Weapon) != null,
+		UpgradeEffect.ScaleStat or UpgradeEffect.AddStat
+			=> upgrade.Stat is PlayerStat.DroneDamage or PlayerStat.DroneAttackRate && _drones.Count > 0,
+		_ => false,
+	};
+}

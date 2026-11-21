@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="PilotDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/PilotDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "average"
+Name = "Average"
+ReactionSeconds = 0.25
+AwarenessRadius = 80.0
+DodgeChance = 0.5
+WanderDegrees = 12.0
+AffordableThreat = 2.5
+ThreatRange = 38.0
+StrengthPerDrone = 0.08
+StrengthPerLevel = 0.1
+Caution = 0.5
+DroneEaterThreat = 2.5
+HarvestWeight = 1.0
+HarvestAtCap = 0.8
+ConcentrationPull = 1.0
+ConcentrationMass = 25.0
+DebrisRewardInfluence = 1.0
+HarvestRateInfluence = 0.5
+HarvestCommitDistance = 8.0
+HarvestDangerWhenBackingOff = 2.0
+FightWeight = 0.8
+FightWithoutDrones = 0.5
+ClusterWeight = 0.5
+DebrisClusterWeight = 0.15
+ClusterRadius = 15.0
+BackOffWeight = 1.5
+DodgeWeight = 1.5
+PreferredEnemyDistance = 12.0
+ExploreUrge = 30.0
+ExploreRethinkSeconds = 5.0
+ReturnHalfDistance = 80.0
+PickNoise = 0.3
+UpgradeDecisionSeconds = 0.5

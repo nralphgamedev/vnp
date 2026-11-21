@@ -58,6 +58,8 @@ public partial class LevelUpMenu : Control
 	{
 		_options = Upgrades.Draw(Fight, Tuning.Levels.OptionsPerOffer);
 		Fight.Stats.OfferShown(Fight.Elapsed, level, _options);
+		_pilotWaited = 0f;
+		_pilotRerolled = false;
 		if (_options.Count == 0)
 			return;
 		_title.Text = $"LEVEL {level}";
@@ -113,6 +115,25 @@ public partial class LevelUpMenu : Control
 		GetTree().Paused = false;
 	}
 
+	/// <summary>A pilot flies the VNP: after a moment to look, it picks an option or rerolls, as a player would.</summary>
+	private void AnswerForPilot(float delta)
+	{
+		_pilotWaited += delta;
+		if (_pilotWaited < Fight.Pilot.Skill.UpgradeDecisionSeconds)
+			return;
+		_pilotWaited = 0f;
+		int choice = Fight.Pilot.ChooseUpgrade(_options, Fight.Rerolls, _pilotRerolled);
+		if (choice < 0)
+		{
+			_pilotRerolled = true;
+			Reroll();
+		}
+		else
+		{
+			Choose(choice);
+		}
+	}
+
 	/// <summary>Swaps the offer for a new draw, avoiding the upgrades just shown where possible.</summary>
 	public void Reroll()
 	{
@@ -132,8 +153,17 @@ public partial class LevelUpMenu : Control
 		Refresh();
 	}
 
+	// For a pilot answering the offer: how long it has looked at it, and whether it has rerolled it yet.
+	private float _pilotWaited;
+	private bool _pilotRerolled;
+
 	public override void _Process(double delta)
 	{
+		if (Visible && Fight?.Pilot != null)
+		{
+			AnswerForPilot((float)delta);
+			return;
+		}
 		if (!Visible)
 			return;
 

@@ -123,6 +123,38 @@ rm -rf playtests/check
 fight_warnings="$(echo "$fight" | grep -E "^WARNING" | sort | uniq -c | head -10)"
 [ -n "$fight_warnings" ] && { echo "$fight_warnings"; note "Fight warnings (check whether they are new): $(echo "$fight_warnings" | wc -l)"; }
 
+echo "== Repeatability: the same seed must give the same fight"
+# Two copies of the same pilot fight, run at once (load once exposed a bug), print the fight's exact state
+# every half second; any difference means something outside the seed changes how a fight plays. Past causes:
+# the camera shake and the window size moving where enemies spawn.
+repeat_args=(seed=7 pilot=average build=greedy frames=5400 report=100000 trace=30 log=none)
+run_scenario headless "${repeat_args[@]}" | grep "^TRACE" > /tmp/vnp_repeat_a.txt &
+run_scenario headless "${repeat_args[@]}" | grep "^TRACE" > /tmp/vnp_repeat_b.txt &
+# Meanwhile, a full pilot fight that wins, carries on into endless and ends, which must quit cleanly. A long
+# fight that ends leaves the most garbage for .NET to clean up, and quitting once crashed with it (see
+# ShutdownCleanup.cs). Exit code 0 is a clean quit; 139 was that crash.
+timeout 600 "$GODOT" --headless --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- \
+	seed=3 pilot=average build=greedy frames=14400 report=100000 log=none > /tmp/vnp_exit.txt 2>&1
+exit_code=$?
+wait
+trace_lines="$(wc -l < /tmp/vnp_repeat_a.txt)"
+if [ "$trace_lines" -lt 100 ]; then
+	fail "the repeatability fights didn't run long enough to compare ($trace_lines trace lines)"
+elif ! diff -q /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt > /dev/null; then
+	diff /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt | head -4
+	fail "the same seed gave two different fights; the first differing line above shows when they parted"
+else
+	note "Repeatability: two runs of the same 90-second pilot fight matched at all $trace_lines checkpoints"
+fi
+rm -f /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt
+if [ "$exit_code" -eq 0 ]; then
+	note "Clean quit: a full pilot fight that ended quit cleanly"
+else
+	grep -m3 "Fatal\|   at " /tmp/vnp_exit.txt
+	fail "a full pilot fight that ended didn't quit cleanly (exit code $exit_code)"
+fi
+rm -f /tmp/vnp_exit.txt
+
 echo "== Cheats kept out of export builds"
 # Top-level classes only: nested ones go with their parent, and their short names (such as Page)
 # turn up in other code too.

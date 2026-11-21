@@ -22,13 +22,27 @@ using System.Reflection;
 ///   drones=N           add N drones, raising the cap to fit
 ///   invulnerable       keep the VNP alive, for measuring
 ///   frames=N           how long to run (default 600, 10 seconds at 60 fps)
-///   report=N           print a status line every N frames (default 60)
+///   report=N           print a status line every N frames of fight time (default 1800: every 30 seconds of
+///                      fight, not counting pauses). Each level-up,
+///                      and each reroll, is printed as it happens, whatever this is.
 ///   shot=PATH[@FRAME]  save a screenshot (default: the last frame). Needs a window, not --headless.
 ///   seed=N             play the fight from this seed, so it can be repeated
-///   upgrades=first|none   answer level-up offers by taking the first option, half a second after each
+///   pilot=ID           a pilot flies the VNP, with this skill level from res://pilots/skill_levels/. It
+///                      picks its own upgrades, and after a win carries on into endless mode.
+///   build=ID           the pilot's build, from res://pilots/builds/ (default greedy)
+///   upgrades=first|none   without a pilot: answer level-up offers by taking the first option, half a second after each
 ///                      opens (the default), or leave the fight paused on the offer
-///   log=FOLDER         write a fight log there (res:// or a full path). Without it, no log is written, so
-///                      scenario fights never land among the designer's own.
+///   trace=N            every N frames, print a line describing the fight's exact state: where the VNP, the
+///                      enemies and the drones are, and how many random numbers have been drawn. Two runs of
+///                      the same fight should print the same lines; the first that differs shows where they parted.
+///   explain=FROM-TO    print the pilot's reasoning at each of its decisions between these fight times in
+///                      seconds, such as explain=110-131: the threat it felt against what it could afford, and
+///                      what it chose to do. For finding out why it did something odd.
+///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
+///                      Headless runs, and runs taking a screenshot, always quit when finished.
+///   log=FOLDER         write a fight log there (res:// or a full path), or log=none for no log. By default,
+///                      a pilot fight is logged to res://playtests/pilot, and a fight without a pilot isn't
+///                      logged. Scenario fights never land among the designer's own logs.
 ///
 /// It reads the swarms' private lists by reflection, so the game's code needs nothing added for testing.
 /// </summary>
@@ -37,7 +51,11 @@ public partial class ScenarioRunner : Node
 	private Fight _fight;
 	private int _frame;
 	private int _frames = 600;
-	private int _report = 60;
+	private int _report = 1800;
+	// Level-ups already printed, and rerolls already printed for the latest one.
+	private int _levelUpsPrinted;
+	private double _nextReport = 30.0;
+	private int _rerollsPrinted;
 	private bool _invulnerable;
 	private string _shotPath;
 	private int _shotFrame = -1;
@@ -50,7 +68,15 @@ public partial class ScenarioRunner : Node
 	private bool _quitting;
 	private int? _seed;
 	private int _overFrame;
+	private int _trace;
+	private bool _finished;
+	private bool _close;
+	private float _explainFrom = -1f;
+	private float _explainTo = -1f;
+	private int _decisionsExplained;
 	private bool _takeUpgrades = true;
+	private string _pilotId;
+	private string _buildId = "greedy";
 	private int _offerOpenFor;
 	private LevelUpMenu _levelUpMenu;
 	private string _logFolder;
@@ -61,11 +87,16 @@ public partial class ScenarioRunner : Node
 		ProcessPriority = -100; // Before the fight, so the frame timing covers the whole fight update.
 		ParseArguments();
 		Fight.NextSeed = _seed;
-		FightLog.NextFolder = _logFolder ?? "";
+		FightLog.NextFolder = _logFolder == "none" ? ""
+			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		FightLog.NextPlayer = "scenario";
 		// Release the scene once it is instantiated, so it isn't reported as still in use when the game quits.
 		using (PackedScene scene = GD.Load<PackedScene>("res://scenes/Fight.tscn"))
 			_fight = scene.Instantiate<Fight>();
+		// The runner keeps running while the game is paused, and a child copies that unless told otherwise, so
+		// the fight would never pause: not for level-up offers, and not at the result screen. Pausable makes it
+		// pause as it does in a normal game.
+		_fight.ProcessMode = ProcessModeEnum.Pausable;
 		AddChild(_fight);
 	}
 
@@ -83,9 +114,20 @@ public partial class ScenarioRunner : Node
 				case "invulnerable": _invulnerable = true; break;
 				case "seed": _seed = int.Parse(value); break;
 				case "log": _logFolder = value; break;
+				case "trace": _trace = Math.Max(1, int.Parse(value)); break;
+				case "close": _close = value != "no"; break;
+				case "explain":
+				{
+					string[] window = value.Split('-');
+					_explainFrom = float.Parse(window[0], System.Globalization.CultureInfo.InvariantCulture);
+					_explainTo = float.Parse(window[1], System.Globalization.CultureInfo.InvariantCulture);
+					break;
+				}
 				case "upgrades": _takeUpgrades = value != "none"; break;
+				case "pilot": _pilotId = value; break;
+				case "build": _buildId = value; break;
 				case "frames": _frames = int.Parse(value); break;
-				case "report": _report = Math.Max(1, int.Parse(value)); break;
+				case "report": _report = Math.Max(1, int.Parse(value)); _nextReport = _report / 60.0; break;
 				case "spawn":
 				{
 					string[] spawn = value.Split(':');
@@ -111,9 +153,13 @@ public partial class ScenarioRunner : Node
 	{
 		if (_quitting)
 		{
+			// Clean up before quitting, as closing the game's window does (see ShutdownCleanup).
+			ShutdownCleanup.Run();
 			GetTree().Quit();
 			return;
 		}
+		if (_finished)
+			return; // Staying open on the final screen until the window is closed.
 		_frame++;
 		ulong now = Time.GetTicksUsec();
 		if (_frame > 3 && _lastTicks != 0)
@@ -123,10 +169,26 @@ public partial class ScenarioRunner : Node
 		if (_frame == 2)
 			SetUp();
 		TakeUpgrade();
-		if (_frame > 2 && _frame % _report == 0)
+		PrintLevelUps();
+		ExplainPilot();
+		// Status lines on fight time, so pauses for level-up offers don't shift them.
+		if (_frame > 2 && _fight.Elapsed >= _nextReport)
+		{
 			PrintStatus();
+			_nextReport += _report / 60.0;
+		}
+		if (_trace > 0 && _frame % _trace == 0)
+			PrintTrace();
 		// When the fight ends, wait a moment so the result screen is drawn, then finish. A screenshot with no
 		// frame given is taken then, so it shows the result screen.
+		// A pilot never stops at a win: it carries on into endless mode, as the spec asks.
+		if (_fight.IsOver && _fight.Pilot != null && _fight.LastOutcome == Fight.Outcome.Win && !_fight.IsEndless)
+		{
+			if (_fight.GetNodeOrNull<Control>("Hud/ResultScreen") is Control resultScreen)
+				resultScreen.Visible = false;
+			_fight.ContinueEndless();
+			GD.Print($"SCENARIO: won at {_fight.Elapsed:0.0}s, carrying on into endless mode");
+		}
 		if (_fight.IsOver && _overFrame == 0)
 			_overFrame = _frame;
 		bool overLongEnough = _overFrame > 0 && _frame - _overFrame >= (_shotPath != null ? 45 : 1);
@@ -136,9 +198,18 @@ public partial class ScenarioRunner : Node
 
 		if (finishing)
 		{
-			if (_frame % _report != 0)
-				PrintStatus();
+			PrintStatus();
 			PrintTiming();
+			// Watched in a window, it stays open on the final screen until the window is closed: the result screen
+			// if the fight ended, or the fight paused where the frame limit stopped it.
+			if (StaysOpen())
+			{
+				_finished = true;
+				if (!_fight.IsOver)
+					GetTree().Paused = true;
+				GD.Print("SCENARIO: finished; close the window to quit");
+				return;
+			}
 			// Free the fight first and quit on the next frame, so it isn't reported as still in use at exit.
 			// A headless run still reports the sounds that played as leaked at exit: its dummy audio driver
 			// never finishes them. A windowed run exits clean, so those two exit messages can be ignored.
@@ -154,7 +225,7 @@ public partial class ScenarioRunner : Node
 	/// </summary>
 	private void TakeUpgrade()
 	{
-		if (!_takeUpgrades || _fight.IsOver)
+		if (!_takeUpgrades || _fight.IsOver || _fight.Pilot != null)
 			return;
 		_levelUpMenu ??= _fight.GetNodeOrNull<LevelUpMenu>("Hud/LevelUpMenu");
 		if (_levelUpMenu == null || !_levelUpMenu.IsOpen)
@@ -192,6 +263,16 @@ public partial class ScenarioRunner : Node
 			_fight.Drones.SwitchWeapon(droneWeapon);
 		}
 
+		if (_pilotId != null)
+		{
+			var skill = GD.Load<PilotDefinition>($"res://pilots/skill_levels/{_pilotId}.tres");
+			var build = GD.Load<BuildDefinition>($"res://pilots/builds/{_buildId}.tres");
+			if (skill == null || build == null)
+				GD.PushError($"Scenario: no pilot skill level {_pilotId} or build {_buildId} in res://pilots/.");
+			else
+				_fight.Pilot = Pilot.Fly(_fight, _fight.Vnp, _fight.Drones, skill, build);
+		}
+
 		// Armor's multiple on damage taken: at 0 the VNP still flashes when hit but loses no health.
 		if (_invulnerable)
 			_fight.Vnp.DamageTaken = 0f;
@@ -226,7 +307,7 @@ public partial class ScenarioRunner : Node
 				spawnGroup.Invoke(swarm, new object[] { home, type, true });
 			}
 		}
-		GD.Print($"SCENARIO: seed {_fight.Seed}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
+		GD.Print($"SCENARIO: seed {_fight.Seed}, pilot {(_fight.Pilot == null ? "none" : $"{_fight.Pilot.Skill.Id}/{_fight.Pilot.Build.Id}")}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
 			$"spawned {string.Join(", ", spawns.Select(s => $"{s.Item2} {s.Item1} groups"))}");
 	}
 
@@ -245,8 +326,89 @@ public partial class ScenarioRunner : Node
 			return $"{t.Definition.Id} {ofType.Length}{growth}";
 		}));
 		GD.Print($"t {_fight.Elapsed:0.0}s  {byType}  drones {_fight.Drones.Count}/{_fight.Drones.Cap}  " +
-			$"vnp {_fight.Vnp.Health:0}/{_fight.Vnp.MaxHealth:0}  kills {_fight.Kills}  level {_fight.Level}  " +
+			$"vnp {_fight.Vnp.Health:0}/{_fight.Vnp.MaxHealth:0}  " +
+			$"gateway {_fight.Vnp.PlanePosition.DistanceTo(_fight.Gateway.PlanePosition):0} away  " +
+			$"kills {_fight.Kills}  level {_fight.Level}  " +
 			$"particles {_fight.Effects.Count}");
+	}
+
+	/// <summary>
+	/// Prints each level-up once its upgrade is taken: when, what was offered and what was taken. Each reroll is
+	/// printed as it happens, with the offer before and after. Times are given as fight time and as the clock on
+	/// screen, which counts down from the time limit.
+	/// </summary>
+	private void PrintLevelUps()
+	{
+		var levelUps = _fight.Stats.LevelUps;
+		if (levelUps.Count == 0)
+			return;
+		int latest = levelUps.Count - 1;
+		if (latest >= _levelUpsPrinted)
+		{
+			FightStats.LevelUp levelUp = levelUps[latest];
+			for (; _rerollsPrinted < levelUp.Rerolls; _rerollsPrinted++)
+			{
+				GD.Print($"  rerolled{(levelUp.FreeRerolls > 0 ? " (free)" : "")} at level {levelUp.Level}: " +
+					$"{Names(levelUp.Offers[_rerollsPrinted])}  ->  {Names(levelUp.Offers[_rerollsPrinted + 1])}");
+			}
+			if (levelUp.Taken != null)
+			{
+				GD.Print($"LEVEL {levelUp.Level} at {When(levelUp.Time)}: took {NameOf(levelUp.Taken)}" +
+					$"   (offered {Names(levelUp.Offers[^1])})");
+				_levelUpsPrinted = latest + 1;
+				_rerollsPrinted = 0;
+			}
+		}
+	}
+
+	/// <summary>The pilot's reasoning at each new decision inside the explain window.</summary>
+	private void ExplainPilot()
+	{
+		Pilot pilot = _fight.Pilot;
+		if (pilot == null || _explainFrom < 0f || pilot.Decisions == _decisionsExplained)
+			return;
+		_decisionsExplained = pilot.Decisions;
+		double time = _fight.Elapsed;
+		if (time >= _explainFrom && time <= _explainTo)
+			GD.Print($"  {time:0.00}s  {pilot.Reasoning}");
+	}
+
+	private static string When(double time)
+	{
+		double clock = Tuning.Fight.TimeLimitSeconds - time;
+		string onScreen = clock >= 0 ? Ui.Clock(clock) : $"+{Ui.Clock(-clock)}";
+		return $"{Ui.Clock(time)} (clock {onScreen})";
+	}
+
+	private static string NameOf(string upgradeId)
+	{
+		foreach (UpgradeDefinition upgrade in Tuning.Levels.Upgrades)
+		{
+			if (upgrade != null && upgrade.Id == upgradeId)
+				return upgrade.Name;
+		}
+		return upgradeId;
+	}
+
+	private static string Names(List<string> upgradeIds) => string.Join(", ", upgradeIds.Select(NameOf));
+
+	/// <summary>Whether to stay open on the final screen: when watched in a window, unless asked to close or taking
+	/// a screenshot (which other tools wait on).</summary>
+	private bool StaysOpen() => DisplayServer.GetName() != "headless" && !_close && _shotPath == null;
+
+	/// <summary>The fight's exact state, for comparing two runs that should match.</summary>
+	private void PrintTrace()
+	{
+		EnemySwarm swarm = _fight.Enemies;
+		var enemies = (EnemySwarm.Enemy[])typeof(EnemySwarm)
+			.GetField("_enemies", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(swarm);
+		double enemySum = 0;
+		for (int i = 0; i < swarm.Count; i++)
+			enemySum += enemies[i].Position.X * 1.3 + enemies[i].Position.Y + enemies[i].Health * 0.01;
+		Vector2 vnp = _fight.Vnp.PlanePosition;
+		GD.Print($"TRACE {_frame} t {_fight.Elapsed:0.000} paused {GetTree().Paused} draws {Rng.Draws} " +
+			$"vnp {vnp.X:0.0000},{vnp.Y:0.0000} enemies {swarm.Count} {enemySum:0.0000} drones {_fight.Drones.Count} " +
+			$"kills {_fight.Kills} level {_fight.Level}");
 	}
 
 	private void PrintTiming()

@@ -69,6 +69,15 @@ public partial class Fight : Node3D
 
 	public enum Outcome { Win, Loss, Retreat }
 
+	/// <summary>How the fight last ended. Meaningful once it has ended at least once.</summary>
+	public Outcome LastOutcome { get; private set; }
+
+	/// <summary>
+	/// The pilot flying the primary VNP in place of the player, or null when the player flies it. Set by the
+	/// scenario harness and batches. The level-up menu asks it to choose.
+	/// </summary>
+	public Pilot Pilot;
+
 	/// <summary>True once the fight has ended and the result screen is up.</summary>
 	public bool IsOver { get; private set; }
 
@@ -225,6 +234,7 @@ public partial class Fight : Node3D
 		if (IsOver)
 			return;
 		IsOver = true;
+		LastOutcome = outcome;
 		if (outcome == Outcome.Win)
 		{
 			VictoryKills = Kills;
@@ -323,6 +333,13 @@ public partial class Fight : Node3D
 
 	/// <summary>Drones built by upgrades so far, which can be fewer than they offered if the cap was near.</summary>
 	public int DronesBuiltByUpgrades;
+
+	public override void _Notification(int what)
+	{
+		// Closing the window quits the game: clean up first, so it doesn't crash on the way out.
+		if (what == NotificationWMCloseRequest)
+			ShutdownCleanup.Run();
+	}
 
 	public override void _UnhandledInput(InputEvent @event)
 	{

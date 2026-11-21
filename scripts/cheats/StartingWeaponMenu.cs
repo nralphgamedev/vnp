@@ -164,10 +164,16 @@ public partial class StartingWeaponMenu : Control
 	/// <summary>One card per weapon: its icon in its colour, and its name.</summary>
 	private void BuildCards()
 	{
-		foreach (Node child in _row.GetChildren())
+		// Disposed straight away: a Godot array left for .NET to clean up later can be cleaned up after Godot has
+		// shut down, which crashes the game as it quits.
+		var children = _row.GetChildren();
+		using ((Godot.Collections.Array)children)
 		{
-			_row.RemoveChild(child);
-			child.QueueFree();
+			foreach (Node child in children)
+			{
+				_row.RemoveChild(child);
+				child.QueueFree();
+			}
 		}
 		_cards.Clear();
 

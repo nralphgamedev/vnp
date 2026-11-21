@@ -2,6 +2,13 @@ using Godot;
 using System;
 
 /// <summary>The player's ship. Moves on the plane from WASD or the left stick, and has health.</summary>
+/// <summary>Something that steers a VNP in place of the player's input, such as a pilot.</summary>
+public interface IVnpController
+{
+	/// <summary>The direction to move this frame, as a stick would give it: length up to 1.</summary>
+	Vector2 Move { get; }
+}
+
 public partial class Vnp : Node3D
 {
 	/// <summary>Position on the gameplay plane.</summary>
@@ -19,6 +26,9 @@ public partial class Vnp : Node3D
 
 	/// <summary>Top speed. Starts from Tuning; upgrades raise it for this fight.</summary>
 	public float MoveSpeed = Tuning.Vnp.MoveSpeed;
+
+	/// <summary>What steers this VNP in place of the player's input, such as a pilot. Null for the player.</summary>
+	public IVnpController Controller;
 
 	/// <summary>Raised once, when health reaches zero.</summary>
 	public event Action Destroyed;
@@ -89,8 +99,10 @@ public partial class Vnp : Node3D
 			return;
 
 		// GetVector never returns more than length 1, so diagonals are not faster,
-		// and a partly tilted stick gives a partial speed.
-		Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.Vnp.StickDeadzone);
+		// and a partly tilted stick gives a partial speed. A controller, such as a pilot, steers it instead.
+		Vector2 input = Controller != null
+			? Controller.Move.LimitLength(1f)
+			: Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.Vnp.StickDeadzone);
 		Vector2 wantedVelocity = input * MoveSpeed;
 		float rate = input == Vector2.Zero ? Tuning.Vnp.Deceleration : Tuning.Vnp.Acceleration;
 
@@ -151,11 +163,17 @@ public partial class Vnp : Node3D
 		_hullMaterial = (StandardMaterial3D)hull.Duplicate();
 		_hullGlow = hull.Emission;
 		_hullGlowStrength = hull.EmissionEnergyMultiplier;
-		foreach (Node node in _model.FindChildren("*", "MeshInstance3D", true, false))
+		// Disposed straight away: a Godot array left for .NET to clean up later can be cleaned up after Godot has
+		// shut down, which crashes the game as it quits.
+		var shapes = _model.FindChildren("*", "MeshInstance3D", true, false);
+		using ((Godot.Collections.Array)shapes)
 		{
-			var shape = (MeshInstance3D)node;
-			if (shape.MaterialOverride == hull)
-				shape.MaterialOverride = _hullMaterial;
+			foreach (Node node in shapes)
+			{
+				var shape = (MeshInstance3D)node;
+				if (shape.MaterialOverride == hull)
+					shape.MaterialOverride = _hullMaterial;
+			}
 		}
 	}
 }

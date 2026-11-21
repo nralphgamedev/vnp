@@ -124,6 +124,12 @@ public partial class Harvestables : Node3D
 	/// Use it to remember a harvest target between frames.</summary>
 	public int IdOf(int index) => _items[index].Id;
 
+	/// <summary>Whether it is an asteroid, rather than an enemy's debris.</summary>
+	public bool IsAsteroidOf(int index) => _items[index].IsAsteroid;
+
+	/// <summary>Mass left to harvest, which sets how much fight experience it still gives.</summary>
+	public float MassOf(int index) => _items[index].Mass;
+
 	/// <summary>Current size. It shrinks as mass is drawn out.</summary>
 	public float RadiusOf(int index)
 	{
