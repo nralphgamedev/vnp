@@ -22,5 +22,6 @@ CircleSpeed = 46.0
 ArriveBraking = 0.3
 Size = 1.0
 WreckTime = 0.4
+AbsorbTime = 0.4
 Color = Color(0.45, 0.8, 1.0, 1)
 StartingWeapon = ExtResource("2_projectile")

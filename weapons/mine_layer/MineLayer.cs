@@ -72,7 +72,7 @@ public partial class MineLayer : VnpWeapon
 	private void Update(float dt)
 	{
 		EnemySwarm enemies = Fight.Enemies;
-		float trigger = Mines.TriggerRadius + Tuning.EnemySpawning.Enemy.HitRadius;
+		float trigger = Mines.TriggerRadius;
 
 		for (int i = _count - 1; i >= 0; i--)
 		{
@@ -84,7 +84,7 @@ public partial class MineLayer : VnpWeapon
 				continue;
 			}
 
-			if (enemies.CollectNear(mine.Position, trigger, _caught) > 0)
+			if (enemies.CollectTouching(mine.Position, trigger, _caught) > 0)
 				Explode(i);
 		}
 	}
@@ -95,7 +95,7 @@ public partial class MineLayer : VnpWeapon
 		Mine mine = _mines[index];
 		float blast = Mines.BlastRadius * Area;
 		EnemySwarm enemies = Fight.Enemies;
-		int caught = enemies.CollectNear(mine.Position, blast + Tuning.EnemySpawning.Enemy.HitRadius, _caught);
+		int caught = enemies.CollectTouching(mine.Position, blast, _caught);
 		for (int c = 0; c < caught; c++)
 			enemies.Damage(_caught[c], mine.Damage);
 

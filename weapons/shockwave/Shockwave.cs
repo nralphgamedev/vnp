@@ -69,7 +69,6 @@ public partial class Shockwave : VnpWeapon
 	private void Spread(float dt)
 	{
 		EnemySwarm enemies = Fight.Enemies;
-		float enemyRadius = Tuning.EnemySpawning.Enemy.HitRadius;
 
 		for (int r = _rings.Count - 1; r >= 0; r--)
 		{
@@ -77,7 +76,7 @@ public partial class Shockwave : VnpWeapon
 			ring.Radius = Mathf.Min(ring.MaxRadius, ring.Radius + Wave.RingSpeed * dt);
 
 			// Everything the ring has reached so far, that it has not hit yet.
-			int caught = enemies.CollectNear(ring.Center, ring.Radius + enemyRadius, _caught);
+			int caught = enemies.CollectTouching(ring.Center, ring.Radius, _caught);
 			for (int c = 0; c < caught; c++)
 			{
 				int enemy = _caught[c];

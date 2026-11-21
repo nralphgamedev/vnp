@@ -220,6 +220,29 @@ public static class PlaceholderSounds
 			Tone(b, 0f, 0.08f, 2600f, 2300f, Wave.Triangle, 0.5f);
 			Noise(b, random, 0f, 0.03f, 9000f, 6000f, 0.25f);
 		}));
+
+		// ───────────── Phase 3: the Goo ─────────────
+		// A wet gulp: a low tone that drops, with a muffled slurp of noise.
+		Save(folder, "goo_absorb", Make(0.3f, b =>
+		{
+			Tone(b, 0f, 0.22f, 320f, 90f, Wave.Sine, 0.7f);
+			Tone(b, 0.04f, 0.18f, 160f, 70f, Wave.Triangle, 0.3f);
+			Noise(b, random, 0f, 0.2f, 900f, 250f, 0.35f);
+		}));
+		// A stretch that rises, then a soft pop as it parts.
+		Save(folder, "goo_split", Make(0.5f, b =>
+		{
+			Tone(b, 0f, 0.35f, 90f, 260f, Wave.Triangle, 0.5f, Shape.Hold);
+			Tone(b, 0.33f, 0.14f, 520f, 180f, Wave.Sine, 0.6f);
+			Noise(b, random, 0.33f, 0.12f, 2500f, 400f, 0.35f);
+		}));
+		// A heavy splat: a deep thud and a spread of low, wet noise.
+		Save(folder, "goo_death", Make(0.55f, b =>
+		{
+			Tone(b, 0f, 0.4f, 120f, 35f, Wave.Sine, 0.8f);
+			Noise(b, random, 0f, 0.5f, 1500f, 120f, 0.6f);
+			Tone(b, 0.02f, 0.2f, 240f, 90f, Wave.Triangle, 0.25f);
+		}));
 	}
 
 	/// <summary>

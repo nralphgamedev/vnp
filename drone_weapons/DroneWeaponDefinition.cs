@@ -35,11 +35,12 @@ public partial class DroneWeaponDefinition : Resource
 	/// <summary>Seconds between shots, beam ticks or rams from one drone.</summary>
 	[Export] public float Cooldown;
 
-	/// <summary>A drone attacks once its target is this close: fires, beams, or starts a charge. Keep it
-	/// above the attack distance.</summary>
+	/// <summary>A drone attacks once its target's edge is this close: fires, beams, or starts a charge. Keep
+	/// it above the attack distance.</summary>
 	[Export] public float Range;
 
-	/// <summary>How far from its target a drone sits while surrounding it.</summary>
+	/// <summary>How far from its target's edge a drone sits while surrounding it. Some enemies, such as the
+	/// Goo, ask drones to stay farther back (DroneKeepBack in the enemy's file).</summary>
 	[Export] public float AttackDistance;
 
 	/// <summary>Speed of a projectile. Only used by the Projectile kind.</summary>

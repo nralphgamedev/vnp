@@ -18,6 +18,9 @@ public static class Sound
 	public const string MineExplode = "mine_explode";
 	public const string RamHit = "ram_hit";
 	public const string ShardBlock = "shard_block";
+	public const string GooAbsorb = "goo_absorb";
+	public const string GooSplit = "goo_split";
+	public const string GooDeath = "goo_death";
 	public const string Hit = "hit";
 	public const string EnemyDeath = "enemy_death";
 	public const string DroneDeath = "drone_death";

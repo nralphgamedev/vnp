@@ -70,5 +70,8 @@ public partial class DronesTuning : Resource
 	/// <summary>Seconds a destroyed drone's wreckage takes to disintegrate.</summary>
 	[Export] public float WreckTime;
 
+	/// <summary>Seconds an absorbed drone takes to be pulled into the enemy that absorbed it.</summary>
+	[Export] public float AbsorbTime;
+
 	[Export] public Color Color;
 }

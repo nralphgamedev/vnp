@@ -13,7 +13,8 @@ All made by `code/PlaceholderBaker.cs`.
 | File | What it is | Used by |
 |---|---|---|
 | `drone.tres` | Small kite-shaped slab | Drones (`DroneSwarm.cs`) |
-| `enemy.tres` | Pincer-shaped slab | Enemies (`EnemySwarm.cs`) |
+| `enemy.tres` | Pincer-shaped slab | The basic enemy (`BasicEnemy.cs`) |
+| `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `Goo.cs` flattens it, wobbles it, swells it on absorbing a drone, and stretches it before a split. | The Goo (`Goo.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
 | `projectile.tres` | 0.4 × 0.4 × 1.3 box | Drone, enemy and Scatter Shot projectiles (`Projectiles.cs`) |
@@ -33,7 +34,8 @@ All made by `code/PlaceholderBaker.cs`, except where noted.
 
 | File | What it is | Used by |
 |---|---|---|
-| `instanced_lit.tres` | Lit, takes each copy's colour | Drones, enemies, asteroids, debris |
+| `instanced_lit.tres` | Lit, takes each copy's colour | Drones, the basic enemy, asteroids, debris |
+| `goo.tres` | Lit, glossy, with a soft rim of light at the edges and a faint glow; takes each copy's colour | The Goo (`Goo.cs`), so it reads as wet slime rather than rock |
 | `instanced_unshaded.tres` | Unlit, takes each copy's colour | Projectiles, Orbital Shards, drone beams |
 | `instanced_glow.tres` | Unlit and additive: each copy's colour adds to what is behind it, so fading to black fades out | Effect sparks, rings, trails and harvest particles (`Effects.cs`) |
 | `vnp_hull.tres`, `vnp_core.tres` | Solid colours with a little glow | VNP model. `Vnp.cs` copies the hull material for the hit flash. |
@@ -90,6 +92,9 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `mine_explode.wav` | Bigger explosion | A mine goes off |
 | `ram_hit.wav` | Short metallic clank | A ramming drone hits an enemy |
 | `shard_block.wav` | Bright glassy tink | An Orbital Shard destroys an enemy shot |
+| `goo_absorb.wav` | Wet gulp: a dropping low tone with a muffled slurp | A Goo absorbs a drone |
+| `goo_split.wav` | A rising stretch, then a soft pop | A Goo splits in two |
+| `goo_death.wav` | Heavy splat: a deep thud and low, wet noise | A Goo is destroyed |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

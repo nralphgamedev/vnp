@@ -5,7 +5,8 @@ using Godot;
 public partial class DifficultyTuning : Resource
 {
 	// Each value is the extra fraction added per minute of fight time. 0.2 means +20% a minute.
-	// An enemy keeps the strength it had when it spawned.
+	// An enemy keeps the strength it had when it spawned. "Enemy" values are for the basic enemy, and
+	// "Goo" values for the Goo. Spawn rate and aggro range apply to every enemy type.
 
 	/// <summary>Extra enemy health per minute.</summary>
 	[ExportGroup("Ramp during the fight")]
@@ -20,6 +21,12 @@ public partial class DifficultyTuning : Resource
 	/// <summary>Accuracy added per minute to newly spawned enemies, on the 0 to 1 accuracy scale. Unlike
 	/// the values above, this is added rather than a fraction: 0.06 a minute adds 0.3 by the time limit.</summary>
 	[Export] public float RampEnemyAccuracyPerMinute;
+
+	/// <summary>Extra Goo health per minute.</summary>
+	[Export] public float RampGooHealthPerMinute;
+
+	/// <summary>Extra Goo contact damage per minute.</summary>
+	[Export] public float RampGooDamagePerMinute;
 
 	// At the limit, and again every step after it, difficulty rises by these amounts, on top of the
 	// ramp during the fight. Each is the fraction added per step: 0.6 means +60% at the limit,
@@ -44,6 +51,12 @@ public partial class DifficultyTuning : Resource
 
 	/// <summary>Accuracy added to newly spawned enemies at each step, on the 0 to 1 accuracy scale.</summary>
 	[Export] public float EscalationEnemyAccuracyPerStep;
+
+	/// <summary>Extra health of newly spawned Goos per step.</summary>
+	[Export] public float EscalationGooHealthPerStep;
+
+	/// <summary>Extra contact damage of newly spawned Goos per step.</summary>
+	[Export] public float EscalationGooDamagePerStep;
 
 	/// <summary>Seconds the red edge flash and "!" last at each step.</summary>
 	[Export] public float EscalationAlertSeconds;

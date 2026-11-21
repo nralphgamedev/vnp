@@ -8,11 +8,10 @@ public partial class EnemySpawningTuning : Resource
 	[ExportGroup("Spawning")]
 	[Export] public int StartingGroups;
 
-	/// <summary>The enemy type that spawns. Files in res://enemies/.</summary>
-	[Export] public EnemyDefinition Enemy;
-
-	/// <summary>Enemies in each spawned group.</summary>
-	[Export] public int GroupSize;
+	/// <summary>The enemy types that spawn in groups, each with a weight: each group is one type, picked at
+	/// random, and a type with twice the weight of another is picked twice as often. A weight of 0 never
+	/// spawns it. Each type's group size is in its own file in res://enemies/.</summary>
+	[Export] public Godot.Collections.Dictionary<EnemyDefinition, float> GroupWeights;
 
 	/// <summary>Seconds between spawned groups at the start of the fight.</summary>
 	[Export] public float SpawnInterval;
@@ -45,7 +44,11 @@ public partial class EnemySpawningTuning : Resource
 	/// <summary>Seconds between waves.</summary>
 	[Export] public float WaveIntervalSeconds;
 
-	/// <summary>Groups in the first wave. Each group is GroupSize enemies.</summary>
+	/// <summary>The enemy types in waves, each with a weight, picked for each group of a wave as for
+	/// GroupWeights.</summary>
+	[Export] public Godot.Collections.Dictionary<EnemyDefinition, float> WaveGroupWeights;
+
+	/// <summary>Groups in the first wave. Each group is its type's group size.</summary>
 	[Export] public int WaveGroups;
 
 	/// <summary>Groups added to each wave after the first.</summary>

@@ -48,7 +48,7 @@ public partial class OrbitalShards : VnpWeapon
 
 		int count = Shards.Count + ExtraCount;
 		float orbit = Shards.OrbitRadius * Area;
-		float reach = Shards.HitRadius * Area + Tuning.EnemySpawning.Enemy.HitRadius;
+		float reach = Shards.HitRadius * Area;
 		double now = Fight.Elapsed;
 		Vector2 center = Fight.Vnp.PlanePosition;
 		EnemySwarm enemies = Fight.Enemies;
@@ -64,7 +64,7 @@ public partial class OrbitalShards : VnpWeapon
 
 			if (!Fight.Vnp.IsDestroyed)
 			{
-				int found = enemies.CollectNear(position, reach, _nearby);
+				int found = enemies.CollectTouching(position, reach, _nearby);
 				for (int c = 0; c < found; c++)
 				{
 					int enemy = _nearby[c];

@@ -1,11 +1,12 @@
-[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BasicEnemyDefinition" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="1_script"]
+[ext_resource type="Script" path="res://enemies/basic_enemy/BasicEnemyDefinition.cs" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")
 Id = "basic_enemy"
 Name = "Enemy"
+GroupSize = 4
 Health = 30.0
 HitRadius = 1.1
 DebrisMassMin = 2.0
@@ -19,10 +20,12 @@ IdleTurnDeadband = 10.0
 WanderRadius = 12.0
 AggroRange = 28.0
 LoseAggroRange = 45.0
+TargetsDronesFirst = false
 AttackRange = 16.0
 HoldDistance = 11.0
 HoldBlendDistance = 3.0
 TargetHoldSeconds = 1.0
+DroneKeepBack = 0.0
 FireCooldown = 1.5
 ProjectileDamage = 4.0
 ProjectileSpeed = 32.0

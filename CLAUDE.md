@@ -2,9 +2,12 @@
 
 VNP is a top-down roguelite space conquest game built in Godot. The current goal is a combat prototype: one real-time fight, with nothing from the rest of the game.
 
-The current spec is the source for what to build: @docs/PROTOTYPE_2_SPEC.md
+The current spec is the source for what to build: @docs/PROTOTYPE_3_SPEC.md
 
-It builds on the phase 1 spec, which describes the fight that is already built: @docs/PROTOTYPE_SPEC.md
+It builds on the earlier specs, which describe what is already built:
+
+- Phase 1, one complete fight: @docs/PROTOTYPE_SPEC.md
+- Phase 2, feedback and more weapons and upgrades: @docs/PROTOTYPE_2_SPEC.md
 
 ## Technical rules
 
@@ -22,6 +25,16 @@ It builds on the phase 1 spec, which describes the fight that is already built: 
 - Tuning values and content definitions (weapons, upgrades, enemy types) are data-only custom Resources. Modding may be supported later, so keep logic out of them.
   - Name the classes by kind: a `*Tuning` class holds one system's settings, with exactly one file, which code reaches by name (`Tuning.Asteroids`); a `*Definition` class is one of many content entries, each with an `Id`, such as weapons, upgrades, enemies, and sounds.
 - Playtest cheats go in `scripts/cheats/`, which `VNP.csproj` compiles only in the editor's Debug configuration. Wrap the cheat code and every line that uses it in `#if TOOLS`, so a cheat can never reach an exported game. This covers any testing aid that must not ship, not only cheats in the narrow sense. Cheat settings go in `scripts/cheats/cheats.tres`, not in the game's tuning files. A cheat that needs a node creates it from code under `#if TOOLS` rather than placing it in a scene, since a scene node whose script is left out of a build would break. When an export preset is made, exclude `scripts/cheats/` from its files.
+
+## Editing files on Windows
+
+This project is developed on Windows, where a few editing habits cause damage:
+
+- Files are UTF-8 with LF line endings (`.gitattributes` enforces LF). Some contain non-ASCII characters, such as the `─` dividers in scripts.
+- Prefer the Edit tool. For an edit too large or repetitive for it, write a Python script to a file in the scratchpad and run that, rather than passing it through a Bash heredoc or `python -c`: apostrophes break heredocs, and escapes such as `\x00` change meaning as they pass through each layer of quoting, which once wrote a real zero byte into a script.
+- In Python, always open files with `encoding="utf-8"` and `newline=""`. Without them Python uses the Windows code page, which cannot write characters like `─`. Opening a file for writing empties it before the write fails, so the file is left blank.
+- Make scripted edits safe to run again: check that each piece of old text appears exactly once before replacing it, and stop if not. After a failed run, look at what was already applied before running it again. A check like "skip if the new text is already there" is fooled when the new text contains the old.
+- If an edit goes wrong, restore only the file you broke, from git if it had no other changes, and say so.
 
 ## How we work
 

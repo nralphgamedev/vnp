@@ -16,6 +16,7 @@ public partial class ResultScreen : Control
 	private static readonly Vector2 ButtonSize = new(300f, 70f);
 
 	private static readonly Color VictoryColor = new(0.4f, 1f, 0.55f);
+	private static readonly Color LossColor = new(0.95f, 0.22f, 0.25f);
 
 	public Fight Fight;
 
@@ -81,7 +82,7 @@ public partial class ResultScreen : Control
 			{
 				Fight.Outcome.Win => ("VICTORY", "Kill target reached", VictoryColor),
 				Fight.Outcome.Retreat => ("RETREATED", "Left through the gateway", Tuning.Look.GatewayColor),
-				_ => ("VNP DESTROYED", "The fight is lost", Tuning.EnemySpawning.Enemy.Color),
+				_ => ("VNP DESTROYED", "The fight is lost", LossColor),
 			};
 		_title.Text = title;
 		_title.AddThemeColorOverride("font_color", color);

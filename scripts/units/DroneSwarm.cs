@@ -13,6 +13,11 @@ using System;
 /// 3. Flock. Otherwise it flocks around the VNP and keeps pace with it.
 /// A drone drops its target once that target is no longer within range of the VNP, so when the
 /// player moves away, the drones break off and follow.
+///
+/// Distances to an enemy, for surrounding it and for weapon range, are measured from its edge, so drones
+/// surround a large enemy at its edge rather than inside it. Some enemies, such as the Goo, ask drones to
+/// stay farther back. An enemy that absorbs drones, such as the Goo, drains the health of any drone touching
+/// it; a drone drained to nothing is pulled into it and lost, while one that gets away keeps the damage.
 /// </summary>
 public partial class DroneSwarm : Node3D
 {
@@ -39,6 +44,16 @@ public partial class DroneSwarm : Node3D
 	private struct Wreck
 	{
 		public Vector2 Position;
+		public float Yaw;
+		public float Age;
+	}
+
+	/// <summary>A drone being pulled into the enemy that absorbed it. It is already gone from the fight.</summary>
+	private struct Absorbing
+	{
+		public Vector2 Start;
+		public Vector2 Into;      // Where the enemy is, followed while it lives.
+		public int EnemyId;
 		public float Yaw;
 		public float Age;
 	}
@@ -93,7 +108,7 @@ public partial class DroneSwarm : Node3D
 	/// <summary>How fast a drone normally flies. Rises with the VNP's movement speed upgrades, so drones keep up.</summary>
 	public float Speed => _speed;
 
-	/// <summary>How far from its target a drone sits while surrounding it. Depends on the weapon.</summary>
+	/// <summary>How far from its target's edge a drone sits while surrounding it. Depends on the weapon.</summary>
 	public float AttackDistance = Tuning.Drones.StartingWeapon.AttackDistance;
 
 	/// <summary>Mass each drone's harvest beam draws out per second.</summary>
@@ -119,6 +134,8 @@ public partial class DroneSwarm : Node3D
 	private int _lastId;
 	private Wreck[] _wrecks = new Wreck[16];
 	private int _wreckCount;
+	private Absorbing[] _absorbing = new Absorbing[16];
+	private int _absorbingCount;
 	private int _spawned;
 	private int _pendingBuilds;
 	private readonly SpatialGrid _grid = new(4f);
@@ -355,7 +372,7 @@ public partial class DroneSwarm : Node3D
 
 				Vector2 enemyPosition = enemies.PositionOf(enemy);
 				wantedVelocity = SteerToSlot(ref drone, enemyPosition, enemies.VelocityOf(enemy),
-					AttackDistance, separation, dt);
+					enemies.RadiusOf(enemy) + SurroundDistance(enemy), separation, dt);
 				Face(ref drone, enemyPosition, turnStep);
 				attackSteers = _attack.Attack(ref drone, enemy, ref wantedVelocity, dt);
 
@@ -415,10 +432,58 @@ public partial class DroneSwarm : Node3D
 			}
 			drone.Position += drone.Velocity * dt;
 
+			// Touching an enemy that absorbs drones, such as a Goo, drains this drone. It flashes, and motes
+			// flow from it into the enemy, so the player can see it being eaten. Drained to nothing, it is absorbed.
+			int absorber = enemies.FindAbsorber(drone.Position, Tuning.Drones.HitRadius);
+			if (absorber >= 0)
+			{
+				drone.Health -= enemies.DroneDrainOf(absorber) * dt;
+				drone.Flash = Tuning.Feedback.HitFlashTime;
+				Fight.Effects.HarvestFlow(drone.Position, enemies.PositionOf(absorber), Tuning.Drones.Color,
+					Tuning.Feedback.DroneHarvestParticles, dt, 0.18f);
+				if (drone.Health <= 0f)
+				{
+					AbsorbInto(ref drone, absorber);
+					continue;
+				}
+			}
+
 			reach = Mathf.Max(reach, drone.Position.DistanceTo(vnpPosition));
 		}
 
 		Reach = reach;
+	}
+
+	/// <summary>
+	/// How far from an enemy's edge a drone sits while surrounding it: the weapon's attack distance, plus
+	/// however far back that enemy asks drones to stay. Kept inside the weapon's range, so the drone can
+	/// still reach it. Ramming drones charge in regardless.
+	/// </summary>
+	private float SurroundDistance(int enemy)
+	{
+		if (!_attack.KeepsBack)
+			return AttackDistance;
+		float keepBack = Fight.Enemies.DroneKeepBackOf(enemy);
+		return Mathf.Min(AttackDistance + keepBack, Mathf.Max(AttackDistance, WeaponRange - 0.5f));
+	}
+
+	/// <summary>The drone is absorbed: gone at once, with no wreckage, and pulled visibly into the enemy.</summary>
+	private void AbsorbInto(ref Drone drone, int enemy)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+		drone.Health = 0f;
+		if (_absorbingCount == _absorbing.Length)
+			Array.Resize(ref _absorbing, _absorbing.Length * 2);
+		_absorbing[_absorbingCount++] = new Absorbing
+		{
+			Start = drone.Position,
+			Into = enemies.PositionOf(enemy),
+			EnemyId = enemies.IdOf(enemy),
+			Yaw = drone.Yaw,
+		};
+		Fight.Effects.Absorbed(drone.Position, enemies.PositionOf(enemy), Tuning.Drones.Color);
+		enemies.Absorb(enemy);
+		// The drone itself is cleared away at the start of the next update.
 	}
 
 	/// <summary>Push away from drones that are too close.</summary>
@@ -636,6 +701,16 @@ public partial class DroneSwarm : Node3D
 
 	private void AgeWrecks(float dt)
 	{
+		for (int i = _absorbingCount - 1; i >= 0; i--)
+		{
+			ref Absorbing absorbing = ref _absorbing[i];
+			absorbing.Age += dt;
+			if (Fight.Enemies.TryGetPosition(absorbing.EnemyId, out Vector2 into))
+				absorbing.Into = into;
+			if (absorbing.Age >= Tuning.Drones.AbsorbTime)
+				_absorbing[i] = _absorbing[--_absorbingCount];
+		}
+
 		for (int i = _wreckCount - 1; i >= 0; i--)
 		{
 			_wrecks[i].Age += dt;
@@ -646,7 +721,7 @@ public partial class DroneSwarm : Node3D
 
 	private void Draw()
 	{
-		_batch.Begin(Count + _wreckCount);
+		_batch.Begin(Count + _wreckCount + _absorbingCount);
 
 		for (int i = 0; i < Count; i++)
 		{
@@ -675,7 +750,20 @@ public partial class DroneSwarm : Node3D
 			_batch.Set(Count + w, _wrecks[w].Position, 0f, _wrecks[w].Yaw + gone * 6f, Tuning.Drones.Size * (1f - gone), color);
 		}
 
-		_batch.Commit(Count + _wreckCount);
+		// Absorbed drones: pulled into the enemy, speeding up as they go, turning grey and shrinking away.
+		for (int a = 0; a < _absorbingCount; a++)
+		{
+			ref Absorbing absorbing = ref _absorbing[a];
+			float t = Mathf.Clamp(absorbing.Age / Mathf.Max(0.01f, Tuning.Drones.AbsorbTime), 0f, 1f);
+			float pulled = t * t;
+			Vector2 at = absorbing.Start.Lerp(absorbing.Into, pulled);
+			Vector2 toward = absorbing.Into - absorbing.Start;
+			float yaw = toward.LengthSquared() > 0.0001f ? PlaneMath.YawFacing(toward) : absorbing.Yaw;
+			Color color = Tuning.Drones.Color.Lerp(new Color(0.55f, 0.57f, 0.6f), t);
+			_batch.Set(Count + _wreckCount + a, at, 0f, yaw, Tuning.Drones.Size * (1f - 0.8f * pulled), color);
+		}
+
+		_batch.Commit(Count + _wreckCount + _absorbingCount);
 
 		_beamBatch.Begin(_beamCount);
 		for (int b = 0; b < _beamCount; b++)

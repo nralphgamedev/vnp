@@ -109,12 +109,37 @@ public partial class Effects : Node3D
 
 	// ───────────── Deaths and building ─────────────
 
-	/// <summary>A destroyed enemy bursts apart: pieces in its colour, hot sparks, and a flash ring.</summary>
-	public void EnemyDeath(Vector2 at, Color color)
+	/// <summary>A destroyed enemy bursts apart: pieces in its colour, hot sparks, and a flash ring. A larger
+	/// scale, for a bigger enemy, throws more pieces farther and spreads a wider ring.</summary>
+	public void EnemyDeath(Vector2 at, Color color, float scale = 1f)
 	{
-		Chunks(at, color, Feedback.EnemyDeathChunks, 9f, 0.9f);
+		Chunks(at, color, Mathf.RoundToInt(Feedback.EnemyDeathChunks * scale), 9f * scale, 0.9f * Mathf.Sqrt(scale));
 		Sparks(at, new Color(1f, 0.8f, 0.45f), Feedback.EnemyDeathSparks, 1.3f, 1.2f);
-		Ring(at, color.Lerp(Colors.White, 0.5f), 0.5f, 3.2f, 0.3f);
+		Ring(at, color.Lerp(Colors.White, 0.5f), 0.5f, 3.2f * scale, 0.3f);
+	}
+
+	/// <summary>A drone being absorbed: a few motes in its colour drawn from it into the enemy, rather than
+	/// the burst of a drone destroyed.</summary>
+	public void Absorbed(Vector2 from, Vector2 into, Color color)
+	{
+		Vector2 along = into - from;
+		float distance = along.Length();
+		if (distance < 0.1f)
+			return;
+		float life = Tuning.Drones.AbsorbTime;
+		Vector2 velocity = along / Mathf.Max(0.01f, life);
+		for (int i = 0; i < 5; i++)
+		{
+			_sparks.Emit(Room, from + RandomInCircle(0.5f), velocity * Range(0.8f, 1f), life, 0.25f * Feedback.EffectSize,
+				0.02f, color, Gone, FlowHeight);
+		}
+	}
+
+	/// <summary>A Goo splitting in two: a wet ring spreading to about its size, and pieces thrown out sideways.</summary>
+	public void GooSplit(Vector2 at, Color color, float size)
+	{
+		Ring(at, color.Lerp(Colors.White, 0.3f), size * 0.3f, size, 0.35f);
+		Chunks(at, color, Feedback.EnemyDeathChunks / 2, 5f, 0.6f);
 	}
 
 	/// <summary>A destroyed drone pops: a quick burst of sparks and a small white ring.</summary>

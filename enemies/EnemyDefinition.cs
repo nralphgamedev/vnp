@@ -1,9 +1,10 @@
 using Godot;
 
 /// <summary>
-/// An enemy type and all its numbers. An enemy goes after whichever is nearest: the VNP or one of its
-/// drones. Health and projectile damage are for an enemy spawned at the start of the fight; the
-/// difficulty ramp raises them for enemies spawned later.
+/// What every enemy type has: its body, movement, targeting and flocking. Each type adds its own attack in
+/// a subclass in its folder, such as BasicEnemyDefinition in res://enemies/basic_enemy/, with the code that
+/// runs it beside it. Health and damage are for an enemy spawned at the start of the fight; the difficulty
+/// ramp raises them for enemies spawned later.
 /// </summary>
 [GlobalClass]
 public partial class EnemyDefinition : Resource
@@ -14,12 +15,15 @@ public partial class EnemyDefinition : Resource
 	/// <summary>Shown to the player.</summary>
 	[Export] public string Name;
 
+	/// <summary>Enemies in each spawned group of this type, including in waves.</summary>
+	[Export] public int GroupSize;
+
 	/// <summary>Health of an enemy spawned at the start of the fight.</summary>
 	[ExportGroup("Body")]
 	[Export] public float Health;
 
-	/// <summary>How close a drone projectile must pass to an enemy's center to hit it.
-	/// Also how big an enemy is for Orbital Shards.</summary>
+	/// <summary>How far from its center an enemy can be hit, and touches things. Weapons that hit an area,
+	/// and drones keeping their distance, measure to this edge.</summary>
 	[Export] public float HitRadius;
 
 	/// <summary>Smallest mass of the debris an enemy leaves.</summary>
@@ -38,7 +42,7 @@ public partial class EnemyDefinition : Resource
 	/// <summary>How quickly an enemy changes speed or direction, in units per second squared.</summary>
 	[Export] public float Acceleration;
 
-	/// <summary>How fast an enemy turns to face where it is going or shooting, in degrees per second.</summary>
+	/// <summary>How fast an enemy turns to face where it is going or attacking, in degrees per second.</summary>
 	[Export] public float TurnSpeed;
 
 	/// <summary>How fast an idle enemy turns to face where it is going, in degrees per second.
@@ -53,73 +57,32 @@ public partial class EnemyDefinition : Resource
 	[Export] public float WanderRadius;
 
 	/// <summary>An idle enemy notices the VNP or a drone that comes this close, then chases and attacks.</summary>
-	[ExportGroup("Attacking")]
+	[ExportGroup("Targeting")]
 	[Export] public float AggroRange;
 
 	/// <summary>A chasing enemy gives up once nothing of the player's is within this distance.
 	/// Keep it above the aggro range.</summary>
 	[Export] public float LoseAggroRange;
 
-	/// <summary>An enemy fires once its target is this close.</summary>
-	[Export] public float AttackRange;
+	/// <summary>Off: it goes after whichever is nearest, the VNP or a drone. On: it goes after the nearest
+	/// drone, and after the VNP only when no drone is within its aggro range.</summary>
+	[Export] public bool TargetsDronesFirst;
 
-	/// <summary>A chasing enemy stops closing in at this distance and slowly circles its target instead.
-	/// 0 makes it keep charging.</summary>
-	[Export] public float HoldDistance;
-
-	/// <summary>Over this many units either side of the hold distance, an enemy blends from closing in to
-	/// circling, rather than switching at one exact distance. Stops enemies twitching when their target
-	/// moves back and forth across the hold distance.</summary>
-	[Export] public float HoldBlendDistance;
-
-	/// <summary>Seconds an enemy keeps chasing the same drone, or the VNP, before it looks again for
-	/// whichever is nearest. It looks again sooner if its target is destroyed or gets out of reach. Stops
-	/// enemies flicking between drones that fly past them, such as ramming drones.</summary>
+	/// <summary>Seconds an enemy keeps chasing the same drone, or the VNP, before it looks again for a
+	/// target. It looks again sooner if its target is destroyed or gets out of reach. Stops enemies
+	/// flicking between drones that fly past them, such as ramming drones.</summary>
 	[Export] public float TargetHoldSeconds;
 
-	/// <summary>Seconds between shots from one enemy.</summary>
-	[Export] public float FireCooldown;
+	/// <summary>How much farther back than usual drones stay from this enemy's edge while they surround it.
+	/// Ramming drones ignore it. 0 for an enemy drones can safely get close to.</summary>
+	[ExportGroup("Drones attacking it")]
+	[Export] public float DroneKeepBack;
 
-	/// <summary>Damage of one enemy projectile at the start of the fight.</summary>
-	[Export] public float ProjectileDamage;
-
-	/// <summary>Speed of an enemy projectile. The further this is above the VNP's speed,
-	/// the harder shots are to outrun.</summary>
-	[Export] public float ProjectileSpeed;
-
-	/// <summary>Seconds an enemy projectile flies before it fizzles out. Speed times this is its reach.</summary>
-	[Export] public float ProjectileLifetime;
-
-	// Accuracy. Each enemy rolls its own accuracy when it spawns, from 0 (the sloppiest) to 1 (a
-	// sharpshooter), and keeps it. Accuracy sets how far ahead it leads a moving target and how far
-	// each shot strays. The difficulty ramp and escalation steps raise the accuracy of enemies spawned
-	// later (see difficulty.tres), capped at 1.
-
-	/// <summary>How far ahead the sloppiest enemy leads a moving target. 1 aims exactly where the target
-	/// will be when the shot arrives, so only a change of direction dodges it; 0 aims at where it is
-	/// now, so anything moving is missed. Against a VNP circling at full speed, roughly 70% of shots
-	/// hit at 1, 50% at 0.75, and under 20% at 0.5, before any spread.</summary>
-	[ExportGroup("Accuracy")]
-	[Export] public float AimLeadMin;
-
-	/// <summary>How far ahead a sharpshooter leads a moving target, on the same scale.</summary>
-	[Export] public float AimLeadMax;
-
-	/// <summary>How far, in degrees, a shot from the sloppiest enemy can stray either side of its aim.</summary>
-	[Export] public float AimSpreadMax;
-
-	/// <summary>How far, in degrees, a shot from a sharpshooter can stray either side of its aim.</summary>
-	[Export] public float AimSpreadMin;
-
-	/// <summary>How rare sharpshooters are. 1 spreads accuracy evenly from 0 to 1; higher makes most
-	/// enemies sloppy and sharp ones rare. At 2.5, about 1 enemy in 12 rolls above 0.8.</summary>
-	[Export] public float SharpshooterRarity;
-
-	/// <summary>Enemies this close to each other count as flockmates.</summary>
+	/// <summary>Enemies of the same type this close to each other count as flockmates.</summary>
 	[ExportGroup("Flocking")]
 	[Export] public float NeighborRadius;
 
-	/// <summary>Enemies closer than this push apart.</summary>
+	/// <summary>Enemies closer than this push apart. Larger enemies also push apart before they overlap.</summary>
 	[Export] public float SeparationRadius;
 
 	/// <summary>Strength of the push apart. Higher gives looser groups.</summary>
@@ -135,11 +98,9 @@ public partial class EnemyDefinition : Resource
 	/// Lower gives tighter groups that move as one. Higher scatters them.</summary>
 	[Export] public float WanderWeight;
 
-	/// <summary>Scale of the enemy model. 1 is about 2.5 units across.</summary>
+	/// <summary>Scale of the enemy model.</summary>
 	[ExportGroup("Look")]
 	[Export] public float Size;
 
 	[Export] public Color Color;
-
-	[Export] public Color ProjectileColor;
 }

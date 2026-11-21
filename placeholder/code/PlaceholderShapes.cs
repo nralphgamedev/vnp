@@ -127,6 +127,99 @@ public static class PlaceholderShapes
 	}
 
 	/// <summary>
+	/// Builds a smooth lumpy blob: a finely divided sphere pushed in and out by gentle noise, shaded smoothly
+	/// rather than in flat faces, so it reads as soft rather than rocky. Its farthest point is 1 from the centre.
+	/// </summary>
+	public static ArrayMesh Blob(int seed, float lumpiness)
+	{
+		float t = (1f + Mathf.Sqrt(5f)) * 0.5f;
+		var corners = new List<Vector3>
+		{
+			new(-1, t, 0), new(1, t, 0), new(-1, -t, 0), new(1, -t, 0),
+			new(0, -1, t), new(0, 1, t), new(0, -1, -t), new(0, 1, -t),
+			new(t, 0, -1), new(t, 0, 1), new(-t, 0, -1), new(-t, 0, 1),
+		};
+		for (int i = 0; i < corners.Count; i++)
+			corners[i] = corners[i].Normalized();
+		var faces = new List<(int A, int B, int C)>
+		{
+			(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11),
+			(1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8),
+			(3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9),
+			(4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1),
+		};
+
+		// Split every face into four, three times over: 1280 faces, smooth enough to look soft.
+		for (int pass = 0; pass < 3; pass++)
+		{
+			var middles = new Dictionary<(int, int), int>();
+			int Middle(int a, int b)
+			{
+				var key = a < b ? (a, b) : (b, a);
+				if (!middles.TryGetValue(key, out int index))
+				{
+					index = corners.Count;
+					corners.Add(((corners[a] + corners[b]) * 0.5f).Normalized());
+					middles[key] = index;
+				}
+				return index;
+			}
+			var split = new List<(int A, int B, int C)>();
+			foreach (var (a, b, c) in faces)
+			{
+				int ab = Middle(a, b), bc = Middle(b, c), ca = Middle(c, a);
+				split.Add((a, ab, ca));
+				split.Add((b, bc, ab));
+				split.Add((c, ca, bc));
+				split.Add((ab, bc, ca));
+			}
+			faces = split;
+		}
+
+		// A few broad lumps, from low-frequency noise, then scale so the farthest point is 1.
+		var noise = new FastNoiseLite { Seed = seed, NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex, Frequency = 0.6f };
+		float farthest = 0f;
+		for (int i = 0; i < corners.Count; i++)
+		{
+			corners[i] *= 1f + lumpiness * noise.GetNoise3Dv(corners[i] * 1.5f);
+			farthest = Mathf.Max(farthest, corners[i].Length());
+		}
+		for (int i = 0; i < corners.Count; i++)
+			corners[i] /= farthest;
+
+		// Corners are shared between faces, and each takes the average facing of the faces around it,
+		// which is what makes the shading smooth.
+		var normals = new Vector3[corners.Count];
+		var indices = new List<int>();
+		foreach (var (a, b, c) in faces)
+		{
+			// The face's outward facing, weighted by its size.
+			Vector3 normal = (corners[b] - corners[a]).Cross(corners[c] - corners[a]);
+			if (normal.Dot(corners[a] + corners[b] + corners[c]) < 0f)
+				normal = -normal;
+			normals[a] += normal;
+			normals[b] += normal;
+			normals[c] += normal;
+			// Godot treats a triangle as facing you when its corners run clockwise.
+			if ((corners[c] - corners[a]).Cross(corners[b] - corners[a]).Dot(normal) < 0f)
+				indices.AddRange(new[] { a, c, b });
+			else
+				indices.AddRange(new[] { a, b, c });
+		}
+		for (int i = 0; i < normals.Length; i++)
+			normals[i] = normals[i].Normalized();
+
+		var arrays = new Godot.Collections.Array();
+		arrays.Resize((int)Mesh.ArrayType.Max);
+		arrays[(int)Mesh.ArrayType.Vertex] = corners.ToArray();
+		arrays[(int)Mesh.ArrayType.Normal] = normals;
+		arrays[(int)Mesh.ArrayType.Index] = indices.ToArray();
+		var mesh = new ArrayMesh();
+		mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+		return mesh;
+	}
+
+	/// <summary>
 	/// A flat ring lying on the plane, seen from above and below. <paramref name="inner"/> and
 	/// <paramref name="outer"/> are its radii; scale it to grow the ring.
 	/// </summary>

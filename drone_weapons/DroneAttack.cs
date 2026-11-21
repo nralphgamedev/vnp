@@ -37,6 +37,14 @@ public abstract class DroneAttack
 	/// </summary>
 	public abstract bool Attack(ref DroneSwarm.Drone drone, int enemy, ref Vector2 wantedVelocity, float dt);
 
+	/// <summary>Whether drones using this attack stay back from enemies that ask for it, such as the Goo.
+	/// Ram charges in regardless.</summary>
+	public virtual bool KeepsBack => true;
+
+	/// <summary>How far a drone is from an enemy's edge.</summary>
+	protected float EdgeDistance(in DroneSwarm.Drone drone, int enemy) =>
+		drone.Position.DistanceTo(Fight.Enemies.PositionOf(enemy)) - Fight.Enemies.RadiusOf(enemy);
+
 	/// <summary>Called before Attack when a drone's target changes to another enemy.</summary>
 	public virtual void TargetChanged(ref DroneSwarm.Drone drone)
 	{

@@ -1,23 +1,27 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
-/// Every enemy in the fight. Enemies are kept as plain data in one array and drawn in one
-/// batch, so the count can be raised a long way before it costs much.
+/// Every enemy in the fight, of every type. Enemies are kept as plain data in one array and each type is
+/// drawn in one batch, so the count can be raised a long way before it costs much.
 ///
-/// Behaviour: an enemy roams with its flock around its home point. When the VNP or a drone
-/// comes inside its aggro range it chases whichever is nearest, holds at a distance, circles
-/// and fires. When everything gets far enough away it gives up and roams around wherever it
-/// ended up.
+/// What every enemy shares is done here: an enemy roams with its flock around its home point. When the
+/// VNP or a drone comes inside its aggro range it chases it. When everything gets far enough away it gives
+/// up and roams around wherever it ended up. How it closes in and attacks belongs to its type's behavior
+/// (see EnemyBehavior.cs): the basic enemy holds at a distance, circles and fires, and the Goo absorbs
+/// drones and splits.
 ///
-/// Waves: every so often several groups arrive at once from all around the VNP, already hunting
-/// it. They chase from any distance and do not give up.
+/// Waves: every so often several groups arrive at once from all around the VNP, already hunting it. They
+/// chase from any distance and do not give up.
 /// </summary>
 public partial class EnemySwarm : Node3D
 {
-	private struct Enemy
+	/// <summary>One enemy. Public so the enemy types' behaviors in res://enemies/ can work on it.</summary>
+	public struct Enemy
 	{
 		public int Id;                  // Stays the same for its whole life, unlike its place in the array.
+		public int Type;                // Which enemy type, as an index into the swarm's list of types.
 		public Vector2 Position;
 		public Vector2 Velocity;
 		public Vector2 Home;            // Point an idle enemy roams around.
@@ -25,21 +29,43 @@ public partial class EnemySwarm : Node3D
 		public float WanderTimer;       // Seconds until it picks a new wander direction.
 		public float Yaw;
 		public float Health;
-		public float ProjectileDamage;
-		public float Accuracy;          // From 0 (sloppy) to 1 (sharpshooter), rolled when it spawns.
-		public float FireTimer;         // Seconds until it can fire again.
-		public float OrbitSign;         // 1 or -1: which way it circles the VNP.
+		public float Radius;            // How far from its center it can be hit, and touches things.
+		public float Scale;             // Size of its model.
+		public float Damage;            // Damage of its attack, at the strength it spawned with.
+		public float Drain;             // Health per second it drains from a drone touching it (the Goo).
+		public float FireTimer;         // Seconds until it can attack again.
+		public float OrbitSign;         // 1 or -1: which way it circles or turns.
 		public float Flash;             // Seconds left of the hit flash.
 		public bool Aggro;
 		public bool Hunting;            // Part of a wave: chases from any distance and never gives up.
 		public int TargetDroneId;       // The drone it is chasing, or 0 for the VNP.
-		public float TargetTimer;       // Seconds until it looks again for whichever is nearest.
+		public float TargetTimer;       // Seconds until it looks again for a target.
 		public Vector2 TrackDirection;  // Its sense of where its target is, turning at its turn rate.
 		public float TrackTurnSign;     // Which way it last turned to follow its target: 1, -1, or 0.
+
+		// Used by the basic enemy.
+		public float Accuracy;          // From 0 (sloppy) to 1 (sharpshooter), rolled when it spawns.
+
+		// Used by the Goo.
+		public float BaseHealth;        // Health it spawned with. Growth is measured against it.
+		public float Bulk;              // 1 as it spawns. Absorbed drones add to it, and a split halves it.
+		public float Absorbed;          // Drones it has absorbed, shared out between halves when it splits.
+		public int AbsorbedSinceSplit;  // Drones absorbed since it spawned or last split.
+		public float Pulse;             // Seconds left of the swell after absorbing a drone.
+		public float SplitTimer;        // Seconds left of bulging before it splits, or 0.
+		public float SplitAngle;        // The line it will split along, as an angle on the plane.
+		public float Phase;             // Where it is in its wobble.
 	}
 
-	/// <summary>The enemy type that spawns, from enemy_spawning.tres.</summary>
-	private static EnemyDefinition Type => Tuning.EnemySpawning.Enemy;
+	/// <summary>What a chasing enemy is after this frame, for its behavior to attack.</summary>
+	public struct Target
+	{
+		public Vector2 Position;
+		public Vector2 Velocity;
+		public float Distance;
+		public Vector2 Direction;  // Straight toward it.
+		public Vector2 Track;      // The enemy's sense of where it is, which turns at the enemy's turn rate.
+	}
 
 	public Fight Fight;
 
@@ -52,6 +78,12 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Fight time, in seconds, when the next wave arrives.</summary>
 	public float NextWaveTime => Tuning.EnemySpawning.WaveFirstSeconds + WavesSent * Tuning.EnemySpawning.WaveIntervalSeconds;
 
+	/// <summary>The radius of the largest enemy alive, as of the start of this frame's enemy update.</summary>
+	public float MaxRadius { get; private set; }
+
+	/// <summary>Every enemy type that can spawn, from the weights in enemy_spawning.tres.</summary>
+	public IReadOnlyList<EnemyBehavior> Types => _types;
+
 	/// <summary>Debris waiting to appear while its enemy bursts apart.</summary>
 	private struct PendingDebris
 	{
@@ -63,10 +95,13 @@ public partial class EnemySwarm : Node3D
 	private Enemy[] _enemies = new Enemy[256];
 	private PendingDebris[] _pendingDebris = new PendingDebris[32];
 	private int _pendingDebrisCount;
-	private readonly SpatialGrid _grid = new(Type.NeighborRadius);
+	private readonly List<EnemyBehavior> _types = new();
+	private readonly Dictionary<EnemyDefinition, int> _typeIndex = new();
+	private SpatialGrid _grid;
 	private readonly int[] _nearby = new int[64];
 	private readonly int[] _hitCandidates = new int[64];
-	private InstanceBatch _batch;
+	private readonly List<int> _splits = new();
+	private int[] _drawCounts = Array.Empty<int>();
 
 	// Extra search distance for lookups made after enemies have moved this frame.
 	private const float GridSlack = 1f;
@@ -77,13 +112,45 @@ public partial class EnemySwarm : Node3D
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Enemies;
-		_batch = new InstanceBatch(this, "EnemyShapes", Placeholders.Mesh("enemy"), Placeholders.Material("instanced_lit"));
 		_spawnTimer = Tuning.EnemySpawning.SpawnInterval;
+
+		AddTypes(Tuning.EnemySpawning.GroupWeights);
+		AddTypes(Tuning.EnemySpawning.WaveGroupWeights);
+		if (_types.Count == 0)
+			GD.PushError("No enemy types to spawn. Give at least one a weight in res://tuning/enemy_spawning.tres.");
+
+		float cellSize = 1f;
+		foreach (EnemyBehavior type in _types)
+		{
+			type.Batch = new InstanceBatch(this, $"{type.Definition.Id}_shapes", type.Mesh, type.Material);
+			cellSize = Mathf.Max(cellSize, type.Definition.NeighborRadius);
+		}
+		_grid = new SpatialGrid(cellSize);
+		_drawCounts = new int[_types.Count];
+	}
+
+	private void AddTypes(Godot.Collections.Dictionary<EnemyDefinition, float> weights)
+	{
+		if (weights == null)
+			return;
+		foreach (EnemyDefinition definition in weights.Keys)
+		{
+			if (definition == null || _typeIndex.ContainsKey(definition))
+				continue;
+			EnemyBehavior behavior = EnemyBehavior.Create(this, definition);
+			if (behavior == null)
+			{
+				GD.PushError($"Enemy type {definition.Id} has no behavior. Its file must use one of the enemy definition classes.");
+				continue;
+			}
+			_typeIndex[definition] = _types.Count;
+			_types.Add(behavior);
+		}
 	}
 
 	public override void _Process(double delta)
 	{
-		if (Fight == null)
+		if (Fight == null || _types.Count == 0)
 			return;
 
 		float dt = (float)delta;
@@ -93,14 +160,21 @@ public partial class EnemySwarm : Node3D
 		DropPendingDebris(dt);
 		Spawn(dt, vnpPosition);
 		Simulate(dt, vnpPosition, Fight.Vnp.Velocity, vnpAlive: !Fight.Vnp.IsDestroyed);
+		SplitQueued();
 		Draw();
 	}
 
-	// ───────────── Used by weapons ─────────────
+	// ───────────── Used by weapons and drones ─────────────
 
 	public Vector2 PositionOf(int index) => _enemies[index].Position;
 
 	public Vector2 VelocityOf(int index) => _enemies[index].Velocity;
+
+	/// <summary>How far from its center an enemy can be hit. Goos grow, so this changes.</summary>
+	public float RadiusOf(int index) => _enemies[index].Radius;
+
+	/// <summary>How much farther back than usual drones stay from this enemy's edge.</summary>
+	public float DroneKeepBackOf(int index) => _types[_enemies[index].Type].Definition.DroneKeepBack;
 
 	/// <summary>A number that identifies an enemy for its whole life. Use it to remember a target between frames.</summary>
 	public int IdOf(int index) => _enemies[index].Id;
@@ -136,8 +210,8 @@ public partial class EnemySwarm : Node3D
 	}
 
 	/// <summary>
-	/// Fills <paramref name="results"/> with the living enemies within a distance of a point
-	/// and returns how many there are. Stops when <paramref name="results"/> is full.
+	/// Fills <paramref name="results"/> with the living enemies whose centers are within a distance of a
+	/// point and returns how many there are. Stops when <paramref name="results"/> is full.
 	/// </summary>
 	public int CollectNear(Vector2 center, float radius, int[] results)
 	{
@@ -155,10 +229,30 @@ public partial class EnemySwarm : Node3D
 		return kept;
 	}
 
+	/// <summary>
+	/// Fills <paramref name="results"/> with the living enemies that a circle around a point reaches,
+	/// counting each enemy's own size, and returns how many there are. For weapons that hit an area.
+	/// </summary>
+	public int CollectTouching(Vector2 center, float radius, int[] results)
+	{
+		int candidates = _grid.Query(center, radius + MaxRadius + GridSlack, results);
+		int kept = 0;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = results[c];
+			if (_enemies[i].Health <= 0f)
+				continue;
+			float reach = radius + _enemies[i].Radius;
+			if (_enemies[i].Position.DistanceSquaredTo(center) <= reach * reach)
+				results[kept++] = i;
+		}
+		return kept;
+	}
+
 	/// <summary>The first living enemy a shot travelling between two points would hit, or -1.</summary>
 	public int FindHit(Vector2 from, Vector2 to)
 	{
-		float reach = from.DistanceTo(to) * 0.5f + Type.HitRadius + GridSlack;
+		float reach = from.DistanceTo(to) * 0.5f + MaxRadius + GridSlack;
 		int candidates = _grid.Query((from + to) * 0.5f, reach, _hitCandidates);
 
 		int hit = -1;
@@ -168,7 +262,7 @@ public partial class EnemySwarm : Node3D
 			int i = _hitCandidates[c];
 			if (_enemies[i].Health <= 0f)
 				continue;
-			if (PlaneMath.DistanceToSegment(_enemies[i].Position, from, to) > Type.HitRadius)
+			if (PlaneMath.DistanceToSegment(_enemies[i].Position, from, to) > _enemies[i].Radius)
 				continue;
 
 			float distanceSquared = from.DistanceSquaredTo(_enemies[i].Position);
@@ -179,6 +273,43 @@ public partial class EnemySwarm : Node3D
 			}
 		}
 		return hit;
+	}
+
+	/// <summary>A living enemy that absorbs drones and is touching a drone at this point, or -1.
+	/// If several are, the first found.</summary>
+	public int FindAbsorber(Vector2 position, float droneRadius)
+	{
+		int candidates = _grid.Query(position, droneRadius + MaxRadius + GridSlack, _hitCandidates);
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _hitCandidates[c];
+			ref Enemy enemy = ref _enemies[i];
+			if (enemy.Health <= 0f || !_types[enemy.Type].AbsorbsDrones)
+				continue;
+			float reach = enemy.Radius + droneRadius;
+			if (enemy.Position.DistanceSquaredTo(position) <= reach * reach)
+				return i;
+		}
+		return -1;
+	}
+
+	/// <summary>Health per second this enemy drains from a drone touching it.</summary>
+	public float DroneDrainOf(int index) => _types[_enemies[index].Type].DroneDrain(_enemies[index]);
+
+	/// <summary>A drone has been drained to nothing and absorbed by this enemy.</summary>
+	public void Absorb(int index)
+	{
+		ref Enemy enemy = ref _enemies[index];
+		if (enemy.Health > 0f)
+			_types[enemy.Type].Absorb(ref enemy);
+	}
+
+	/// <summary>Finds a living enemy by its ID. False if it is gone.</summary>
+	public bool TryGetPosition(int id, out Vector2 position)
+	{
+		int index = IndexOfId(id);
+		position = index >= 0 ? _enemies[index].Position : default;
+		return index >= 0;
 	}
 
 	/// <summary>Damages an enemy. If that destroys it, it counts as a kill and leaves debris.</summary>
@@ -197,12 +328,15 @@ public partial class EnemySwarm : Node3D
 		{
 			Fight.Kills++;
 			// It bursts apart, and its debris appears a moment later.
-			Fight.Effects.EnemyDeath(enemy.Position, Type.Color);
-			Fight.Sounds.Play(Sound.EnemyDeath);
-			AddPendingDebris(enemy.Position, Rng.Range(Type.DebrisMassMin, Type.DebrisMassMax));
+			EnemyBehavior type = _types[enemy.Type];
+			type.Died(enemy);
+			AddPendingDebris(enemy.Position, type.DebrisMass(enemy));
 			// The enemy itself is cleared away at the start of the next update.
 		}
 	}
+
+	/// <summary>Splits the enemy at this index after this frame's update. Used by the Goo.</summary>
+	public void QueueSplit(int index) => _splits.Add(index);
 
 	// ───────────── Each frame ─────────────
 
@@ -265,13 +399,40 @@ public partial class EnemySwarm : Node3D
 
 		// The spawn rate climbs through the fight.
 		_spawnTimer = Tuning.EnemySpawning.SpawnInterval / Fight.EnemySpawnRateScale;
-		if (Count + Tuning.EnemySpawning.GroupSize <= Tuning.EnemySpawning.MaxAlive)
-			SpawnGroup(vnpPosition);
+		SpawnGroup(vnpPosition, respectMaxAlive: true);
+	}
+
+	/// <summary>An enemy type picked at random, by the weights given, or -1 if none has a weight.</summary>
+	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights)
+	{
+		if (weights == null)
+			return -1;
+		float total = 0f;
+		foreach ((EnemyDefinition definition, float weight) in weights)
+		{
+			if (definition != null && weight > 0f && _typeIndex.ContainsKey(definition))
+				total += weight;
+		}
+		if (total <= 0f)
+			return -1;
+
+		float roll = Rng.Range(0f, total);
+		int picked = -1;
+		foreach ((EnemyDefinition definition, float weight) in weights)
+		{
+			if (definition == null || weight <= 0f || !_typeIndex.TryGetValue(definition, out int index))
+				continue;
+			picked = index;
+			roll -= weight;
+			if (roll <= 0f)
+				break;
+		}
+		return picked;
 	}
 
 	/// <summary>
-	/// Spawns a wave: groups spaced evenly on a ring just off screen, all hunting the VNP.
-	/// Each wave has more groups than the last. Waves ignore the MaxAlive limit.
+	/// Spawns a wave: groups spaced evenly on a ring just off screen, all hunting the VNP. Each group's type
+	/// is picked by the wave weights. Each wave has more groups than the last. Waves ignore the MaxAlive limit.
 	/// </summary>
 	private void SpawnWave(Vector2 vnpPosition)
 	{
@@ -281,19 +442,28 @@ public partial class EnemySwarm : Node3D
 		float startAngle = Rng.Range(0f, Mathf.Tau);
 		for (int g = 0; g < groups; g++)
 		{
+			int type = PickType(Tuning.EnemySpawning.WaveGroupWeights);
+			if (type < 0)
+				return;
 			float angle = startAngle + Mathf.Tau * g / groups;
 			Vector2 direction = Vector2.FromAngle(angle);
 			Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
-			SpawnGroupAt(home, hunting: true);
+			SpawnGroupAt(home, type, hunting: true);
 		}
 	}
 
-	/// <summary>Spawns one group at a random spot off screen around the VNP. That spot is the group's home.</summary>
-	private void SpawnGroup(Vector2 vnpPosition)
+	/// <summary>Spawns one group, of a type picked by the group weights, at a random spot off screen around
+	/// the VNP. That spot is the group's home.</summary>
+	private void SpawnGroup(Vector2 vnpPosition, bool respectMaxAlive = false)
 	{
+		int type = PickType(Tuning.EnemySpawning.GroupWeights);
+		if (type < 0)
+			return;
+		if (respectMaxAlive && Count + _types[type].Definition.GroupSize > Tuning.EnemySpawning.MaxAlive)
+			return;
 		Vector2 direction = Rng.Direction();
 		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, Tuning.EnemySpawning.SpawnExtraDistance));
-		SpawnGroupAt(home, hunting: false);
+		SpawnGroupAt(home, type, hunting: false);
 	}
 
 	/// <summary>How far from the VNP a group must spawn in a direction to be out of sight:
@@ -303,74 +473,84 @@ public partial class EnemySwarm : Node3D
 		return Fight.Camera.DistanceOutOfView(vnpPosition, direction, Tuning.EnemySpawning.SpawnMargin) + extra;
 	}
 
-	/// <summary>
-	/// An enemy's accuracy, from 0 to 1. Rolled so that most are sloppy and sharpshooters are rare,
-	/// then raised by the difficulty ramp and escalation, and capped at 1.
-	/// </summary>
-	private static float RollAccuracy(float bonus)
+	private void SpawnGroupAt(Vector2 home, int type, bool hunting)
 	{
-		float roll = Mathf.Pow(Rng.Value(), Mathf.Max(0.01f, Type.SharpshooterRarity));
-		return Mathf.Clamp(roll + bonus, 0f, 1f);
-	}
-
-	private void SpawnGroupAt(Vector2 home, bool hunting)
-	{
-		// Enemies spawned later in the fight are stronger, and keep that strength.
-		float health = Type.Health * Fight.EnemyHealthScale;
-		float damage = Type.ProjectileDamage * Fight.EnemyDamageScale;
-		float accuracyBonus = Fight.EnemyAccuracyBonus;
-
-		for (int i = 0; i < Tuning.EnemySpawning.GroupSize; i++)
+		EnemyBehavior behavior = _types[type];
+		for (int i = 0; i < behavior.Definition.GroupSize; i++)
 		{
-			if (Count == _enemies.Length)
-				Array.Resize(ref _enemies, _enemies.Length * 2);
-
 			Vector2 direction = Rng.Direction();
-			_enemies[Count++] = new Enemy
+			var enemy = new Enemy
 			{
 				Id = ++_lastId,
+				Type = type,
 				Position = home + Rng.InsideCircle(4f),
 				Home = home,
 				WanderDirection = direction,
 				WanderTimer = Rng.Range(1.5f, 4f),
 				Yaw = PlaneMath.YawFacing(direction),
 				TrackDirection = direction,
-				Health = health,
-				ProjectileDamage = damage,
-				Accuracy = RollAccuracy(accuracyBonus),
-				FireTimer = Rng.Range(0f, Type.FireCooldown), // So a group does not fire in unison.
 				OrbitSign = Rng.Sign(),
 				Aggro = hunting,
 				Hunting = hunting,
 			};
+			behavior.Spawned(ref enemy);
+			Append(enemy);
 		}
+	}
+
+	private void Append(in Enemy enemy)
+	{
+		if (Count == _enemies.Length)
+			Array.Resize(ref _enemies, _enemies.Length * 2);
+		_enemies[Count++] = enemy;
+	}
+
+	/// <summary>Splits the enemies that finished bulging this frame. Each split adds one enemy.</summary>
+	private void SplitQueued()
+	{
+		foreach (int index in _splits)
+		{
+			if (index >= Count || _enemies[index].Health <= 0f || _types[_enemies[index].Type] is not Goo goo)
+				continue;
+			Enemy other = default;
+			goo.Split(ref _enemies[index], ref other);
+			other.Id = ++_lastId;
+			Append(other);
+		}
+		_splits.Clear();
 	}
 
 	private void Simulate(float dt, Vector2 vnpPosition, Vector2 vnpVelocity, bool vnpAlive)
 	{
 		_grid.Clear();
-		for (int i = 0; i < Count; i++)
-			_grid.Insert(i, _enemies[i].Position);
-
-		float neighborRadius = Type.NeighborRadius;
-		float neighborRadiusSquared = neighborRadius * neighborRadius;
-		float separationRadius = Type.SeparationRadius;
-		float turnStep = Mathf.DegToRad(Type.TurnSpeed) * dt;
-		float idleTurnStep = Mathf.DegToRad(Type.IdleTurnSpeed) * dt;
-		DroneSwarm drones = Fight.Drones;
-
+		float maxRadius = 0f;
 		for (int i = 0; i < Count; i++)
 		{
+			_grid.Insert(i, _enemies[i].Position);
+			maxRadius = Mathf.Max(maxRadius, _enemies[i].Radius);
+		}
+		MaxRadius = maxRadius;
+
+		DroneSwarm drones = Fight.Drones;
+		// Only the enemies alive at the start are updated: any added by a split wait until next frame.
+		int count = Count;
+
+		for (int i = 0; i < count; i++)
+		{
 			ref Enemy enemy = ref _enemies[i];
+			EnemyBehavior behavior = _types[enemy.Type];
+			EnemyDefinition type = behavior.Definition;
+			float turnStep = Mathf.DegToRad(type.TurnSpeed) * dt;
 
 			// Notice things at the aggro range. Once chasing, keep chasing until everything is well clear.
 			// Wave enemies hunt from any distance.
 			float noticeRange = enemy.Hunting
 				? float.MaxValue
-				: (enemy.Aggro ? Type.LoseAggroRange : Type.AggroRange) * Fight.EnemyAggroScale;
+				: (enemy.Aggro ? type.LoseAggroRange : type.AggroRange) * Fight.EnemyAggroScale;
 
-			// Go after whichever is nearest: the VNP or one of its drones. Keep after the same one for a
-			// while (TargetHoldSeconds), so drones flying past do not make the enemy flick between them.
+			// Go after a target: whichever is nearest of the VNP and its drones, or for a type that targets
+			// drones first, the nearest drone, and the VNP only if no drone is in range. Keep after the same
+			// one for a while (TargetHoldSeconds), so drones flying past do not make the enemy flick between them.
 			float vnpDistance = enemy.Position.DistanceTo(vnpPosition);
 			Vector2 targetPosition = vnpPosition;
 			Vector2 targetVelocity = vnpVelocity;
@@ -393,10 +573,11 @@ public partial class EnemySwarm : Node3D
 			{
 				// Look again: the hold ran out, or the drone it was chasing is gone or out of reach.
 				enemy.TargetDroneId = 0;
-				enemy.TargetTimer = Type.TargetHoldSeconds * Rng.Range(0.8f, 1.2f);
+				enemy.TargetTimer = type.TargetHoldSeconds * Rng.Range(0.8f, 1.2f);
+				float searchRange = type.TargetsDronesFirst ? noticeRange : Mathf.Min(distance, noticeRange);
 				// Skip the drone search when even the farthest drone could not be near enough.
 				if (vnpDistance - drones.Reach <= noticeRange
-					&& drones.FindNearest(enemy.Position, Mathf.Min(distance, noticeRange),
+					&& drones.FindNearest(enemy.Position, searchRange,
 						out Vector2 dronePosition, out Vector2 droneVelocity, out float droneDistance, out int droneId))
 				{
 					targetPosition = dronePosition;
@@ -431,19 +612,12 @@ public partial class EnemySwarm : Node3D
 			float speed;
 			if (aggro)
 			{
-				speed = Type.Speed;
-				// Close enough: stop closing in and circle the target at half speed. Blend between the
-				// two around the hold distance, so a target moving back and forth across it does not
-				// make the enemy flip between them.
-				float blend = Type.HoldBlendDistance > 0f
-					? Mathf.Clamp((distance - Type.HoldDistance) / (2f * Type.HoldBlendDistance) + 0.5f, 0f, 1f)
-					: (distance > Type.HoldDistance ? 1f : 0f);
-				Vector2 circle = new Vector2(-trackDirection.Y, trackDirection.X) * enemy.OrbitSign * 0.5f;
-				goal = trackDirection * blend + circle * (1f - blend);
+				speed = type.Speed;
+				goal = behavior.Chase(ref enemy, trackDirection, distance);
 			}
 			else
 			{
-				speed = Type.WanderSpeed;
+				speed = type.WanderSpeed;
 				enemy.WanderTimer -= dt;
 				if (enemy.WanderTimer <= 0f)
 				{
@@ -456,110 +630,118 @@ public partial class EnemySwarm : Node3D
 				// switching on at the edge, which made enemies sitting on the edge flip back and forth.
 				Vector2 fromHome = enemy.Position - enemy.Home;
 				float homeDistance = fromHome.Length();
-				float halfRadius = Type.WanderRadius * 0.5f;
+				float halfRadius = type.WanderRadius * 0.5f;
 				float homePull = Mathf.Clamp((homeDistance - halfRadius) / halfRadius, 0f, 1.5f);
-				goal = enemy.WanderDirection * Type.WanderWeight;
+				goal = enemy.WanderDirection * type.WanderWeight;
 				if (homeDistance > 0.001f)
 					goal -= fromHome / homeDistance * homePull;
 			}
 
-			// Flocking: push away from close flockmates, match their heading, drift toward their middle.
-			Vector2 separation = Vector2.Zero;
-			Vector2 flockVelocity = Vector2.Zero;
-			Vector2 flockCenter = Vector2.Zero;
-			int flockmates = 0;
-
-			int nearbyCount = _grid.Query(enemy.Position, neighborRadius, _nearby);
-			for (int n = 0; n < nearbyCount; n++)
-			{
-				int other = _nearby[n];
-				if (other == i)
-					continue;
-
-				Vector2 away = enemy.Position - _enemies[other].Position;
-				float gapSquared = away.LengthSquared();
-				if (gapSquared > neighborRadiusSquared)
-					continue;
-
-				flockmates++;
-				flockVelocity += _enemies[other].Velocity;
-				flockCenter += _enemies[other].Position;
-
-				float gap = Mathf.Sqrt(gapSquared);
-				if (gap < separationRadius)
-				{
-					Vector2 awayDirection = gap > 0.001f ? away / gap : Rng.Direction();
-					separation += awayDirection * (1f - gap / separationRadius);
-				}
-			}
-
-			Vector2 steer = goal + separation * Type.Separation;
-			if (flockmates > 0)
-			{
-				steer += (flockVelocity / flockmates / speed).LimitLength(1f) * Type.Alignment;
-				steer += (flockCenter / flockmates - enemy.Position) / neighborRadius * Type.Cohesion;
-			}
-
+			Vector2 steer = goal + Flocking(i, type, speed);
 			Vector2 wantedVelocity = steer.LimitLength(1f) * speed;
-			enemy.Velocity = enemy.Velocity.MoveToward(wantedVelocity, Type.Acceleration * dt);
+			enemy.Velocity = enemy.Velocity.MoveToward(wantedVelocity, type.Acceleration * dt);
 			enemy.Position += enemy.Velocity * dt;
 
-			// Face the target while in firing range, otherwise face the direction of travel.
-			bool inAttackRange = aggro && distance <= Type.AttackRange;
-			if (inAttackRange)
-				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(trackDirection), turnStep);
+			var target = new Target
+			{
+				Position = targetPosition,
+				Velocity = targetVelocity,
+				Distance = distance,
+				Direction = directionToTarget,
+				Track = trackDirection,
+			};
+			bool faced = behavior.Act(ref enemy, i, target, dt);
+
+			// Face the direction of travel, unless its attack faces it somewhere else.
+			if (faced)
+			{
+			}
 			else if (aggro && enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
-			else if (!aggro && enemy.Velocity.Length() > Type.WanderSpeed * 0.5f)
+			else if (!aggro && enemy.Velocity.Length() > type.WanderSpeed * 0.5f)
 			{
 				// Idle: turn slowly, and ignore small changes of course, so nudges from flockmates
 				// do not show as twitching.
 				float heading = PlaneMath.YawFacing(enemy.Velocity);
-				if (Mathf.Abs(Mathf.AngleDifference(enemy.Yaw, heading)) > Mathf.DegToRad(Type.IdleTurnDeadband))
-					enemy.Yaw = Mathf.RotateToward(enemy.Yaw, heading, idleTurnStep);
-			}
-
-			enemy.FireTimer = Mathf.Max(0f, enemy.FireTimer - dt);
-			if (inAttackRange && enemy.FireTimer <= 0f)
-			{
-				// Aim ahead of a moving target, by as much as this enemy's accuracy allows: 1 aims
-				// exactly where the target will be, 0 at where it is now. Then stray a little, less
-				// for more accurate enemies.
-				float lead = Mathf.Lerp(Type.AimLeadMin, Type.AimLeadMax, enemy.Accuracy);
-				Vector2 meetingPoint = PlaneMath.AimAhead(enemy.Position, targetPosition, targetVelocity,
-					Type.ProjectileSpeed, Type.ProjectileLifetime);
-				Vector2 aimAt = targetPosition.Lerp(meetingPoint, lead);
-				Vector2 aim = aimAt.DistanceSquaredTo(enemy.Position) > 0.0001f
-					? (aimAt - enemy.Position).Normalized()
-					: directionToTarget;
-				float spread = Mathf.DegToRad(Mathf.Lerp(Type.AimSpreadMax, Type.AimSpreadMin, enemy.Accuracy));
-				aim = aim.Rotated(Rng.Range(-spread, spread));
-
-				Fight.Projectiles.Fire(enemy.Position, aim, enemy.ProjectileDamage,
-					Type.ProjectileSpeed, Type.ProjectileLifetime, fromEnemy: true, Type.ProjectileColor);
-				Fight.Sounds.Play(Sound.EnemyFire);
-				enemy.FireTimer = Type.FireCooldown * Rng.Range(0.85f, 1.15f);
+				if (Mathf.Abs(Mathf.AngleDifference(enemy.Yaw, heading)) > Mathf.DegToRad(type.IdleTurnDeadband))
+					enemy.Yaw = Mathf.RotateToward(enemy.Yaw, heading, Mathf.DegToRad(type.IdleTurnSpeed) * dt);
 			}
 
 			enemy.Flash = Mathf.Max(0f, enemy.Flash - dt);
 		}
 	}
 
+	/// <summary>
+	/// Flocking: push away from any close enemy, and match the heading of and drift toward the middle of
+	/// nearby enemies of the same type. Large enemies push apart before they overlap.
+	/// </summary>
+	private Vector2 Flocking(int index, EnemyDefinition type, float speed)
+	{
+		ref Enemy enemy = ref _enemies[index];
+		float neighborRadius = type.NeighborRadius;
+		float neighborRadiusSquared = neighborRadius * neighborRadius;
+
+		Vector2 separation = Vector2.Zero;
+		Vector2 flockVelocity = Vector2.Zero;
+		Vector2 flockCenter = Vector2.Zero;
+		int flockmates = 0;
+
+		float searchRadius = Mathf.Max(neighborRadius, enemy.Radius + MaxRadius);
+		int nearbyCount = _grid.Query(enemy.Position, searchRadius, _nearby);
+		for (int n = 0; n < nearbyCount; n++)
+		{
+			int other = _nearby[n];
+			if (other == index)
+				continue;
+
+			ref Enemy neighbor = ref _enemies[other];
+			Vector2 away = enemy.Position - neighbor.Position;
+			float gapSquared = away.LengthSquared();
+			float separationRadius = Mathf.Max(type.SeparationRadius, (enemy.Radius + neighbor.Radius) * 1.1f);
+			if (gapSquared > neighborRadiusSquared && gapSquared > separationRadius * separationRadius)
+				continue;
+
+			float gap = Mathf.Sqrt(gapSquared);
+			if (gap < separationRadius)
+			{
+				Vector2 awayDirection = gap > 0.001f ? away / gap : Rng.Direction();
+				separation += awayDirection * (1f - gap / separationRadius);
+			}
+
+			if (neighbor.Type != enemy.Type || gapSquared > neighborRadiusSquared)
+				continue;
+			flockmates++;
+			flockVelocity += neighbor.Velocity;
+			flockCenter += neighbor.Position;
+		}
+
+		Vector2 steer = separation * type.Separation;
+		if (flockmates > 0)
+		{
+			steer += (flockVelocity / flockmates / speed).LimitLength(1f) * type.Alignment;
+			steer += (flockCenter / flockmates - enemy.Position) / neighborRadius * type.Cohesion;
+		}
+		return steer;
+	}
+
 	private void Draw()
 	{
-		// Idle enemies are drawn darker, so it is easy to see which ones have noticed the VNP.
-		Color chasing = Type.Color;
-		Color idle = Type.Color.Darkened(0.45f);
+		Array.Clear(_drawCounts);
+		foreach (EnemyBehavior type in _types)
+			type.Batch.Begin(Count);
 
-		_batch.Begin(Count);
 		for (int i = 0; i < Count; i++)
 		{
 			ref Enemy enemy = ref _enemies[i];
-			Color color = enemy.Aggro ? chasing : idle;
+			EnemyBehavior type = _types[enemy.Type];
+			// Idle enemies are drawn darker, so it is easy to see which ones have noticed the VNP.
+			Color color = enemy.Aggro ? type.Definition.Color : type.Definition.Color.Darkened(0.45f);
 			if (enemy.Flash > 0f)
 				color = color.Lerp(Colors.White, enemy.Flash / Tuning.Feedback.HitFlashTime);
-			_batch.Set(i, enemy.Position, 0f, enemy.Yaw, Type.Size, color);
+			type.Draw(_drawCounts[enemy.Type]++, enemy, color);
 		}
-		_batch.Commit(Count);
+
+		for (int t = 0; t < _types.Count; t++)
+			_types[t].Batch.Commit(_drawCounts[t]);
 	}
 }

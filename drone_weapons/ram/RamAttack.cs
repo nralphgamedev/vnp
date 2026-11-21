@@ -34,6 +34,9 @@ public sealed class RamAttack : DroneAttack
 	{
 	}
 
+	/// <summary>Ramming drones charge into every enemy, even one that absorbs them.</summary>
+	public override bool KeepsBack => false;
+
 	/// <summary>Ram's turn rate while arcing back round, in degrees a second. Attack rate upgrades raise it,
 	/// so the loop gets tighter and quicker along with the cooldown: otherwise the loop, not the cooldown,
 	/// sets how often a drone rams, and attack rate would barely help.</summary>
@@ -64,6 +67,8 @@ public sealed class RamAttack : DroneAttack
 		Vector2 enemyPosition = enemies.PositionOf(enemy);
 		Vector2 toEnemy = enemyPosition - drone.Position;
 		float distance = toEnemy.Length();
+		float enemyRadius = enemies.RadiusOf(enemy);
+		float edgeDistance = distance - enemyRadius;
 		Vector2 direction = distance > 0.001f ? toEnemy / distance : Vector2.Up;
 		drone.AttackTime += dt;
 
@@ -77,7 +82,7 @@ public sealed class RamAttack : DroneAttack
 		switch (StateOf(drone))
 		{
 			case RamState.Circling:
-				if (distance > Swarm.WeaponRange)
+				if (edgeDistance > Swarm.WeaponRange)
 					return false;
 				SetState(ref drone, RamState.Arcing, MinArcSeconds);
 				goto case RamState.Arcing;
@@ -104,7 +109,7 @@ public sealed class RamAttack : DroneAttack
 					// On cooldown: circle the target. Wide enough that the target stays outside the circle the
 					// drone turns on, so it can turn straight in when it is ready, rather than having to fly
 					// out and back first.
-					float orbit = Mathf.Max(Swarm.AttackDistance, RamOrbitTurns * Swarm.Speed / Mathf.Max(0.01f, turnRate));
+					float orbit = Mathf.Max(enemyRadius + Swarm.AttackDistance, RamOrbitTurns * Swarm.Speed / Mathf.Max(0.01f, turnRate));
 					var tangent = new Vector2(-direction.Y, direction.X) * drone.OrbitSign;
 					float radial = Mathf.Clamp((distance - orbit) / orbit, -1f, 1f);
 					desired = (tangent + direction * radial).Normalized();
@@ -113,7 +118,7 @@ public sealed class RamAttack : DroneAttack
 				speed = Mathf.MoveToward(speed, Swarm.Speed, ArcSlowdown * dt);
 
 				// Range only decides when ramming starts. Once lined up, a drone charges from a little further.
-				if (ready && distance <= Swarm.WeaponRange * MaxChargeRangeScale && drone.AttackTime >= MinArcSeconds
+				if (ready && edgeDistance <= Swarm.WeaponRange * MaxChargeRangeScale && drone.AttackTime >= MinArcSeconds
 					&& Mathf.RadToDeg(Mathf.Abs(heading.AngleTo(direction))) <= ChargeAlignmentDegrees)
 				{
 					SetState(ref drone, RamState.Charging);
@@ -123,7 +128,7 @@ public sealed class RamAttack : DroneAttack
 			}
 
 			case RamState.Charging:
-				if (distance <= Tuning.EnemySpawning.Enemy.HitRadius + Tuning.Drones.HitRadius)
+				if (distance <= enemyRadius + Tuning.Drones.HitRadius)
 				{
 					// A hit: the drone keeps going, straight through the target, then arcs round.
 					enemies.Damage(enemy, Swarm.WeaponDamage);

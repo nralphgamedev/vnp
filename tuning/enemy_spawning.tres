@@ -1,12 +1,13 @@
-[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
+[ext_resource type="Resource" path="res://enemies/goo/goo.tres" id="3_goo"]
+[ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
 
 [resource]
 script = ExtResource("1_script")
 StartingGroups = 5
-GroupSize = 4
 SpawnInterval = 4.0
 SpawnMargin = 10.0
 SpawnExtraDistance = 28.0
@@ -18,4 +19,11 @@ WaveGroups = 5
 WaveGroupsAddedPerWave = 1
 WaveWarningSeconds = 3.0
 WaveBannerSeconds = 2.0
-Enemy = ExtResource("2_enemy")
+GroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
+ExtResource("2_enemy"): 2.0,
+ExtResource("3_goo"): 1.0
+})
+WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
+ExtResource("2_enemy"): 2.0,
+ExtResource("3_goo"): 1.0
+})

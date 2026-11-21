@@ -91,15 +91,18 @@ public partial class Harvestables : Node3D
 				PlaceholderShapes.Rock(1000 + v * 37, Tuning.Asteroids.Bumpiness), lit);
 		_debrisBatch = new InstanceBatch(this, "DebrisShapes", Placeholders.Mesh("debris"), lit);
 
-		_maxRadius = Mathf.Max(
-			AsteroidShapeRadius * Tuning.Asteroids.Size * Mathf.Sqrt(Tuning.Asteroids.MassMax),
-			DebrisShapeRadius * Tuning.Harvesting.DebrisSize * Mathf.Sqrt(Tuning.EnemySpawning.Enemy.DebrisMassMax));
+		// Debris can grow past this, from a Goo that absorbed many drones. AddDebris widens it when it does.
+		_maxRadius = AsteroidShapeRadius * Tuning.Asteroids.Size * Mathf.Sqrt(Tuning.Asteroids.MassMax);
 
 		FillStartingArea();
 	}
 
 	/// <summary>Leaves a piece of debris at a point on the plane.</summary>
-	public void AddDebris(Vector2 position, float mass) => Add(position, mass, isAsteroid: false, field: -1, offset: default);
+	public void AddDebris(Vector2 position, float mass)
+	{
+		_maxRadius = Mathf.Max(_maxRadius, DebrisShapeRadius * Tuning.Harvesting.DebrisSize * Mathf.Sqrt(mass));
+		Add(position, mass, isAsteroid: false, field: -1, offset: default);
+	}
 
 	// ───────────── Used by harvest beams ─────────────
 

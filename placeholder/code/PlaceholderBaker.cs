@@ -97,6 +97,8 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.ExtrudedShape(DebrisOutline, 0.5f), "meshes/debris.tres");
 		Save(PlaceholderShapes.ExtrudedShape(MissileOutline, 0.3f), "meshes/missile.tres");
 		Save(PlaceholderShapes.ExtrudedShape(MineOutline, 0.35f), "meshes/mine.tres");
+		// Goo: a smooth, lumpy blob, radius about 1. The game squashes and wobbles it.
+		Save(PlaceholderShapes.Blob(31, 0.22f), "meshes/goo.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
@@ -132,6 +134,16 @@ public partial class PlaceholderBaker : Node
 		glow.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
 		glow.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
 		Save(glow, "materials/instanced_glow.tres");
+		// Goo: glossy, with a soft rim of light at its edges, so a wet blob never looks like a dull rock.
+		StandardMaterial3D goo = InstanceMaterial(unshaded: false);
+		goo.Roughness = 0.18f;
+		goo.MetallicSpecular = 0.9f;
+		goo.RimEnabled = true;
+		goo.Rim = 0.9f;
+		goo.RimTint = 0.6f;
+		goo.EmissionEnabled = true;
+		goo.Emission = new Color(0.12f, 0.13f, 0.16f);
+		Save(goo, "materials/goo.tres");
 
 		Material hull = Save(Solid(VnpHullColor, glow: 0.1f), "materials/vnp_hull.tres");
 		Material core = Save(Solid(VnpCoreColor, glow: 0.8f), "materials/vnp_core.tres");

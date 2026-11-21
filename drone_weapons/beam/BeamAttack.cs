@@ -14,10 +14,12 @@ public sealed class BeamAttack : DroneAttack
 	{
 		EnemySwarm enemies = Fight.Enemies;
 		Vector2 enemyPosition = enemies.PositionOf(enemy);
-		if (drone.Position.DistanceTo(enemyPosition) > Swarm.WeaponRange)
+		if (EdgeDistance(drone, enemy) > Swarm.WeaponRange)
 			return false;
 
-		Swarm.AddAttackBeam(drone.Position, enemyPosition, 0.6f);
+		// The beam ends just inside the enemy's edge. For an enemy as small as the basic one, that is near its middle.
+		float inset = Mathf.Max(0.6f, 2f * (enemies.RadiusOf(enemy) - 0.8f));
+		Swarm.AddAttackBeam(drone.Position, enemyPosition, inset);
 		if (drone.FireTimer <= 0f)
 		{
 			Fight.Effects.Impact(enemyPosition, Weapon.Color, 0.4f);
