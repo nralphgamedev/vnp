@@ -2,12 +2,13 @@
 
 VNP is a top-down roguelite space conquest game built in Godot. The current goal is a combat prototype: one real-time fight, with nothing from the rest of the game.
 
-The current spec is the source for what to build: @docs/PROTOTYPE_3_SPEC.md
+The current spec is the source for what to build: @docs/AUTOMATED_PLAYTESTING_SPEC.md
 
-It builds on the earlier specs, which describe what is already built:
+It interrupts phase 3, which resumes afterwards from its remaining stages, and builds on the earlier specs:
 
 - Phase 1, one complete fight: @docs/PROTOTYPE_SPEC.md
 - Phase 2, feedback and more weapons and upgrades: @docs/PROTOTYPE_2_SPEC.md
+- Phase 3, a second enemy type and ways to see what worked (stage 1 built, paused): @docs/PROTOTYPE_3_SPEC.md
 
 ## Technical rules
 

@@ -116,6 +116,8 @@ These were open when this file was written. The prototype now does the following
 
 Build one stage at a time, and stop after each so the designer can play it.
 
+Stage 1 is built. The phase is paused for automated playtesting (`docs/AUTOMATED_PLAYTESTING_SPEC.md`), which builds stage 2's damage breakdown as part of its fight statistics. Stages 3 and 4 resume afterwards.
+
 1. **The Goo:** movement, targeting, absorbing, growing, splitting, contact damage, debris, its look, effects, and sounds, and spawning mixed with the basic enemy.
 2. **Damage breakdown** on the result screen, including drones lost and shots blocked.
 3. **Asteroid amounts:** the random pick, the result screen line, and the cheat page.
