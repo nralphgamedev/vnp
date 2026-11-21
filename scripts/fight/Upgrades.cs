@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Carries out fight upgrades. The upgrades themselves are definitions in res://tuning/: each weapon's in
-/// its own folder, the rest in res://tuning/upgrades/. The pool that offers draw from is a list in
+/// Carries out fight upgrades. The upgrades themselves are definitions: each weapon's in the upgrades/
+/// folder beside it in res://weapons/ or res://drone_weapons/, the rest in res://tuning/upgrades/. The pool that offers draw from is a list in
 /// res://tuning/levels.tres. This class reads a definition's effect and does it: a new upgrade that uses
 /// an existing effect needs no code, a new kind of effect does.
 /// </summary>

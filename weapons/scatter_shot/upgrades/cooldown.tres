@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/scatter_shot/scatter_shot.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "scatter_shot_cooldown"
+Name = "Scatter Shot cooldown"
+Description = "Scatter Shot cooldown -{percent}, so it fires more often."
+Category = 0
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 1
+Amount = -0.15
+Limit = 4

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/orbital_shards/orbital_shards.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "orbital_shards_area"
+Name = "Orbital Shards area of effect"
+Description = "Orbital Shards circle wider and grow +{percent}."
+Category = 0
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 2
+Amount = 0.2
+Limit = 4

@@ -26,8 +26,9 @@ Every visual and audio asset made in the prototype is temporary and will be repl
 
 Modding may be supported in the future, so content is described as data rather than written as special-case code.
 
-- Tuning values and content definitions are custom Resources (C# classes that inherit from `Resource`, saved as `.tres` files), kept together in `res://tuning/`.
+- Tuning values and content definitions are custom Resources (C# classes that inherit from `Resource`, saved as `.tres` files).
 - Split them by system, such as enemies, weapons, drones, harvesting, upgrades, and feedback, rather than one large file.
+- Files are kept with the code they belong to where that makes sense, so one folder shows a whole feature. This is a preference rather than a hard rule. Each weapon, Drone Weapon, and enemy type has its own folder holding its code, its definition, and its upgrades. Game-wide settings that many parts of the game use are together in `res://tuning/`. This was changed after the designer found that keeping all data in `res://tuning/`, apart from the code, meant moving between folders to see one weapon. Placeholder assets are the exception and stay in `res://placeholder/`.
 - Each weapon, upgrade, and enemy type is a definition with an ID and its values. Code reads these definitions, so a new weapon, upgrade, or enemy that reuses existing behaviors can be added as a new definition without new code.
 - Resources hold data only: values and IDs, no logic or embedded scripts. This keeps them easy to convert to JSON later if mod support is added.
 - No mod loading is built in this phase.
@@ -88,18 +89,25 @@ These change or add to the screens in the phase 1 spec.
   - Flat upgrades add up and are plain numbers: two +25 health upgrades show as +50.
   - Upgrades that equip or switch a weapon, or unlock a weapon feature such as Orbital Shards blocking, have neither a count nor a number, since they can only be taken once.
 
-### Starting weapon choice (testing)
-
-- A testing aid, not part of the design. While `ChooseStartingWeapon` is on in `vnp.tres`, each fight starts paused on a menu to choose the starting VNP Weapon, with one card per weapon in `StartingWeaponChoices`: Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, and Mine Layer. A second page then chooses the starting Drone Weapon from `StartingDroneWeaponChoices`: Projectile, Beam, and Ram. A/D or the stick picks, Space or A chooses, and the mouse works too. A page whose list is empty is skipped.
-- The chosen Drone Weapon replaces the one in `drones.tres`. Its switch upgrade is then not offered, since the drones already use it.
-- The chosen weapon takes the first slot in place of the Pulse Laser. Its upgrades are offered as usual, and the other weapons can still be taken for the second slot. The Pulse Laser then has its own equip upgrade, offered for a free slot like the other new weapons. In a normal fight it is already equipped, so that upgrade is never offered.
-- With `ChooseStartingWeapon` off, the fight starts with `StartingWeapons` (the Pulse Laser), as the phase 1 spec describes.
-
 ### Playtest cheats (editor only)
 
-- A testing aid, not part of the design. Holding Alt on a level-up offer makes rerolling free, so the player can reroll as often as they like. While Alt is held, the reroll reads "Reroll (Alt: free, playtest cheat)" and works even with no rerolls left. Rerolls taken this way do not use up the free reroll.
-- Cheats can never reach an exported game, debug or release. They live in `scripts/cheats/`, which `VNP.csproj` compiles only in Godot's Debug configuration, the one the editor runs. Exports build as ExportDebug or ExportRelease without it. That code, and every line that uses it, is also inside `#if TOOLS`, a symbol Godot defines only in Debug. A build of each configuration confirmed the cheat is in Debug and absent from both export builds.
-- New cheats go in the same folder, behind the same guard.
+Testing aids, not part of the design. They work only when the game is run from the editor; an exported game plays as if every cheat were off. Their settings are in `scripts/cheats/cheats.tres`.
+
+**Starting weapon choice.**
+- While `ChooseStartingWeapon` is on in `cheats.tres`, each fight starts paused on a menu to choose the starting VNP Weapon, with one card per weapon in `StartingWeaponChoices`: Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, and Mine Layer. A second page then chooses the starting Drone Weapon from `StartingDroneWeaponChoices`: Projectile, Beam, and Ram. A/D or the stick picks, Space or A chooses, and the mouse works too. A page whose list is empty is skipped.
+- The chosen Drone Weapon replaces the one in `drones.tres`. Its switch upgrade is then not offered, since the drones already use it.
+- The chosen weapon takes the first slot in place of the Pulse Laser. Its upgrades are offered as usual, and the other weapons can still be taken for the second slot. The Pulse Laser then has its own equip upgrade, offered for a free slot like the other new weapons. In a normal fight it is already equipped, so that upgrade is never offered.
+- With `ChooseStartingWeapon` off, and always in an exported game, the fight starts with `StartingWeapons` in `vnp.tres` (the Pulse Laser), as the phase 1 spec describes.
+- This was a setting in `vnp.tres` until it was moved here, so that it can never reach a build.
+
+**Free rerolls.** Holding Alt on a level-up offer makes rerolling free, so the player can reroll as often as they like. While Alt is held, the reroll reads "Reroll (Alt: free, playtest cheat)" and works even with no rerolls left. Rerolls taken this way do not use up the free reroll.
+
+**How cheats are kept out of builds.**
+- They live in `scripts/cheats/`, which `VNP.csproj` compiles only in Godot's Debug configuration, the one the editor runs. Exports build as ExportDebug or ExportRelease without it. That code, and every line that uses it, is also inside `#if TOOLS`, a symbol Godot defines only in Debug.
+- The starting weapon menu is not in the fight scene: the fight adds it from code, inside `#if TOOLS`, so a build has no node whose script is missing.
+- A build of each configuration confirmed both cheats are in Debug and absent from both export builds.
+- No export preset exists yet. When one is made, it should also leave `scripts/cheats/` out of the exported files, so `cheats.tres` is not packed. A build could not load it anyway, without its class.
+- New cheats go in the same folder, behind the same guard, with any settings in `cheats.tres`.
 
 ### Endless mode
 
@@ -183,7 +191,7 @@ Add these to the existing tuning values, in the same place. This file does not r
 | Pitch variation on repeated sounds (slight) | `PitchVariation` in `audio.tres` |
 | Each weapon's damage, cooldown, range, and its own values (Scatter Shot's projectile count and cone, Seeker Missiles' speed, turn rate, and volley, Shockwave's ring speed and radius, Mine Layer's lifetime, mine limit, blast and trigger radius, and when and where it drops mines) | the weapon's file in `weapons/<weapon>/` |
 | Each Drone Weapon's damage, cooldown, range, and its own values (Ram's charge speed and turn rates, and how fast it slows after a charge) | the Drone Weapon's file in `drone_weapons/<weapon>/` |
-| Enemy accuracy, how long an enemy keeps a target, and how it blends from closing in to circling | the enemy's file in `enemies/` |
+| Enemy accuracy, how long an enemy keeps a target, and how it blends from closing in to circling | the enemy's file in `enemies/<enemy>/` |
 | Enemy accuracy added over the fight and per escalation step | `difficulty.tres` |
 | Every upgrade's amount (large enough to notice) | the upgrade's file |
 | Upgrade limits | 4 for each limited upgrade to start, set by the designer; `Limit` in each upgrade's file |
@@ -207,7 +215,7 @@ These were open when this file was written. The prototype now does the following
 - **Full weapon slots:** once every weapon slot is filled, new VNP Weapons are no longer offered.
 - **How offers are drawn:** evenly at random from every upgrade whose condition is met and whose limit isn't reached.
 - **When tuning changes take effect:** each tuning file is read when the game starts. A change applies from the next run, not during a running fight.
-- **Tuning files:** one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, `look` (colours shared by several systems, the gateway indicator, and offer card colours), `feedback` (hit flash, damage numbers, screen shake, low health, and the amounts and size of every effect), and `audio` (volumes, repeated sounds, and the list of every sound). Weapons, Drone Weapons, enemy types, and upgrades are definitions in folders beside them, organized by what they affect: each weapon and Drone Weapon has its own folder holding its definition and, in `upgrades/`, its upgrades (`weapons/pulse_laser/`, `weapons/orbital_shards/`, `weapons/scatter_shot/`, `weapons/seeker_missiles/`, `weapons/shockwave/`, `weapons/mine_layer/`, `drone_weapons/projectile/`, `drone_weapons/beam/`, `drone_weapons/ram/`). The other upgrades are in `upgrades/drone_weapons/` (Drone damage and attack rate, which apply to whichever Drone Weapon is in use), `upgrades/drones/`, `upgrades/vnp_stats/`, and `upgrades/harvesting/`, and enemy types in `enemies/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
+- **Tuning files:** game-wide settings are one file per system in `res://tuning/`: `vnp`, `drones`, `harvesting`, `asteroids`, `enemy_spawning`, `difficulty`, `fight`, `levels`, `camera`, `look` (colours shared by several systems, the gateway indicator, and offer card colours), and `feedback` (hit flash, damage numbers, screen shake, low health, and the amounts and size of every effect). Each file's C# class sits beside it. Audio has its own folder, `audio/`, holding the sound player, its classes, and `audio.tres` (volumes, repeated sounds, and the list of every sound); the sound files themselves are placeholders in `placeholder/audio/`. Weapons, Drone Weapons, and enemy types each have their own folder, holding the code, the definition, and, in `upgrades/`, its upgrades: `weapons/pulse_laser/`, `weapons/orbital_shards/`, `weapons/scatter_shot/`, `weapons/seeker_missiles/`, `weapons/shockwave/`, `weapons/mine_layer/`, `drone_weapons/projectile/`, `drone_weapons/beam/`, `drone_weapons/ram/`, and `enemies/basic_enemy/`. Drone damage and Drone attack rate, which apply to whichever Drone Weapon is in use, are in `drone_weapons/upgrades/`, beside the code every Drone Weapon shares. The upgrades that belong to no feature are in `tuning/upgrades/`: `drones/`, `vnp_stats/`, and `harvesting/`. A new category gets its own folder when it is built. The upgrade pool is a list in `levels.tres`, so other lists, such as future Level Up Rewards, can point at the same files. An upgrade can be taken out of the pool without deleting its file.
 - **How upgrades are described as data:** each upgrade uses one of a fixed set of effects written in code: equip a weapon, scale a weapon stat, add to a weapon stat, unlock a weapon feature, switch the Drone Weapon, scale a player stat, add to a player stat, or build drones. Adding to a weapon stat is for the count upgrades (Scatter Shot projectiles, Seeker Missiles per volley, and Orbital Shards count), which add a flat number. Each effect has its own built-in condition, such as "weapon equipped" or "drones below the cap". An upgrade that reuses an effect is a new file. Unlocking a weapon feature is for Orbital Shards blocking: the feature itself is written in code for its weapon, and the upgrade switches it on.
 - **Card text:** each upgrade's card text is in its file. `{percent}`, `{amount}`, and `{count}` (the weapon's own count: Orbital Shards' shards, Scatter Shot's projectiles, or Seeker Missiles per volley) are filled in from the numbers, so the text follows the tuning. `{drones}` is how many drones New drones would build right now, which near the cap is fewer than its amount. The upgrade list shows the drones it actually built.
 - **Placeholder files:** the meshes, materials, and models in `res://placeholder/` are made by `res://placeholder/code/PlaceholderBaker.cs`. Change a shape or colour there and bake again, rather than editing the files. The asteroid rocks are still made in code when the fight starts, because their shape follows tuning values.
@@ -260,7 +268,7 @@ These were open when this file was written. The prototype now does the following
 
 Every offer card is coloured by its upgrade's category, so an offer can be read at a glance.
 
-**How it works.** Each upgrade's file in `res://tuning/` has a `Category` field. The card takes that category's colour from `look.tres`. The colour is used for:
+**How it works.** Each upgrade's file has a `Category` field. The card takes that category's colour from `look.tres`. The colour is used for:
 
 - the card's border;
 - a light tint on the card's background;

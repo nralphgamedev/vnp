@@ -79,7 +79,14 @@ public partial class Fight : Node3D
 	public bool CanRetreat => OnGateway && GatewayTime >= Tuning.Fight.RetreatHoldSeconds;
 
 	/// <summary>The pause menu may open only during play, not over another menu or the result screen.</summary>
-	public bool CanPause => !IsOver && !_levelUpMenu.IsOpen && !_startingWeaponMenu.IsOpen;
+	public bool CanPause => !IsOver && !_levelUpMenu.IsOpen && !StartingWeaponMenuOpen;
+
+	/// <summary>Whether the playtest cheat's starting weapon menu is up. Never, outside the editor.</summary>
+#if TOOLS
+	private bool StartingWeaponMenuOpen => _startingWeaponMenu != null && _startingWeaponMenu.IsOpen;
+#else
+	private bool StartingWeaponMenuOpen => false;
+#endif
 
 	/// <summary>Escalation steps reached: 0 before the time limit, 1 at it, 2 one step later, and so on.</summary>
 	public int EscalationSteps => Elapsed < Tuning.Fight.TimeLimitSeconds
@@ -106,7 +113,9 @@ public partial class Fight : Node3D
 	private Label _debugLabel;
 	private HealthBar _healthBar;
 	private LevelUpMenu _levelUpMenu;
+#if TOOLS
 	private StartingWeaponMenu _startingWeaponMenu;
+#endif
 	private FightHud _fightHud;
 	private ResultScreen _resultScreen;
 	private double _debugRefresh;
@@ -152,10 +161,12 @@ public partial class Fight : Node3D
 		Drones.Fight = this;
 		Drones.Add(Tuning.Drones.StartingCount, Vnp.PlanePosition);
 		Projectiles.Fight = this;
-		// For testing, the player can choose the starting weapon; otherwise it comes from vnp.tres.
-		_startingWeaponMenu = GetNode<StartingWeaponMenu>("Hud/StartingWeaponMenu");
-		_startingWeaponMenu.Fight = this;
-		if (!Tuning.Vnp.ChooseStartingWeapon || Tuning.Vnp.StartingWeaponChoices.Count == 0)
+		// The starting weapons come from vnp.tres, unless a playtest cheat in the editor lets the player choose.
+		bool chooseStartingWeapon = false;
+#if TOOLS
+		chooseStartingWeapon = PlaytestCheats.ChoosesStartingWeapon;
+#endif
+		if (!chooseStartingWeapon)
 		{
 			foreach (WeaponDefinition weapon in Tuning.Vnp.StartingWeapons)
 				Equip(weapon);
@@ -174,8 +185,9 @@ public partial class Fight : Node3D
 		DamageNumbers.Fight = this;
 		GetNode<WeaponSlots>("Hud/WeaponSlots").Fight = this;
 
-		if (Tuning.Vnp.ChooseStartingWeapon)
-			_startingWeaponMenu.Open(Tuning.Vnp.StartingWeaponChoices, Tuning.Vnp.StartingDroneWeaponChoices);
+#if TOOLS
+		_startingWeaponMenu = PlaytestCheats.OpenStartingWeaponMenu(this, GetNode("Hud"), _resultScreen);
+#endif
 	}
 
 	/// <summary>Ends the fight: freezes it and shows the result screen.</summary>

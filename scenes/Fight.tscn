@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/fight/Fight.cs" id="1_fight"]
 [ext_resource type="Script" path="res://scripts/units/Vnp.cs" id="2_vnp"]
@@ -21,8 +21,7 @@
 [ext_resource type="Script" path="res://scripts/effects/Effects.cs" id="20_effects"]
 [ext_resource type="Script" path="res://scripts/ui/DamageNumbers.cs" id="21_damage"]
 [ext_resource type="Script" path="res://scripts/ui/WeaponSlots.cs" id="22_slots"]
-[ext_resource type="Script" path="res://scripts/audio/Sounds.cs" id="23_sounds"]
-[ext_resource type="Script" path="res://scripts/ui/StartingWeaponMenu.cs" id="24_starting_weapon"]
+[ext_resource type="Script" path="res://audio/Sounds.cs" id="23_sounds"]
 
 [node name="Fight" type="Node3D"]
 script = ExtResource("1_fight")
@@ -152,17 +151,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("17_pause")
-
-[node name="StartingWeaponMenu" type="Control" parent="Hud"]
-process_mode = 3
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("24_starting_weapon")
 
 [node name="ResultScreen" type="Control" parent="Hud"]
 process_mode = 3

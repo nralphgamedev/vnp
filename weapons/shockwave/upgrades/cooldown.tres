@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/shockwave/shockwave.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "shockwave_cooldown"
+Name = "Shockwave cooldown"
+Description = "Shockwave cooldown -{percent}, so rings go out more often."
+Category = 0
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 1
+Amount = -0.15
+Limit = 4

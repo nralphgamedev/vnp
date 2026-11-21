@@ -16,7 +16,7 @@ using System;
 /// </summary>
 public partial class DroneSwarm : Node3D
 {
-	/// <summary>One drone. Public so Drone Weapon attacks in scripts/drone_weapons/ can work on it.</summary>
+	/// <summary>One drone. Public so Drone Weapon attacks in res://drone_weapons/ can work on it.</summary>
 	public struct Drone
 	{
 		public int Id;            // Stays the same for its whole life, unlike its place in the array.

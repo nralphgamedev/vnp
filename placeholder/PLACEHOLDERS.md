@@ -38,7 +38,7 @@ All made by `code/PlaceholderBaker.cs`, except where noted.
 | `instanced_glow.tres` | Unlit and additive: each copy's colour adds to what is behind it, so fading to black fades out | Effect sparks, rings, trails and harvest particles (`Effects.cs`) |
 | `vnp_hull.tres`, `vnp_core.tres` | Solid colours with a little glow | VNP model. `Vnp.cs` copies the hull material for the hit flash. |
 | `gateway_solid.tres`, `gateway_faint.tres` | Gateway colour, solid and faint | Gateway model |
-| `pulse_laser_beam.tres` | Unlit, see-through | Pulse Laser beam. The colour comes from `tuning/weapons/pulse_laser/pulse_laser.tres`. |
+| `pulse_laser_beam.tres` | Unlit, see-through | Pulse Laser beam. The colour comes from `weapons/pulse_laser/pulse_laser.tres`. |
 | `harvest_beam.tres` | Unlit | VNP harvest beam. The colour comes from `ExperienceColor` in `tuning/look.tres`. |
 | `ground_grid.tres` | Grid shader with its colours and line spacing | Ground grid |
 
@@ -74,7 +74,7 @@ Scenes that put meshes and materials together. Both are made by `code/Placeholde
 
 All made by `code/PlaceholderSounds.cs`, which `code/PlaceholderBaker.cs` runs. Each sound is synthesised from simple tones and noise, and saved as 16-bit mono .wav at 44.1 kHz. To change one, change its recipe in `PlaceholderSounds.cs` and bake again.
 
-Every sound is listed in `tuning/audio.tres`, which sets its category, volume, copy limit, pitch variation, and whether it loops. A final sound can replace a file directly, as long as it keeps the same name.
+Every sound is listed in `audio/audio.tres`, which sets its category, volume, copy limit, pitch variation, and whether it loops. A final sound can replace a file directly, as long as it keeps the same name.
 
 | File | What it sounds like | Played when |
 |---|---|---|

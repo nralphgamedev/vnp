@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="DronesTuning" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/schemas/DronesTuning.cs" id="1_script"]
-[ext_resource type="Resource" path="res://tuning/drone_weapons/projectile/projectile.tres" id="2_projectile"]
+[ext_resource type="Script" path="res://tuning/DronesTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://drone_weapons/projectile/projectile.tres" id="2_projectile"]
 
 [resource]
 script = ExtResource("1_script")

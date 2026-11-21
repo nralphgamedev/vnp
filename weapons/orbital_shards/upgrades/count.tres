@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/orbital_shards/orbital_shards.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "orbital_shards_count"
+Name = "Orbital Shards count"
+Description = "Orbital Shards +{amount} shard."
+Category = 0
+Effect = 6
+Weapon = ExtResource("2_weapon")
+WeaponStat = 4
+Amount = 1.0
+Limit = 4

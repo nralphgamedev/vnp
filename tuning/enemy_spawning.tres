@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/schemas/EnemySpawningTuning.cs" id="1_script"]
-[ext_resource type="Resource" path="res://tuning/enemies/basic_enemy.tres" id="2_enemy"]
+[ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
 
 [resource]
 script = ExtResource("1_script")

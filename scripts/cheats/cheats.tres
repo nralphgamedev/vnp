@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CheatsTuning" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/cheats/CheatsTuning.cs" id="1_script"]
+[ext_resource type="Script" path="res://weapons/WeaponDefinition.cs" id="2_weapon_script"]
+[ext_resource type="Resource" path="res://weapons/pulse_laser/pulse_laser.tres" id="3_pulse_laser"]
+[ext_resource type="Resource" path="res://weapons/orbital_shards/orbital_shards.tres" id="4_orbital_shards"]
+[ext_resource type="Resource" path="res://weapons/scatter_shot/scatter_shot.tres" id="5_scatter_shot"]
+[ext_resource type="Resource" path="res://weapons/seeker_missiles/seeker_missiles.tres" id="6_seeker_missiles"]
+[ext_resource type="Resource" path="res://weapons/shockwave/shockwave.tres" id="7_shockwave"]
+[ext_resource type="Resource" path="res://weapons/mine_layer/mine_layer.tres" id="8_mine_layer"]
+[ext_resource type="Script" path="res://drone_weapons/DroneWeaponDefinition.cs" id="9_drone_weapon_script"]
+[ext_resource type="Resource" path="res://drone_weapons/projectile/projectile.tres" id="10_projectile"]
+[ext_resource type="Resource" path="res://drone_weapons/beam/beam.tres" id="11_beam"]
+[ext_resource type="Resource" path="res://drone_weapons/ram/ram.tres" id="12_ram"]
+
+[resource]
+script = ExtResource("1_script")
+ChooseStartingWeapon = true
+StartingWeaponChoices = Array[ExtResource("2_weapon_script")]([ExtResource("3_pulse_laser"), ExtResource("4_orbital_shards"), ExtResource("5_scatter_shot"), ExtResource("6_seeker_missiles"), ExtResource("7_shockwave"), ExtResource("8_mine_layer")])
+StartingDroneWeaponChoices = Array[ExtResource("9_drone_weapon_script")]([ExtResource("10_projectile"), ExtResource("11_beam"), ExtResource("12_ram")])

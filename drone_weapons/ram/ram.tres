@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DroneWeaponDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://drone_weapons/DroneWeaponDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "ram"
+Name = "Ram"
+Kind = 2
+Damage = 6.0
+Cooldown = 1.2
+Range = 9.0
+AttackDistance = 6.0
+ProjectileSpeed = 0.0
+ChargeSpeed = 45.0
+ChargeTurnRate = 120.0
+ArcTurnRate = 420.0
+ArcSlowdown = 60.0
+Color = Color(1, 0.5, 0.35, 1)

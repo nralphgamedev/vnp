@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/mine_layer/mine_layer.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "mine_layer_damage"
+Name = "Mine Layer damage"
+Description = "Mine Layer damage +{percent}."
+Category = 0
+Effect = 1
+Weapon = ExtResource("2_weapon")
+WeaponStat = 0
+Amount = 0.25
+Limit = 4

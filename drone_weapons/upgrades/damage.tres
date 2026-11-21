@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tuning/UpgradeDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "drone_damage"
+Name = "Drone damage"
+Description = "Drone Weapon damage +{percent}, whichever weapon the drones use."
+Category = 1
+Effect = 3
+Stat = 5
+Amount = 0.25
+Limit = 4
