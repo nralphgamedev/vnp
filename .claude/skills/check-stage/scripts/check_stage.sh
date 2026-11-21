@@ -91,9 +91,11 @@ else
 	fail "data check (see the lines above)"
 fi
 
-echo "== Headless fight, 600 frames, with every enemy type"
+echo "== Headless fight, 30 seconds, with every enemy type"
 # Through the scenario harness: a plain run would sit on the paused starting weapon menu and test nothing.
-fight="$(run_scenario headless spawn=all:2 invulnerable frames=600 report=300)"
+# It also writes a fight log, to a folder of its own that is removed afterwards, and checks the log adds up.
+rm -rf playtests/check
+fight="$(run_scenario headless spawn=all:2 invulnerable frames=1800 report=600 seed=1 log=res://playtests/check)"
 echo "$fight" | grep -E "^SCENARIO|^t |^TIMING"
 fight_errors="$(echo "$fight" | grep -iE "error|exception" | sort | uniq -c | head -20)"
 if ! echo "$fight" | grep -q "^TIMING"; then
@@ -105,6 +107,19 @@ elif [ -n "$fight_errors" ]; then
 else
 	note "Headless fight: no errors. $(echo "$fight" | grep '^TIMING' | sed 's/ (headless.*//')"
 fi
+log_file="$(ls playtests/check/*.json 2>/dev/null | head -1)"
+if [ -z "$log_file" ]; then
+	fail "the fight wrote no fight log"
+else
+	log_check="$(python "$SKILL_DIR/check_log.py" "$log_file" 2>&1)"
+	if echo "$log_check" | grep -q "^FAIL\|Traceback"; then
+		echo "$log_check" | grep -E "^FAIL|Traceback|Error"
+		fail "the fight log has inconsistencies (see above)"
+	else
+		note "Fight log: consistent ($(echo "$log_check" | grep -o '[0-9]* checks passed'))"
+	fi
+fi
+rm -rf playtests/check
 fight_warnings="$(echo "$fight" | grep -E "^WARNING" | sort | uniq -c | head -10)"
 [ -n "$fight_warnings" ] && { echo "$fight_warnings"; note "Fight warnings (check whether they are new): $(echo "$fight_warnings" | wc -l)"; }
 
@@ -132,7 +147,9 @@ for config in ExportDebug ExportRelease; do
 done
 
 echo "== Working tree"
-leftovers="$(git status --porcelain -uall | grep -E '^\?\? ' | sed 's/^?? //' | grep -v '^\.claude/' | grep -iE '(^|/)_|check|test|tmp|scratch|\.orig$' )"
+# Judged by file name only, so a folder such as playtesting/ doesn't make everything in it look temporary.
+leftovers="$(git status --porcelain -uall | grep -E '^\?\? ' | sed 's/^?? //' | grep -v '^\.claude/' \
+	| while read -r file; do name="${file##*/}"; echo "$name" | grep -qiE '^_|check|test|tmp|scratch|\.orig$' && echo "$file"; done)"
 [ -n "$leftovers" ] && note "Untracked files that look temporary, check they belong: $(echo $leftovers | tr '\n' ' ')"
 if git status --porcelain | grep -q 'placeholder/models/'; then
 	if git diff placeholder/models | grep -E '^[+-][^+-]' | grep -vqE 'unique_id='; then

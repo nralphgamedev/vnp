@@ -17,10 +17,14 @@ public abstract class EnemyBehavior
 	/// <summary>Draws every enemy of this type.</summary>
 	public InstanceBatch Batch;
 
+	/// <summary>This enemy type, as the source of its hits, for fight statistics.</summary>
+	public readonly DamageSource Source;
+
 	protected EnemyBehavior(EnemySwarm swarm, EnemyDefinition definition)
 	{
 		Swarm = swarm;
 		Definition = definition;
+		Source = new DamageSource(definition.Id, definition.Name, DamageSourceKind.Enemy, definition.Color);
 	}
 
 	protected Fight Fight => Swarm.Fight;

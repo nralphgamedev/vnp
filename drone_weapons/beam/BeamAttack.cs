@@ -24,7 +24,7 @@ public sealed class BeamAttack : DroneAttack
 		{
 			Fight.Effects.Impact(enemyPosition, Weapon.Color, 0.4f);
 			Fight.Sounds.Play(Sound.DroneBeamTick);
-			enemies.Damage(enemy, Swarm.WeaponDamage);
+			enemies.Damage(enemy, Swarm.WeaponDamage, Swarm.Source);
 			drone.FireTimer = Swarm.WeaponCooldown;
 		}
 		return false;

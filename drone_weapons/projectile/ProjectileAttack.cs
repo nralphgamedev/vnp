@@ -27,7 +27,7 @@ public sealed class ProjectileAttack : DroneAttack
 			return false;
 
 		Fight.Projectiles.Fire(drone.Position, toAim.Normalized(), Swarm.WeaponDamage,
-			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color, 0.6f * Swarm.Power);
+			Weapon.ProjectileSpeed, lifetime, fromEnemy: false, Weapon.Color, Swarm.Source, 0.6f * Swarm.Power);
 		Fight.Effects.MuzzleFlash(drone.Position, toAim, Weapon.Color, 0.5f);
 		Fight.Sounds.Play(Sound.DroneProjectileFire);
 		drone.FireTimer = Swarm.WeaponCooldown * Rng.Range(0.9f, 1.1f);

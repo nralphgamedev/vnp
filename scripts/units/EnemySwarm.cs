@@ -293,6 +293,21 @@ public partial class EnemySwarm : Node3D
 		return -1;
 	}
 
+	/// <summary>Which enemy type an enemy is, by the type's ID.</summary>
+	public string TypeIdOf(int index) => _types[_enemies[index].Type].Definition.Id;
+
+	/// <summary>How many living enemies there are of each type, in the order of Types.</summary>
+	public int[] CountByType()
+	{
+		var counts = new int[_types.Count];
+		for (int i = 0; i < Count; i++)
+		{
+			if (_enemies[i].Health > 0f)
+				counts[_enemies[i].Type]++;
+		}
+		return counts;
+	}
+
 	/// <summary>Health per second this enemy drains from a drone touching it.</summary>
 	public float DroneDrainOf(int index) => _types[_enemies[index].Type].DroneDrain(_enemies[index]);
 
@@ -312,13 +327,18 @@ public partial class EnemySwarm : Node3D
 		return index >= 0;
 	}
 
-	/// <summary>Damages an enemy. If that destroys it, it counts as a kill and leaves debris.</summary>
-	public void Damage(int index, float amount)
+	/// <summary>
+	/// Damages an enemy. If that destroys it, it counts as a kill and leaves debris. <paramref name="source"/>
+	/// is what dealt it, for fight statistics, which count only the health it took off.
+	/// </summary>
+	public void Damage(int index, float amount, DamageSource source)
 	{
 		ref Enemy enemy = ref _enemies[index];
 		if (enemy.Health <= 0f)
 			return;
 
+		EnemyBehavior type = _types[enemy.Type];
+		Fight.Stats.EnemyDamaged(source, type.Definition.Id, Mathf.Min(amount, enemy.Health));
 		enemy.Health -= amount;
 		enemy.Flash = Tuning.Feedback.HitFlashTime;
 		enemy.Aggro = true; // Being shot gets its attention, even from outside its aggro range.
@@ -327,8 +347,8 @@ public partial class EnemySwarm : Node3D
 		if (enemy.Health <= 0f)
 		{
 			Fight.Kills++;
+			Fight.Stats.EnemyKilled(Fight.Elapsed, type.Definition.Id);
 			// It bursts apart, and its debris appears a moment later.
-			EnemyBehavior type = _types[enemy.Type];
 			type.Died(enemy);
 			AddPendingDebris(enemy.Position, type.DebrisMass(enemy));
 			// The enemy itself is cleared away at the start of the next update.

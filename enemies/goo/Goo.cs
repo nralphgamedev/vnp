@@ -64,7 +64,7 @@ public sealed class Goo : EnemyBehavior
 		if (!vnp.IsDestroyed && enemy.FireTimer <= 0f
 			&& enemy.Position.DistanceTo(vnp.PlanePosition) <= enemy.Radius + Tuning.Vnp.HitRadius)
 		{
-			vnp.TakeDamage(enemy.Damage);
+			vnp.TakeDamage(enemy.Damage, Source);
 			enemy.FireTimer = _type.ContactCooldown;
 			Vector2 toward = (vnp.PlanePosition - enemy.Position).Normalized();
 			Fight.Effects.Impact(enemy.Position + toward * enemy.Radius, _type.Color, 1f);

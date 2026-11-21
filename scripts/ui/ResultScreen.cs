@@ -2,8 +2,9 @@ using Godot;
 using System.Collections.Generic;
 
 /// <summary>
-/// Shown when the fight ends: win, loss or retreat, with kills, time and fight experience harvested, and the
-/// upgrades taken listed on the right.
+/// Shown when the fight ends: win, loss or retreat, with kills, time and fight experience harvested, the
+/// damage breakdown on the left, and the upgrades taken on the right. The fight's seed is shown, so a fight
+/// can be looked up in the fight logs.
 ///
 /// After a win, two buttons sit side by side: New fight, and Continue (endless), which goes back into the
 /// same fight with no kill target, for as long as the player lasts and with no additional rewards. A/D or
@@ -26,6 +27,7 @@ public partial class ResultScreen : Control
 	private Label _subtitle;
 	private Label _stats;
 	private UpgradeList _upgrades;
+	private DamageBreakdown _damage;
 	private Label _newFightHint;
 	private Control _choices;
 	private readonly List<PanelContainer> _buttons = new();
@@ -68,6 +70,9 @@ public partial class ResultScreen : Control
 		// The upgrades taken, on the right of the screen.
 		_upgrades = new UpgradeList();
 		AddChild(_upgrades);
+		// The damage each source did, on the left.
+		_damage = new DamageBreakdown();
+		AddChild(_damage);
 	}
 
 	public void Show(Fight.Outcome outcome)
@@ -99,7 +104,9 @@ public partial class ResultScreen : Control
 				$"\nKill target reached at   {Ui.Clock(Fight.VictoryTime)}\n" +
 				$"Endless kills   {Fight.Kills - Fight.VictoryKills}";
 		}
+		_stats.Text += $"\nSeed   {Fight.Seed}";
 		_upgrades.ShowUpgrades(Fight);
+		_damage.ShowFight(Fight);
 
 		_newFightHint.Visible = !_offerEndless;
 		_choices.Visible = _offerEndless;

@@ -74,7 +74,7 @@ public sealed class BasicEnemy : EnemyBehavior
 			aim = aim.Rotated(Rng.Range(-spread, spread));
 
 			Fight.Projectiles.Fire(enemy.Position, aim, enemy.Damage,
-				_type.ProjectileSpeed, _type.ProjectileLifetime, fromEnemy: true, _type.ProjectileColor);
+				_type.ProjectileSpeed, _type.ProjectileLifetime, fromEnemy: true, _type.ProjectileColor, Source);
 			Fight.Sounds.Play(Sound.EnemyFire);
 			enemy.FireTimer = _type.FireCooldown * Rng.Range(0.85f, 1.15f);
 		}

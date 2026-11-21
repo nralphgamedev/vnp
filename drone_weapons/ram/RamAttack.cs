@@ -131,7 +131,7 @@ public sealed class RamAttack : DroneAttack
 				if (distance <= enemyRadius + Tuning.Drones.HitRadius)
 				{
 					// A hit: the drone keeps going, straight through the target, then arcs round.
-					enemies.Damage(enemy, Swarm.WeaponDamage);
+					enemies.Damage(enemy, Swarm.WeaponDamage, Swarm.Source);
 					Fight.Effects.Impact(enemyPosition - direction * 0.5f, Weapon.Color, 0.9f * Swarm.Power);
 					Fight.Sounds.Play(Sound.RamHit);
 					drone.FireTimer = Swarm.WeaponCooldown * Rng.Range(0.9f, 1.1f);

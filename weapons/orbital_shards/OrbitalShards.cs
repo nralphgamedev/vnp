@@ -74,15 +74,21 @@ public partial class OrbitalShards : VnpWeapon
 					_nextHitAt[key] = now + Cooldown;
 					Fight.Effects.Impact(enemies.PositionOf(enemy), ShardColor, 0.7f * Mathf.Sqrt(Power));
 					Fight.Sounds.Play(Sound.ShardHit);
-					enemies.Damage(enemy, Damage);
+					enemies.Damage(enemy, Damage, Source);
 				}
 			}
 
 			// With the blocking upgrade, a shard also destroys enemy shots it touches. A shot moves about
 			// half a unit a frame, so the reach allows a little for that.
-			if (HasFeature(WeaponFeature.Blocking) && !Fight.Vnp.IsDestroyed
-				&& Fight.Projectiles.BlockEnemyShots(position, Shards.HitRadius * Area + 0.6f) > 0)
-				Fight.Sounds.Play(Sound.ShardBlock);
+			if (HasFeature(WeaponFeature.Blocking) && !Fight.Vnp.IsDestroyed)
+			{
+				int blocked = Fight.Projectiles.BlockEnemyShots(position, Shards.HitRadius * Area + 0.6f);
+				if (blocked > 0)
+				{
+					Fight.Stats.ShotsBlocked += blocked;
+					Fight.Sounds.Play(Sound.ShardBlock);
+				}
+			}
 
 			// Point each shard along its path.
 			float yaw = PlaneMath.YawFacing(new Vector2(-around.Y, around.X));

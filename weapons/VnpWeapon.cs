@@ -11,6 +11,9 @@ public abstract partial class VnpWeapon : Node3D
 	/// <summary>The definition this weapon was made from, in its folder in res://weapons/.</summary>
 	public WeaponDefinition Definition { get; private set; }
 
+	/// <summary>This weapon, as the source of its hits, for fight statistics.</summary>
+	public DamageSource Source { get; private set; }
+
 	public float Damage;
 	public float Cooldown;
 
@@ -58,6 +61,7 @@ public abstract partial class VnpWeapon : Node3D
 
 		weapon.Fight = fight;
 		weapon.Definition = definition;
+		weapon.Source = new DamageSource(definition.Id, definition.Name, DamageSourceKind.VnpWeapon, definition.Color);
 		weapon.Name = definition.Id;
 		weapon.Damage = definition.Damage;
 		weapon.Cooldown = definition.Cooldown;

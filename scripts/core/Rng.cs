@@ -1,10 +1,20 @@
 using Godot;
 using System;
 
-/// <summary>Random helpers for the plane.</summary>
+/// <summary>
+/// Random helpers for the plane. Every random choice in a fight comes from here, and the fight seeds it as it
+/// starts, so the same seed (and the same inputs and tuning) gives the same fight. Effects and sounds use
+/// their own randomness, so turning them up, down or off never changes a fight.
+/// </summary>
 public static class Rng
 {
-	private static readonly Random Random = new();
+	private static Random Random = new();
+
+	/// <summary>Starts the sequence of random numbers again from a seed.</summary>
+	public static void Seed(int seed) => Random = new Random(seed);
+
+	/// <summary>A seed picked at random, for a fight nobody asked to repeat.</summary>
+	public static int NewSeed() => Random.Shared.Next(1, int.MaxValue);
 
 	/// <summary>A random number from 0 up to 1.</summary>
 	public static float Value() => Random.NextSingle();

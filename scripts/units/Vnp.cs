@@ -24,7 +24,7 @@ public partial class Vnp : Node3D
 	public event Action Destroyed;
 
 	/// <summary>Raised whenever the VNP takes damage, with the amount.</summary>
-	public event Action<float> Damaged;
+	public event Action<float, DamageSource> Damaged;
 
 	/// <summary>Raised at each low-health flash, so the warning sound can play with it.</summary>
 	public event Action LowHealthPulse;
@@ -61,15 +61,18 @@ public partial class Vnp : Node3D
 		Health = Mathf.Min(MaxHealth, Health + amount);
 	}
 
-	public void TakeDamage(float amount)
+	/// <summary>Damages the VNP, after armor. <paramref name="source"/> is what dealt it, for fight statistics.</summary>
+	public void TakeDamage(float amount, DamageSource source = null)
 	{
 		if (IsDestroyed)
 			return;
 
 		amount *= DamageTaken;
+		// Only the health actually taken off counts, so the last hit's excess doesn't inflate what killed it.
+		float taken = Mathf.Min(amount, Health);
 		Health = Mathf.Max(0f, Health - amount);
 		_flash = Tuning.Feedback.HitFlashTime;
-		Damaged?.Invoke(amount);
+		Damaged?.Invoke(taken, source);
 		if (Health <= 0f)
 		{
 			IsDestroyed = true;

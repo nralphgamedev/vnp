@@ -25,6 +25,18 @@ public partial class Fight : Node3D
 	/// <summary>VNP Weapons equipped, out of Tuning.Vnp.WeaponSlots.</summary>
 	public int WeaponCount => _weapons.Count;
 
+	/// <summary>The seed every random choice in this fight comes from. Shown on the result screen.</summary>
+	public int Seed { get; private set; }
+
+	/// <summary>
+	/// The seed for the next fight to start, for repeating a fight; null picks one at random. Used once, then
+	/// cleared. Set it before the fight scene is added to the tree.
+	/// </summary>
+	public static int? NextSeed;
+
+	/// <summary>What has happened in this fight so far: damage by source, drones lost, kills, level-ups.</summary>
+	public readonly FightStats Stats = new();
+
 	/// <summary>Seconds since the fight started.</summary>
 	public double Elapsed { get; private set; }
 
@@ -35,12 +47,13 @@ public partial class Fight : Node3D
 	public int Kills;
 
 	/// <summary>Fight experience harvested so far.</summary>
-	public float Experience { get; private set; }
+	/// <remarks>Double precision, so it stays exact through thousands of small additions.</remarks>
+	public double Experience { get; private set; }
 
 	public int Level { get; private set; } = 1;
 
 	/// <summary>Fight experience gathered since the last level up.</summary>
-	public float ExperienceIntoLevel => Experience - _levelStartExperience;
+	public float ExperienceIntoLevel => (float)(Experience - _levelStartExperience);
 
 	/// <summary>Fight experience the current level needs before the next level up.</summary>
 	public float ExperienceForNextLevel => Tuning.Levels.ExperienceForFirstLevel + Tuning.Levels.ExperienceIncreasePerLevel * (Level - 1);
@@ -109,7 +122,7 @@ public partial class Fight : Node3D
 	private readonly List<VnpWeapon> _weapons = new();
 	private Node3D _weaponHolder;
 	private float _harvestTowardDrone;
-	private float _levelStartExperience;
+	private double _levelStartExperience;
 	private int _pendingLevelUps;
 	private int _alertedSteps;
 	private int _warnedWave = -1;
@@ -118,10 +131,19 @@ public partial class Fight : Node3D
 	private LevelUpMenu _levelUpMenu;
 #if TOOLS
 	private StartingWeaponMenu _startingWeaponMenu;
+	private FightLog _fightLog;
 #endif
 	private FightHud _fightHud;
 	private ResultScreen _resultScreen;
 	private double _debugRefresh;
+
+	public override void _EnterTree()
+	{
+		// Seed before any part of the fight is ready, since the asteroids are placed as soon as they are.
+		Seed = NextSeed ?? Rng.NewSeed();
+		NextSeed = null;
+		Rng.Seed(Seed);
+	}
 
 	public override void _Ready()
 	{
@@ -144,8 +166,9 @@ public partial class Fight : Node3D
 		// The fight starts at the gateway.
 		Vnp.PlaceAt(Gateway.PlanePosition);
 		Vnp.Destroyed += OnVnpDestroyed;
-		Vnp.Damaged += _ =>
+		Vnp.Damaged += (amount, source) =>
 		{
+			Stats.VnpDamaged(source, amount);
 			Camera.Shake(Tuning.Feedback.ShakeOnVnpDamage);
 			Sounds.Play(Sound.VnpDamage);
 		};
@@ -163,6 +186,7 @@ public partial class Fight : Node3D
 		Enemies.Fight = this;
 		Drones.Fight = this;
 		Drones.Add(Tuning.Drones.StartingCount, Vnp.PlanePosition);
+		Stats.DronesStarted = Tuning.Drones.StartingCount;
 		Projectiles.Fight = this;
 		// The starting weapons come from vnp.tres, unless a playtest cheat in the editor lets the player choose.
 		bool chooseStartingWeapon = false;
@@ -190,6 +214,8 @@ public partial class Fight : Node3D
 
 #if TOOLS
 		_startingWeaponMenu = PlaytestCheats.OpenStartingWeaponMenu(this, GetNode("Hud"), _resultScreen);
+		// Editor only: the fight is logged to a file for playtesting analysis.
+		_fightLog = FightLog.Attach(this);
 #endif
 	}
 
@@ -211,7 +237,12 @@ public partial class Fight : Node3D
 		_fightHud.QueueRedraw();
 
 		GetTree().Paused = true;
+		// A level-up offer that opened in the same moment would otherwise show through behind the result screen.
+		_levelUpMenu.Visible = false;
 		_resultScreen.Show(outcome);
+#if TOOLS
+		_fightLog?.FightEnded(outcome);
+#endif
 	}
 
 	/// <summary>
@@ -221,7 +252,12 @@ public partial class Fight : Node3D
 	public void AddHarvest(float mass, bool fromDebris = false)
 	{
 		// Debris reward upgrades raise the experience from enemy debris only, not from asteroids.
-		Experience += mass * Tuning.Harvesting.ExperiencePerMass * (fromDebris ? DebrisExperience : 1f);
+		float experience = mass * Tuning.Harvesting.ExperiencePerMass * (fromDebris ? DebrisExperience : 1f);
+		Experience += experience;
+		if (fromDebris)
+			Stats.ExperienceFromDebris += experience;
+		else
+			Stats.ExperienceFromAsteroids += experience;
 
 		// Several level ups can arrive at once. Each gets its own offer, one after another.
 		while (ExperienceIntoLevel >= ExperienceForNextLevel)
@@ -354,6 +390,7 @@ public partial class Fight : Node3D
 		string nextDrone = Drones.Count >= Drones.Cap ? "at cap" : $"next {DroneBuildProgress * 100f:0}%";
 		_debugLabel.Text =
 			$"{Engine.GetFramesPerSecond():0} fps    " +
+			$"seed {Seed}    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
 			$"level {Level}    " +

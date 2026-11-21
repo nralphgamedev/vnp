@@ -75,7 +75,7 @@ A pilot flies a VNP the way a player does: it chooses a direction to move each m
 - **Movement** is a set of simple, readable wants, weighed against each other each moment. Underneath them is one judgement: whether the pilot can afford a fight, given how strong it is right now (its health, its drones, and its weapons and upgrades) against what it faces. Engaging enemies is normal; the pilot pulls back only when a fight risks wearing it down too far. Its caution (part of its skill level) sets where that line is.
   - Harvest: head for the most worthwhile material nearby, even with enemies around it, as long as the fights on the way are ones it can afford.
   - Fight: move so the weapons and drones can reach enemies, without getting surrounded.
-  - Back off: when a fight turns into one it can't afford, pull away. This covers dense groups, Goos that would eat a drone-reliant build, incoming shots it notices, and too many enemies drawn in at once. Pulling away lets the pack thin out or string out, so the weapons and drones can take it on at its edge.
+  - Back off: when a fight turns into one it can't afford, pull away. Pulling away lets the pack thin out or string out, so the weapons and drones can take it on at its edge.
 - **Never retreats:** a rule rather than a want. After a win, a pilot continues into endless mode and plays until it is destroyed. Moving away from danger and searching for material is fine.
 - **Upgrades:** a build sets what a pilot prefers. Each build is data: a weight for upgrades, categories, weapons and Drone Weapons, and when to reroll. The pilot scores each offered upgrade by its build's weights and takes the highest, with a little randomness that shrinks as skill rises, so two fights with the same build don't always pick alike. Starting builds:
   - Random: picks at random, as a baseline.
@@ -148,6 +148,20 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **The designer's input recording rate:** ten samples a second, enough to see how the designer moves without large files.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
+
+## Settled during the build
+
+The prototype now does the following; any of it can still change.
+
+- **Where a fight is seeded:** as the fight scene enters the tree, before any of its parts are ready, since the asteroids are placed as soon as they are. `Fight.NextSeed` sets the next fight's seed, for the scenario harness and batches.
+- **Damage sources:** every hit carries what dealt it: the VNP Weapon, the Drone Weapon in use, or the enemy type, including shots in flight. Each Drone Weapon counts separately, so damage done before a switch stays with the weapon that did it.
+- **Fight logs:** written when the fight ends, again if an endless run then ends, and as "unfinished" if the fight is left by starting a new one or closing the game. Each is named by its start time and seed. The result screen shows where it went, in small text at the bottom left, in the editor only. Logging is switched off with `WriteLogs` in `fight_log.tres`.
+- **Frame times in fight logs:** the time from the start of the fight's update each frame to its end, measured by the log itself, so it is the game's own work without drawing or waiting for the screen. It works the same headless and in a window. Godot's built-in frame monitor was tried first, but it measures the whole frame, including waiting for the screen, so it read about 16.7 ms in every windowed fight.
+- **Timeline and input sampling:** samples keep to a fixed cadence in fight time, so a log of a 3-minute fight has a sample every second and ten input samples a second, not slightly fewer.
+- **Damage the VNP took:** like damage to enemies, only the health a hit actually took off counts, so the last hit's excess doesn't inflate what killed it.
+- **Checking a log:** `check_log.py` in the check-stage skill cross-checks a fight log's numbers against each other. Run on the designer's first logged fights, it found a pause bug in frame timing (a level-up offer's open time counted as one long frame), sampling that slipped late, and overkill counted in damage taken. All three are fixed.
+- **Scenario harness:** `seed=N` repeats a fight. By default it takes the first option of each level-up offer half a second after it opens, so its fights carry on through level-ups (`upgrades=none` leaves the fight paused on the offer). `log=FOLDER` writes a fight log there; without it, scenario fights write none, so they never land among the designer's. Fights started by it are logged as played by "scenario".
+- **Result screen fix:** a level-up offer that opened in the same moment the fight ended no longer shows through behind the result screen.
 
 ## Suggested build order
 

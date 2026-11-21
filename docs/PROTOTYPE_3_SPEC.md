@@ -57,6 +57,8 @@ The result screen shows how much damage each source did during the fight, so the
 
 The upgrade list on the result screen stays. Fit the breakdown in where it reads clearly, on its own page or panel if needed.
 
+**Built** as part of automated playtesting's stage 1, from the fight statistics. The breakdown is a panel on the left of the result screen, mirroring the upgrade list on the right. It lists each source, most damage first, in its weapon's colour, with its total and share. Under each source is its split by enemy type, in each enemy's colour, with each enemy's share of that source's damage. Then come drones lost (destroyed and absorbed), and shots blocked once Orbital Shards blocking has stopped any. The result screen also shows the fight's seed. There is no "other" source yet; damage with no known source would be listed as Other.
+
 ## Asteroid amount
 
 The GDD says the amount of asteroids varies between fights and is one of the settings that set a fight's difficulty. This phase tests how much it matters.

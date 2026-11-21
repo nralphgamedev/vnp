@@ -24,6 +24,11 @@ using System.Reflection;
 ///   frames=N           how long to run (default 600, 10 seconds at 60 fps)
 ///   report=N           print a status line every N frames (default 60)
 ///   shot=PATH[@FRAME]  save a screenshot (default: the last frame). Needs a window, not --headless.
+///   seed=N             play the fight from this seed, so it can be repeated
+///   upgrades=first|none   answer level-up offers by taking the first option, half a second after each
+///                      opens (the default), or leave the fight paused on the offer
+///   log=FOLDER         write a fight log there (res:// or a full path). Without it, no log is written, so
+///                      scenario fights never land among the designer's own.
 ///
 /// It reads the swarms' private lists by reflection, so the game's code needs nothing added for testing.
 /// </summary>
@@ -43,12 +48,21 @@ public partial class ScenarioRunner : Node
 	private ulong _lastTicks;
 	private readonly List<double> _frameMs = new();
 	private bool _quitting;
+	private int? _seed;
+	private int _overFrame;
+	private bool _takeUpgrades = true;
+	private int _offerOpenFor;
+	private LevelUpMenu _levelUpMenu;
+	private string _logFolder;
 
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
 		ProcessPriority = -100; // Before the fight, so the frame timing covers the whole fight update.
 		ParseArguments();
+		Fight.NextSeed = _seed;
+		FightLog.NextFolder = _logFolder ?? "";
+		FightLog.NextPlayer = "scenario";
 		// Release the scene once it is instantiated, so it isn't reported as still in use when the game quits.
 		using (PackedScene scene = GD.Load<PackedScene>("res://scenes/Fight.tscn"))
 			_fight = scene.Instantiate<Fight>();
@@ -67,6 +81,9 @@ public partial class ScenarioRunner : Node
 				case "drone_weapon": _droneWeaponId = value; break;
 				case "drones": _extraDrones = int.Parse(value); break;
 				case "invulnerable": _invulnerable = true; break;
+				case "seed": _seed = int.Parse(value); break;
+				case "log": _logFolder = value; break;
+				case "upgrades": _takeUpgrades = value != "none"; break;
 				case "frames": _frames = int.Parse(value); break;
 				case "report": _report = Math.Max(1, int.Parse(value)); break;
 				case "spawn":
@@ -105,12 +122,19 @@ public partial class ScenarioRunner : Node
 
 		if (_frame == 2)
 			SetUp();
+		TakeUpgrade();
 		if (_frame > 2 && _frame % _report == 0)
 			PrintStatus();
-		if (_shotPath != null && _frame == (_shotFrame > 0 ? _shotFrame : _frames))
+		// When the fight ends, wait a moment so the result screen is drawn, then finish. A screenshot with no
+		// frame given is taken then, so it shows the result screen.
+		if (_fight.IsOver && _overFrame == 0)
+			_overFrame = _frame;
+		bool overLongEnough = _overFrame > 0 && _frame - _overFrame >= (_shotPath != null ? 45 : 1);
+		bool finishing = _frame >= _frames || overLongEnough;
+		if (_shotPath != null && (_frame == _shotFrame || (_shotFrame <= 0 && finishing)))
 			SaveShot();
 
-		if (_frame >= _frames || _fight.IsOver)
+		if (finishing)
 		{
 			if (_frame % _report != 0)
 				PrintStatus();
@@ -120,6 +144,28 @@ public partial class ScenarioRunner : Node
 			// never finishes them. A windowed run exits clean, so those two exit messages can be ignored.
 			_fight.QueueFree();
 			_quitting = true;
+		}
+	}
+
+	/// <summary>
+	/// Takes the first option of an open level-up offer once it has been open half a second, so a scenario
+	/// keeps going through level-ups instead of stopping at the first. The pause while it is open is real, as
+	/// in play.
+	/// </summary>
+	private void TakeUpgrade()
+	{
+		if (!_takeUpgrades || _fight.IsOver)
+			return;
+		_levelUpMenu ??= _fight.GetNodeOrNull<LevelUpMenu>("Hud/LevelUpMenu");
+		if (_levelUpMenu == null || !_levelUpMenu.IsOpen)
+		{
+			_offerOpenFor = 0;
+			return;
+		}
+		if (++_offerOpenFor >= 30)
+		{
+			_levelUpMenu.Choose(0);
+			_offerOpenFor = 0;
 		}
 	}
 
@@ -180,7 +226,7 @@ public partial class ScenarioRunner : Node
 				spawnGroup.Invoke(swarm, new object[] { home, type, true });
 			}
 		}
-		GD.Print($"SCENARIO: weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
+		GD.Print($"SCENARIO: seed {_fight.Seed}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
 			$"spawned {string.Join(", ", spawns.Select(s => $"{s.Item2} {s.Item1} groups"))}");
 	}
 

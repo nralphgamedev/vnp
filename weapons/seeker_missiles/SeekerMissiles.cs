@@ -128,7 +128,7 @@ public partial class SeekerMissiles : VnpWeapon
 			if (hit >= 0)
 			{
 				Vector2 at = missile.Position;
-				enemies.Damage(hit, missile.Damage);
+				enemies.Damage(hit, missile.Damage, Source);
 				Fight.Effects.Explosion(at, Seekers.Color, Power);
 				Fight.Sounds.Play(Sound.SeekerHit);
 				_missiles[i] = _missiles[--_count];

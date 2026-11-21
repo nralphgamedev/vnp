@@ -114,12 +114,22 @@ public partial class DroneSwarm : Node3D
 	/// <summary>Mass each drone's harvest beam draws out per second.</summary>
 	public float HarvestRate = Tuning.Harvesting.DroneRate;
 
+	/// <summary>The Drone Weapon in use, as the source of the drones' hits, for fight statistics. Each Drone
+	/// Weapon has its own, so damage done before a switch stays counted under the weapon that did it.</summary>
+	public DamageSource Source => _source ??= SourceFor(Weapon);
+
+	private DamageSource _source;
+
+	private static DamageSource SourceFor(DroneWeaponDefinition weapon) =>
+		new(weapon.Id, weapon.Name, DamageSourceKind.DroneWeapon, weapon.Color);
+
 	/// <summary>Switches every drone to another Drone Weapon. Damage and attack rate upgrades carry over.</summary>
 	public void SwitchWeapon(DroneWeaponDefinition weapon)
 	{
 		if (weapon == null)
 			return;
 		Weapon = weapon;
+		_source = SourceFor(weapon);
 		_attack = DroneAttack.Create(this, weapon);
 		WeaponRange = weapon.Range;
 		AttackDistance = weapon.AttackDistance;
@@ -184,6 +194,7 @@ public partial class DroneSwarm : Node3D
 			};
 			if (built)
 			{
+				Fight.Stats.DronesBuilt++;
 				Fight.Effects.DroneBuilt(around + offset * spread, Tuning.Drones.Color);
 				Fight.Sounds.Play(Sound.DroneBuilt);
 			}
@@ -285,8 +296,9 @@ public partial class DroneSwarm : Node3D
 		return hit;
 	}
 
-	/// <summary>Damages a drone. A destroyed drone leaves wreckage that disintegrates.</summary>
-	public void Damage(int index, float amount)
+	/// <summary>Damages a drone. A destroyed drone leaves wreckage that disintegrates. <paramref name="source"/>
+	/// is what dealt the damage, for fight statistics.</summary>
+	public void Damage(int index, float amount, DamageSource source)
 	{
 		ref Drone drone = ref _drones[index];
 		if (drone.Health <= 0f)
@@ -300,6 +312,7 @@ public partial class DroneSwarm : Node3D
 			if (_wreckCount == _wrecks.Length)
 				Array.Resize(ref _wrecks, _wrecks.Length * 2);
 			_wrecks[_wreckCount++] = new Wreck { Position = drone.Position, Yaw = drone.Yaw };
+			Fight.Stats.DroneDestroyed(source);
 			Fight.Effects.DronePop(drone.Position, Tuning.Drones.Color);
 			Fight.Sounds.Play(Sound.DroneDeath);
 			// The drone itself is cleared away at the start of the next update.
@@ -482,6 +495,7 @@ public partial class DroneSwarm : Node3D
 			Yaw = drone.Yaw,
 		};
 		Fight.Effects.Absorbed(drone.Position, enemies.PositionOf(enemy), Tuning.Drones.Color);
+		Fight.Stats.DroneAbsorbed(enemies.TypeIdOf(enemy));
 		enemies.Absorb(enemy);
 		// The drone itself is cleared away at the start of the next update.
 	}

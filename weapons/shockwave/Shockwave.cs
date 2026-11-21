@@ -83,7 +83,7 @@ public partial class Shockwave : VnpWeapon
 				if (!ring.Hit.Add(enemies.IdOf(enemy)))
 					continue;
 				Fight.Effects.Impact(enemies.PositionOf(enemy), Wave.Color, 0.5f);
-				enemies.Damage(enemy, ring.Damage);
+				enemies.Damage(enemy, ring.Damage, Source);
 			}
 
 			if (ring.Radius >= ring.MaxRadius)

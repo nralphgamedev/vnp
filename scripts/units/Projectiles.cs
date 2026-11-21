@@ -14,6 +14,7 @@ public partial class Projectiles : Node3D
 		public float Damage;
 		public float Life;      // Seconds left before it fizzles out.
 		public bool FromEnemy;
+		public DamageSource Source; // What fired it, for fight statistics.
 		public Color Color;
 		public float Size;
 	}
@@ -34,9 +35,9 @@ public partial class Projectiles : Node3D
 	}
 
 	/// <summary>Launches a projectile from a point in a direction. <paramref name="size"/> scales the shot;
-	/// 0 uses the usual size for its side.</summary>
+	/// 0 uses the usual size for its side. <paramref name="source"/> is what fired it, for fight statistics.</summary>
 	public void Fire(Vector2 from, Vector2 direction, float damage, float speed, float lifetime, bool fromEnemy, Color color,
-		float size = 0f)
+		DamageSource source, float size = 0f)
 	{
 		if (Count == _shots.Length)
 			Array.Resize(ref _shots, _shots.Length * 2);
@@ -48,6 +49,7 @@ public partial class Projectiles : Node3D
 			Damage = damage,
 			Life = lifetime,
 			FromEnemy = fromEnemy,
+			Source = source,
 			Color = color,
 			Size = size > 0f ? size : fromEnemy ? 1f : 0.6f,
 		};
@@ -88,8 +90,8 @@ public partial class Projectiles : Node3D
 
 			// Test the whole path covered this frame, so a fast shot cannot skip past its target.
 			bool hit = shot.FromEnemy
-				? HitPlayerSide(before, shot.Position, shot.Damage)
-				: HitEnemy(before, shot.Position, shot.Damage);
+				? HitPlayerSide(before, shot.Position, shot.Damage, shot.Source)
+				: HitEnemy(before, shot.Position, shot.Damage, shot.Source);
 			if (hit)
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.6f);
 
@@ -108,31 +110,31 @@ public partial class Projectiles : Node3D
 	}
 
 	/// <summary>An enemy shot hits the VNP or the first drone on its path. Drones can shield the VNP this way.</summary>
-	private bool HitPlayerSide(Vector2 from, Vector2 to, float damage)
+	private bool HitPlayerSide(Vector2 from, Vector2 to, float damage, DamageSource source)
 	{
 		Vnp vnp = Fight.Vnp;
 		if (!vnp.IsDestroyed && PlaneMath.DistanceToSegment(vnp.PlanePosition, from, to) <= Tuning.Vnp.HitRadius)
 		{
-			vnp.TakeDamage(damage);
+			vnp.TakeDamage(damage, source);
 			return true;
 		}
 
 		int drone = Fight.Drones.FindHit(from, to);
 		if (drone >= 0)
 		{
-			Fight.Drones.Damage(drone, damage);
+			Fight.Drones.Damage(drone, damage, source);
 			return true;
 		}
 		return false;
 	}
 
-	private bool HitEnemy(Vector2 from, Vector2 to, float damage)
+	private bool HitEnemy(Vector2 from, Vector2 to, float damage, DamageSource source)
 	{
 		int enemy = Fight.Enemies.FindHit(from, to);
 		if (enemy < 0)
 			return false;
 
-		Fight.Enemies.Damage(enemy, damage);
+		Fight.Enemies.Damage(enemy, damage, source);
 		return true;
 	}
 }

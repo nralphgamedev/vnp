@@ -97,7 +97,7 @@ public partial class MineLayer : VnpWeapon
 		EnemySwarm enemies = Fight.Enemies;
 		int caught = enemies.CollectTouching(mine.Position, blast, _caught);
 		for (int c = 0; c < caught; c++)
-			enemies.Damage(_caught[c], mine.Damage);
+			enemies.Damage(_caught[c], mine.Damage, Source);
 
 		Fight.Effects.Blast(mine.Position, Mines.Color, blast, Power);
 		Fight.Sounds.Play(Sound.MineExplode);

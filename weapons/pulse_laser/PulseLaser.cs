@@ -54,7 +54,7 @@ public partial class PulseLaser : VnpWeapon
 			return; // Nothing in range. Stay ready, and fire the moment something is.
 
 		Vector2 targetPosition = Fight.Enemies.PositionOf(target);
-		Fight.Enemies.Damage(target, Damage);
+		Fight.Enemies.Damage(target, Damage, Source);
 		ShowBeam(from, targetPosition);
 		Fight.Effects.MuzzleFlash(from, targetPosition - from, Laser.Color, Power);
 		Fight.Sounds.Play(Sound.PulseLaserFire);

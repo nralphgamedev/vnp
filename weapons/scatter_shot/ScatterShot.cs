@@ -54,7 +54,7 @@ public partial class ScatterShot : VnpWeapon
 		{
 			float spread = count == 1 ? 0f : coneRadians * ((float)i / (count - 1) - 0.5f);
 			Fight.Projectiles.Fire(from, aim.Rotated(spread), Damage, Scatter.ProjectileSpeed, lifetime,
-				fromEnemy: false, color, Scatter.ProjectileSize * Power);
+				fromEnemy: false, color, Source, Scatter.ProjectileSize * Power);
 		}
 
 		Fight.Effects.ScatterFlash(from, aim, Scatter.Color, coneRadians, Power);

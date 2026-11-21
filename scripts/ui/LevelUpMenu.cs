@@ -57,6 +57,7 @@ public partial class LevelUpMenu : Control
 	public void Open(int level)
 	{
 		_options = Upgrades.Draw(Fight, Tuning.Levels.OptionsPerOffer);
+		Fight.Stats.OfferShown(Fight.Elapsed, level, _options);
 		if (_options.Count == 0)
 			return;
 		_title.Text = $"LEVEL {level}";
@@ -105,6 +106,7 @@ public partial class LevelUpMenu : Control
 	{
 		if (index < 0 || index >= _options.Count)
 			return;
+		Fight.Stats.UpgradeTaken(_options[index]);
 		Fight.ApplyUpgrade(_options[index]);
 		Fight.Sounds.Play(Sound.UpgradeChoose);
 		Visible = false;
@@ -126,6 +128,7 @@ public partial class LevelUpMenu : Control
 		}
 		Fight.Sounds.Play(Sound.MenuSelect);
 		_options = Upgrades.Draw(Fight, Tuning.Levels.OptionsPerOffer, _options);
+		Fight.Stats.OfferRerolled(_options, free);
 		Refresh();
 	}
 
