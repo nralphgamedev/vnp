@@ -48,6 +48,9 @@ using System.Reflection;
 ///                      (it survived to the cap). Batches use it to stop endless runs.
 ///   logname=NAME       the fight log's file name, without .json, in place of its start time and seed
 ///   variant=NAME       apply the tuning variant tools/variants/NAME.txt before the fight starts (see TuningVariant)
+///   take=ID,ID         take these upgrades from the pool (levels.tres) as the fight starts, after the weapons,
+///                      such as take=orbital_shards_harvesting,orbital_shards_count, for testing an upgrade.
+///                      Each is applied as if chosen at a level up, whether or not it would be offered.
 ///   asteroids=ID       the fight's asteroid amount (sparse, normal, rich: tuning/asteroid_amounts/), in place of
 ///                      the one picked by its seed
 ///   mute=yes           silence all sound, as batches do whenever they run more than one fight
@@ -100,12 +103,23 @@ public partial class ScenarioRunner : Node
 	private LevelUpMenu _levelUpMenu;
 	private string _logFolder;
 	private string _asteroidAmount;
+	private string[] _take;
+	private int _exitCode;
 
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
 		ProcessPriority = -100; // Before the fight, so the frame timing covers the whole fight update.
 		ParseArguments();
+		if (_argumentErrors.Count > 0)
+		{
+			foreach (string error in _argumentErrors)
+				GD.PrintErr($"SCENARIO ERROR: {error}");
+			GD.PrintErr($"SCENARIO ERROR: not playing; fix the arguments above (options: {string.Join(", ", Options.Keys)}).");
+			_exitCode = 2;
+			_quitting = true;
+			return;
+		}
 		Fight.NextSeed = _seed;
 		Fight.NextAsteroidAmount = _asteroidAmount;
 		FightLog.NextFolder = _logFolder == "none" ? ""
@@ -135,65 +149,188 @@ public partial class ScenarioRunner : Node
 		AddChild(_fight);
 	}
 
+	// What each option takes, for the message when one is mistyped or given a value it can't use.
+	private static readonly Dictionary<string, string> Options = new()
+	{
+		["weapon"] = "a VNP Weapon ID from StartingWeaponChoices in in_game_cheats.tres",
+		["drone_weapon"] = "a Drone Weapon ID from StartingDroneWeaponChoices in in_game_cheats.tres",
+		["drones"] = "a whole number of extra drones",
+		["invulnerable"] = "no value",
+		["seed"] = "a whole number",
+		["log"] = "a folder (res:// or a full path), or none",
+		["trace"] = "a whole number of frames",
+		["close"] = "yes or no",
+		["maxtime"] = "a fight time in seconds",
+		["maps"] = "yes or no",
+		["strip"] = "comma-separated T, T:S, FROM-TO or FROM-TO:S, in seconds",
+		["logname"] = "a file name without .json",
+		["mute"] = "yes or no",
+		["variant"] = "a tuning variant's name, from tools/variants/NAME.txt, or base",
+		["asteroids"] = "an asteroid amount ID from tuning/asteroid_amounts/",
+		["take"] = "comma-separated upgrade IDs from levels.tres",
+		["explain"] = "FROM-TO, fight times in seconds",
+		["pilot"] = "a skill level from res://pilots/skill_levels/",
+		["build"] = "a build from res://pilots/builds/",
+		["frames"] = "a whole number of frames",
+		["report"] = "a whole number of frames",
+		["spawn"] = "ID[:GROUPS[:DISTANCE]], with an enemy ID or all",
+		["shot"] = "PATH[@FRAME]",
+	};
+
+	private readonly List<string> _argumentErrors = new();
+
+	/// <summary>
+	/// Reads the arguments after --. Any that can't be used, such as a mistyped option, a value of the wrong
+	/// kind or an ID that doesn't exist, is collected as an error, and the harness then quits without playing,
+	/// since a run that ignored it would play a different fight from the one asked for.
+	/// </summary>
 	private void ParseArguments()
 	{
+		var culture = System.Globalization.CultureInfo.InvariantCulture;
 		foreach (string argument in OS.GetCmdlineUserArgs())
 		{
 			string[] parts = argument.Split('=', 2);
+			string name = parts[0];
 			string value = parts.Length > 1 ? parts[1] : "";
-			switch (parts[0])
+			if (!Options.ContainsKey(name))
 			{
-				case "weapon": _weaponId = value; break;
-				case "drone_weapon": _droneWeaponId = value; break;
-				case "drones": _extraDrones = int.Parse(value); break;
-				case "invulnerable": _invulnerable = true; break;
-				case "seed": _seed = int.Parse(value); break;
-				case "log": _logFolder = value; break;
-				case "trace": _trace = Math.Max(1, int.Parse(value)); break;
-				case "close": _close = value != "no"; break;
-				case "maxtime": _maxTime = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture); break;
-				case "maps": FightLog.NextDrawMaps = value == "yes"; break;
-				case "strip":
-					FightLog.NextStripTimes = value.Split(',').Select(ReviewRecorder.StripRequest.Parse).ToList();
-					break;
-				case "logname": _logName = value; break;
-				case "mute": _mute = value != "no"; break;
-				case "variant": _variant = value; break;
-				case "asteroids": _asteroidAmount = value; break;
-				case "explain":
+				string near = Options.Keys.OrderBy(o => EditDistance(o, name)).First();
+				_argumentErrors.Add($"unknown option {argument}" +
+					(EditDistance(near, name) <= 3 ? $"; did you mean {near}?" : ""));
+				continue;
+			}
+			try
+			{
+				switch (name)
 				{
-					string[] window = value.Split('-');
-					_explainFrom = float.Parse(window[0], System.Globalization.CultureInfo.InvariantCulture);
-					_explainTo = float.Parse(window[1], System.Globalization.CultureInfo.InvariantCulture);
-					break;
+					case "weapon": _weaponId = value; break;
+					case "drone_weapon": _droneWeaponId = value; break;
+					case "drones": _extraDrones = int.Parse(value); break;
+					case "invulnerable":
+						if (value != "" && value != "yes")
+							throw new FormatException();
+						_invulnerable = true;
+						break;
+					case "seed": _seed = int.Parse(value); break;
+					case "log": _logFolder = value; break;
+					case "trace": _trace = Math.Max(1, int.Parse(value)); break;
+					case "close": _close = YesNo(value); break;
+					case "maxtime": _maxTime = double.Parse(value, culture); break;
+					case "maps": FightLog.NextDrawMaps = YesNo(value); break;
+					case "strip":
+						FightLog.NextStripTimes = value.Split(',').Select(ReviewRecorder.StripRequest.Parse).ToList();
+						break;
+					case "logname": _logName = value; break;
+					case "mute": _mute = YesNo(value); break;
+					case "variant": _variant = value; break;
+					case "asteroids": _asteroidAmount = value; break;
+					case "take": _take = value.Split(',', StringSplitOptions.RemoveEmptyEntries); break;
+					case "explain":
+					{
+						string[] window = value.Split('-');
+						if (window.Length != 2)
+							throw new FormatException();
+						_explainFrom = float.Parse(window[0], culture);
+						_explainTo = float.Parse(window[1], culture);
+						break;
+					}
+					case "pilot": _pilotId = value; break;
+					case "build": _buildId = value; break;
+					case "frames": _frames = int.Parse(value); _framesGiven = true; break;
+					case "report": _report = Math.Max(1, int.Parse(value)); _nextReport = _report / 60.0; break;
+					case "spawn":
+					{
+						string[] spawn = value.Split(':');
+						if (spawn.Length > 3 || spawn[0] == "")
+							throw new FormatException();
+						_spawns.Add((spawn[0], spawn.Length > 1 ? int.Parse(spawn[1]) : 1,
+							spawn.Length > 2 ? float.Parse(spawn[2], culture) : 15f));
+						break;
+					}
+					case "shot":
+					{
+						string[] shot = value.Split('@');
+						if (shot[0] == "" || shot.Length > 2)
+							throw new FormatException();
+						_shotPath = shot[0];
+						_shotFrame = shot.Length > 1 ? int.Parse(shot[1]) : -1;
+						break;
+					}
 				}
-				case "pilot": _pilotId = value; break;
-				case "build": _buildId = value; break;
-				case "frames": _frames = int.Parse(value); _framesGiven = true; break;
-				case "report": _report = Math.Max(1, int.Parse(value)); _nextReport = _report / 60.0; break;
-				case "spawn":
-				{
-					string[] spawn = value.Split(':');
-					_spawns.Add((spawn[0], spawn.Length > 1 ? int.Parse(spawn[1]) : 1,
-						spawn.Length > 2 ? float.Parse(spawn[2], System.Globalization.CultureInfo.InvariantCulture) : 15f));
-					break;
-				}
-				case "shot":
-				{
-					string[] shot = value.Split('@');
-					_shotPath = shot[0];
-					_shotFrame = shot.Length > 1 ? int.Parse(shot[1]) : -1;
-					break;
-				}
-				default:
-					GD.PushWarning($"Scenario: unknown argument {argument}");
-					break;
+			}
+			catch (Exception e) when (e is FormatException or OverflowException or IndexOutOfRangeException)
+			{
+				_argumentErrors.Add($"{argument}: expected {Options[name]}");
 			}
 		}
 		// A fight time to stop at, without a frame limit, should reach it: allow three times its frames, since
 		// level-up offers pause the fight but still count frames. Without this, the 10-second default stopped it.
 		if (_maxTime > 0 && !_framesGiven)
 			_frames = (int)(_maxTime * 60 * 3);
+		CheckIds();
+	}
+
+	private static bool YesNo(string value) => value switch
+	{
+		"yes" => true,
+		"no" => false,
+		_ => throw new FormatException(),
+	};
+
+	/// <summary>Checks every ID the arguments name against what exists, so a mistyped one stops the run.</summary>
+	private void CheckIds()
+	{
+		void Check(string option, string id, IEnumerable<string> known)
+		{
+			List<string> ids = known.Where(k => k != null).ToList();
+			if (id == null || ids.Contains(id))
+				return;
+			string near = ids.OrderBy(k => EditDistance(k, id)).FirstOrDefault();
+			string hint = near != null && EditDistance(near, id) <= Math.Max(3, id.Length / 3) ? $"; did you mean {near}?" : "";
+			// A long list, such as every upgrade, is left out in favour of where to find it.
+			string choices = ids.Count <= 12 ? $"; choices: {string.Join(", ", ids)}" : "";
+			_argumentErrors.Add($"{option}={id}: no such ID{hint}{choices}");
+		}
+
+		InGameCheatSettings cheats = InGameCheats.Settings;
+		Check("weapon", _weaponId, cheats.StartingWeaponChoices.Select(w => w?.Id));
+		Check("drone_weapon", _droneWeaponId, cheats.StartingDroneWeaponChoices.Select(w => w?.Id));
+		Check("asteroids", _asteroidAmount, Tuning.Asteroids.Amounts.Select(a => a?.Id));
+		foreach (string id in _take ?? Array.Empty<string>())
+			Check("take", id, Tuning.Levels.Upgrades.Select(u => u?.Id));
+		var enemies = Tuning.EnemySpawning.GroupWeights.Keys.Concat(Tuning.EnemySpawning.WaveGroupWeights.Keys)
+			.Select(e => e?.Id).Distinct().Append("all");
+		foreach ((string id, _, _) in _spawns)
+			Check("spawn", id, enemies);
+		if (_pilotId != null && !ResourceLoader.Exists($"res://pilots/skill_levels/{_pilotId}.tres"))
+			_argumentErrors.Add($"pilot={_pilotId}: no res://pilots/skill_levels/{_pilotId}.tres");
+		if (_pilotId != null && !ResourceLoader.Exists($"res://pilots/builds/{_buildId}.tres"))
+			_argumentErrors.Add($"build={_buildId}: no res://pilots/builds/{_buildId}.tres");
+		if (_variant != null && _variant != "base"
+			&& !System.IO.File.Exists(System.IO.Path.Combine(ProjectSettings.GlobalizePath("res://"), TuningVariant.Folder, _variant + ".txt")))
+			_argumentErrors.Add($"variant={_variant}: no {TuningVariant.Folder}/{_variant}.txt");
+		if (_explainFrom > _explainTo)
+			_argumentErrors.Add($"explain={_explainFrom}-{_explainTo}: FROM is after TO");
+	}
+
+	/// <summary>How many single-letter changes turn one word into another, for suggesting the option meant.</summary>
+	private static int EditDistance(string a, string b)
+	{
+		var row = new int[b.Length + 1];
+		for (int j = 0; j <= b.Length; j++)
+			row[j] = j;
+		for (int i = 1; i <= a.Length; i++)
+		{
+			int diagonal = row[0];
+			row[0] = i;
+			for (int j = 1; j <= b.Length; j++)
+			{
+				int above = row[j];
+				row[j] = Math.Min(Math.Min(row[j] + 1, row[j - 1] + 1), diagonal + (a[i - 1] == b[j - 1] ? 0 : 1));
+				diagonal = above;
+			}
+		}
+		return row[b.Length];
 	}
 
 	public override void _Process(double delta)
@@ -203,7 +340,7 @@ public partial class ScenarioRunner : Node
 			// Clean up before quitting, as closing the game's window does (see ShutdownCleanup).
 			FightLog.WaitForWrites();
 			ShutdownCleanup.Run();
-			GetTree().Quit();
+			GetTree().Quit(_exitCode);
 			return;
 		}
 		if (_finished)
@@ -318,6 +455,15 @@ public partial class ScenarioRunner : Node
 			if (droneWeapon == null)
 				GD.PushError($"Scenario: no Drone Weapon {_droneWeaponId} in in_game_cheats.tres StartingDroneWeaponChoices.");
 			_fight.Drones.SwitchWeapon(droneWeapon);
+		}
+
+		foreach (string id in _take ?? Array.Empty<string>())
+		{
+			UpgradeDefinition upgrade = Tuning.Levels.Upgrades.FirstOrDefault(u => u != null && u.Id == id);
+			if (upgrade == null)
+				GD.PushError($"Scenario: no upgrade {id} in levels.tres.");
+			else
+				_fight.ApplyUpgrade(upgrade);
 		}
 
 		if (_pilotId != null)

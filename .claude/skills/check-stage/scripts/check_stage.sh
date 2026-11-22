@@ -39,6 +39,8 @@ run_scenario() {
 	[ "$mode" = "window" ] && display=()
 	timeout 600 "$GODOT" "${display[@]}" --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- "$@" 2>&1 \
 		| grep -vE "^Godot Engine|^$" | grep -vE "$KNOWN_EXIT_NOISE"
+	# The harness's exit code, not the filters': 2 means its arguments couldn't be used.
+	return "${PIPESTATUS[0]}"
 }
 
 if [ "$1" = "--scenario" ]; then
@@ -47,7 +49,7 @@ if [ "$1" = "--scenario" ]; then
 	if [ "$1" = "--window" ]; then mode=window; shift; fi
 	dotnet build VNP.sln -nologo -v q > /dev/null 2>&1 || { echo "Debug build failed; fix it first."; exit 1; }
 	run_scenario "$mode" "$@"
-	exit 0
+	exit $?
 fi
 
 summary=()

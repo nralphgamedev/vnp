@@ -64,7 +64,10 @@ try {
 	# never finishes them. Those lines, and Godot's banner, are left out.
 	$noise = 'ObjectDB instances were leaked at exit|resources still in use at exit|ObjectDB::cleanup|ResourceCache::clear|^Godot Engine'
 	& $godot @godotArgs 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch $noise }
+	# The harness's own exit code, such as 2 when its arguments can't be used, so a script calling this sees it.
+	$code = $LASTEXITCODE
 }
 finally {
 	Pop-Location
 }
+exit $code
