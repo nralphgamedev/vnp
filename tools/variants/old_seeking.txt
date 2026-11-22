@@ -1,0 +1,8 @@
+# Pilots go after enemies beyond their preferred distance, and judge material only by the enemies around it,
+# as before the designer watched seed 7.
+pilots/skill_levels/novice.tres:ApproachEnemies = 1
+pilots/skill_levels/novice.tres:PathDanger = 0
+pilots/skill_levels/average.tres:ApproachEnemies = 1
+pilots/skill_levels/average.tres:PathDanger = 0
+pilots/skill_levels/expert.tres:ApproachEnemies = 1
+pilots/skill_levels/expert.tres:PathDanger = 0

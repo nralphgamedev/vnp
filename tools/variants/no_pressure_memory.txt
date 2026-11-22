@@ -1,0 +1,4 @@
+# The pressure pilots feel falls at once, as before; they flick between backing off and fighting.
+pilots/skill_levels/novice.tres:PressureFall = 0
+pilots/skill_levels/average.tres:PressureFall = 0
+pilots/skill_levels/expert.tres:PressureFall = 0

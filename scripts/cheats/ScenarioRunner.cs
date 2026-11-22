@@ -21,7 +21,7 @@ using System.Reflection;
 ///                      of every enemy type.
 ///   drones=N           add N drones, raising the cap to fit
 ///   invulnerable       keep the VNP alive, for measuring
-///   frames=N           how long to run (default 600, 10 seconds at 60 fps)
+///   frames=N           how long to run (default 600, 10 seconds at 60 fps; with maxtime, long enough to reach it)
 ///   report=N           print a status line every N frames of fight time (default 1800: every 30 seconds of
 ///                      fight, not counting pauses). Each level-up,
 ///                      and each reroll, is printed as it happens, whatever this is.
@@ -56,6 +56,7 @@ public partial class ScenarioRunner : Node
 	private Fight _fight;
 	private int _frame;
 	private int _frames = 600;
+	private bool _framesGiven;
 	private int _report = 1800;
 	// Level-ups already printed, and rerolls already printed for the latest one.
 	private int _levelUpsPrinted;
@@ -153,7 +154,7 @@ public partial class ScenarioRunner : Node
 				case "upgrades": _takeUpgrades = value != "none"; break;
 				case "pilot": _pilotId = value; break;
 				case "build": _buildId = value; break;
-				case "frames": _frames = int.Parse(value); break;
+				case "frames": _frames = int.Parse(value); _framesGiven = true; break;
 				case "report": _report = Math.Max(1, int.Parse(value)); _nextReport = _report / 60.0; break;
 				case "spawn":
 				{
@@ -174,6 +175,10 @@ public partial class ScenarioRunner : Node
 					break;
 			}
 		}
+		// A fight time to stop at, without a frame limit, should reach it: allow three times its frames, since
+		// level-up offers pause the fight but still count frames. Without this, the 10-second default stopped it.
+		if (_maxTime > 0 && !_framesGiven)
+			_frames = (int)(_maxTime * 60 * 3);
 	}
 
 	public override void _Process(double delta)

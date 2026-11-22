@@ -63,6 +63,31 @@ public partial class PilotDefinition : Resource
 	/// while pilots took about a fifth of theirs from them.</summary>
 	[Export] public float TouchAvoidDistance;
 
+	/// <summary>From 0 to 1: how much it closes in on an enemy farther than its preferred distance. 1 goes after
+	/// enemies to fight them; near 0 keeps its distance and lets enemies come to it and its drones, as the
+	/// designer does, so a fight it can afford never pulls it away from harvesting.</summary>
+	[Export(PropertyHint.Range, "0,1,0.01")] public float ApproachEnemies = 1f;
+
+	/// <summary>How much an enemy near the way to some material counts as danger at that material, as a fraction
+	/// of an enemy beside it. The designer watched a pilot fly straight through a group of enemies to reach a
+	/// cluster on the far side: only enemies around the material counted, so the cluster looked safe.</summary>
+	[Export(PropertyHint.Range, "0,1,0.01")] public float PathDanger;
+
+	/// <summary>From 0 to 1, of the drone cap: with fewer drones than this, once it starts backing off it regroups,
+	/// as the designer does with no drones left. It keeps backing off until no enemy is within its threat range,
+	/// doesn't fight, and prefers rich clusters to nearby small rocks, until its drones reach RegroupUntil.
+	/// 0 never regroups.</summary>
+	[Export(PropertyHint.Range, "0,1,0.01")] public float RegroupBelow;
+
+	/// <summary>How fast the pressure it feels can fall, per second. Pressure rises at once when danger comes, but
+	/// falls only this fast, so once it starts backing off it follows through rather than flicking between
+	/// backing off and fighting as enemies move in and out of range, which the designer saw as indecision.
+	/// 0 lets it fall at once.</summary>
+	[Export] public float PressureFall;
+
+	/// <summary>From 0 to 1, of the drone cap: how many drones it rebuilds before it stops regrouping.</summary>
+	[Export(PropertyHint.Range, "0,1,0.01")] public float RegroupUntil;
+
 	/// <summary>Below this pressure (the threat it feels over what it can afford), it holds still in a fight,
 	/// leaving the drones and weapons to do the work, as the designer does when there isn't much danger. It
 	/// still closes in on an enemy out of its weapons' reach. From here to half as much again it blends back

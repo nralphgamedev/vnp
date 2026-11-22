@@ -1,0 +1,4 @@
+# Pilots with few drones don't regroup: they stay near the fight, as before the designer watched seed 7.
+pilots/skill_levels/novice.tres:RegroupBelow = 0
+pilots/skill_levels/average.tres:RegroupBelow = 0
+pilots/skill_levels/expert.tres:RegroupBelow = 0
