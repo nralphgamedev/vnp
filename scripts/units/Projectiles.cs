@@ -26,6 +26,7 @@ public partial class Projectiles : Node3D
 
 	private Shot[] _shots = new Shot[256];
 
+#if RECORDING
 	/// <summary>Where a shot in flight is, for testing tools such as the run review's maps.</summary>
 	public Vector2 PositionOf(int index) => _shots[index].Position;
 
@@ -35,7 +36,6 @@ public partial class Projectiles : Node3D
 	/// <summary>Whether a shot was fired by an enemy.</summary>
 	public bool IsEnemyShot(int index) => _shots[index].FromEnemy;
 
-#if RECORDING
 	/// <summary>What fired a shot: a VNP Weapon, the Drone Weapon in use, or an enemy type. Read-only.</summary>
 	public DamageSource SourceOf(int index) => _shots[index].Source;
 #endif

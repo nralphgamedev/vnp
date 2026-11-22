@@ -146,10 +146,10 @@ public partial class DroneSwarm : Node3D
 
 	private Drone[] _drones = new Drone[64];
 
+#if RECORDING
 	/// <summary>Where a drone is, for testing tools such as the run review's maps.</summary>
 	public Vector2 PositionOf(int index) => _drones[index].Position;
 
-#if RECORDING
 	/// <summary>A drone's health as a fraction of a new drone's. Read-only, for the run review's maps.</summary>
 	public float HealthFractionOf(int index) => _drones[index].Health / Mathf.Max(0.01f, Tuning.Drones.Health);
 

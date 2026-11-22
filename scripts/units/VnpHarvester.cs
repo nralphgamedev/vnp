@@ -79,7 +79,7 @@ public partial class VnpHarvester : Node3D
 		_targetId = harvestables.IdOf(target);
 		Vector2 targetPosition = harvestables.PositionOf(target);
 		float targetRadius = harvestables.RadiusOf(target);
-		harvestables.Harvest(target, Rate * (float)delta);
+		harvestables.Harvest(target, Rate * (float)delta, byVnp: true);
 		ShowBeam(from, targetPosition, harvestables.HeightOf(target));
 
 		Fight.Sounds.Hold(Sound.HarvestLoop);

@@ -73,6 +73,11 @@ public partial class ReviewSettings : Resource
 	/// small still gets a strip of its worst part, rather than counting once at its start.</summary>
 	[Export] public float BurstWorsens = 2f;
 
+	/// <summary>The VNP counts as harvesting while its beam is on something, or for this many seconds after it or
+	/// one of its weapons (Orbital Shards harvesting) last harvested, since shards harvest in passes. Used for
+	/// what the overview map calls harvesting, and by the detectors that leave harvesting out.</summary>
+	[Export] public float HarvestingWithin = 0.5f;
+
 	/// <summary>Drones left fighting: at least LeftFightingDrones drones, an enemy within the drones' engage range
 	/// of the VNP but more than LeftFightingDistance from it, and the VNP moving away from it at LeftFightingSpeed
 	/// or more, for LeftFightingSeconds: the drones fight on while the VNP leaves them.</summary>

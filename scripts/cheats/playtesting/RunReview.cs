@@ -158,7 +158,7 @@ public class RunReview
 			() => $"reversed direction {_reversals.Count} times in {s.IndecisionSeconds:0}s, nearest enemy {nearestEdge:0} away; {state}");
 
 		// Creeping: moving slowly, not harvesting or easing in to harvest.
-		bool beaming = _fight.VnpHarvester.Beaming;
+		bool beaming = ReviewRecorder.VnpHarvesting(_fight, _settings);
 		Harvestables harvestables = _fight.Harvestables;
 		bool nearMaterial = NearestMaterialEdge(me) <= harvestables.BeamRange + s.CreepHarvestMargin;
 		bool creeping = speed > s.CreepSpeedLow && speed < s.CreepSpeedHigh && !beaming && !nearMaterial;

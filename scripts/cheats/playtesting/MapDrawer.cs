@@ -87,6 +87,8 @@ public static class MapDrawer
 			Ring(image, at, radius + 3, type.Color.Lightened(0.4f), 1);
 	}
 	private static readonly Color Hit = new(1f, 0.25f, 0.25f);
+	// Waves arriving, on maps: a hot orange apart from enemy shots' and the hit red.
+	private static readonly Color Wave = new(1f, 0.45f, 0.1f);
 	private static readonly Color DroneLost = new(1f, 0.55f, 0.80f);
 	private static readonly Color Level = new(0.95f, 0.85f, 0.30f);
 	private static readonly Color Drone = new(0.35f, 0.85f, 0.95f);
@@ -113,51 +115,64 @@ public static class MapDrawer
 		var written = new List<string>();
 		using JsonDocument document = JsonDocument.Parse(File.ReadAllText(logPath));
 		JsonElement log = document.RootElement;
-		if (!log.TryGetProperty("maps", out JsonElement maps) || !maps.TryGetProperty("recording", out JsonElement recordingName))
+		if (!log.TryGetProperty("maps", out JsonElement maps) || !maps.TryGetProperty("recording", out _))
 			throw new InvalidDataException("this fight has no whole-fight recording (only the designer's fights, from now on, are recorded)");
-		string recordingPath = Path.Combine(Path.GetDirectoryName(logPath), recordingName.GetString());
-		using FileStream file = File.OpenRead(recordingPath);
-		using var zip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress);
-		using JsonDocument recordingDocument = JsonDocument.Parse(zip);
-		JsonElement recording = recordingDocument.RootElement;
-		double recorded = recording.GetProperty("spacing").GetDouble();
-		JsonElement frames = recording.GetProperty("frames");
+		using JsonDocument recording = ReadRecording(logPath, maps);
 		Directory.CreateDirectory(folder);
 		string name = prefix ?? Path.GetFileNameWithoutExtension(logPath) + "_";
-		var culture = System.Globalization.CultureInfo.InvariantCulture;
 
 		foreach (ReviewRecorder.StripRequest r in requests)
 		{
+			double recorded = recording.RootElement.GetProperty("spacing").GetDouble();
 			double spacing = Math.Max(recorded, r.Spacing ?? recorded);
 			double from = r.End.HasValue ? Math.Min(r.Time, r.End.Value) : r.Time - before * spacing;
 			double to = r.End.HasValue ? Math.Max(r.Time, r.End.Value) : r.Time + after * spacing;
-			// The recorded pictures nearest each picture time, from start to end, at most 48.
-			var picked = new List<string>();
-			double next = from;
-			for (int f = 0; f < frames.GetArrayLength() && picked.Count < 48; f++)
-			{
-				double t = frames[f].GetProperty("time").GetDouble();
-				if (t > to + recorded / 2)
-					break;
-				if (t >= next - recorded / 2)
-				{
-					picked.Add(frames[f].GetRawText());
-					while (next <= t + recorded / 2)
-						next += spacing;
-				}
-			}
-			if (picked.Count == 0)
-				throw new InvalidDataException($"the recording has no pictures between {from:0.#}s and {to:0.#}s");
-			string json = "{\"reason\":\"requested\",\"time\":" + Math.Round(r.Time, 2).ToString(culture) +
-				",\"spacing\":" + spacing.ToString(culture) + ",\"moment\":" + (r.End.HasValue ? "false" : "true") +
-				",\"frames\":[" + string.Join(",", picked) + "]}";
-			using JsonDocument strip = JsonDocument.Parse(json);
+			using JsonDocument strip = StripFromRecording(recording.RootElement, "requested", r.Time, from, to, spacing, !r.End.HasValue);
 			string label = r.End.HasValue ? $"stretch_{from:0.#}-{to:0.#}s" : $"moment_{r.Time:0.#}s";
 			string path = Path.Combine(folder, $"{name}{label}.png");
 			DrawStrip(log, maps, strip.RootElement).SavePng(path);
 			written.Add(path);
 		}
 		return written;
+	}
+
+	/// <summary>A fight's whole-fight recording, beside its log, which names it. The caller disposes it.</summary>
+	private static JsonDocument ReadRecording(string logPath, JsonElement maps)
+	{
+		string recordingPath = Path.Combine(Path.GetDirectoryName(logPath), maps.GetProperty("recording").GetString());
+		using FileStream file = File.OpenRead(recordingPath);
+		using var zip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress);
+		return JsonDocument.Parse(zip);
+	}
+
+	/// <summary>A strip, as the log would hold one, of the recorded pictures nearest each picture time from
+	/// <paramref name="from"/> to <paramref name="to"/>, at most 48. The caller disposes it.</summary>
+	private static JsonDocument StripFromRecording(JsonElement recording, string reason, double time, double from, double to,
+		double spacing, bool moment)
+	{
+		var culture = System.Globalization.CultureInfo.InvariantCulture;
+		double recorded = recording.GetProperty("spacing").GetDouble();
+		JsonElement frames = recording.GetProperty("frames");
+		var picked = new List<string>();
+		double next = from;
+		for (int f = 0; f < frames.GetArrayLength() && picked.Count < 48; f++)
+		{
+			double t = frames[f].GetProperty("time").GetDouble();
+			if (t > to + recorded / 2)
+				break;
+			if (t >= next - recorded / 2)
+			{
+				picked.Add(frames[f].GetRawText());
+				while (next <= t + recorded / 2)
+					next += spacing;
+			}
+		}
+		if (picked.Count == 0)
+			throw new InvalidDataException($"the recording has no pictures between {from:0.#}s and {to:0.#}s");
+		string json = "{\"reason\":" + JsonSerializer.Serialize(reason) + ",\"time\":" + Math.Round(time, 2).ToString(culture) +
+			",\"spacing\":" + spacing.ToString(culture) + ",\"moment\":" + (moment ? "true" : "false") +
+			",\"frames\":[" + string.Join(",", picked) + "]}";
+		return JsonDocument.Parse(json);
 	}
 
 	public static List<string> DrawLog(string logPath, string folder, bool overview, ICollection<int> strips, string prefix = null)
@@ -176,16 +191,37 @@ public static class MapDrawer
 			written.Add(file);
 		}
 		JsonElement stripList = maps.GetProperty("strips");
-		for (int i = 0; i < stripList.GetArrayLength(); i++)
+		JsonDocument recording = null;
+		try
 		{
-			if (strips != null && !strips.Contains(i))
-				continue;
-			JsonElement strip = stripList[i];
-			string reason = strip.GetProperty("reason").GetString();
-			double time = strip.GetProperty("time").GetDouble();
-			string file = Path.Combine(folder, $"{name}strip{i}_{reason}_{(int)time}s.png");
-			DrawStrip(log, maps, strip).SavePng(file);
-			written.Add(file);
+			for (int i = 0; i < stripList.GetArrayLength(); i++)
+			{
+				if (strips != null && !strips.Contains(i))
+					continue;
+				JsonElement strip = stripList[i];
+				string reason = strip.GetProperty("reason").GetString();
+				double time = strip.GetProperty("time").GetDouble();
+				string file = Path.Combine(folder, $"{name}strip{i}_{reason}_{(int)time}s.png");
+				if (strip.TryGetProperty("fromRecording", out JsonElement fromRecording) && fromRecording.GetBoolean())
+				{
+					// A recorded fight keeps only the moment's time: its pictures come from the recording, at the
+					// strips' usual spacing, before and after.
+					recording ??= ReadRecording(logPath, maps);
+					double spacing = maps.TryGetProperty("stripSpacing", out JsonElement s) ? s.GetDouble() : 1.0;
+					int before = maps.TryGetProperty("stripBefore", out JsonElement b) ? b.GetInt32() : 4;
+					int after = maps.TryGetProperty("stripAfter", out JsonElement a) ? a.GetInt32() : 2;
+					using JsonDocument built = StripFromRecording(recording.RootElement, reason, time,
+						time - before * spacing, time + after * spacing, spacing, true);
+					DrawStrip(log, maps, built.RootElement).SavePng(file);
+				}
+				else
+					DrawStrip(log, maps, strip).SavePng(file);
+				written.Add(file);
+			}
+		}
+		finally
+		{
+			recording?.Dispose();
 		}
 		return written;
 	}
@@ -268,6 +304,14 @@ public static class MapDrawer
 					string letter = detectors.Find(d => d.Id == id).Letter ?? "?";
 					Text(image, at.X + 11, at.Y - 7, letter, Ink, 2);
 					break;
+				case "wave":
+					Ring(image, at, 6, Wave, 2);
+					Text(image, at.X - 20, at.Y - 7, $"W{e.GetProperty("value").GetInt32()}", Wave, 1);
+					break;
+				case "escalation":
+					Ring(image, at, 6, Level, 2);
+					Text(image, at.X - 20, at.Y - 7, $"E{e.GetProperty("value").GetInt32()}", Level, 1);
+					break;
 			}
 		}
 
@@ -306,6 +350,8 @@ public static class MapDrawer
 		Disc(image, new Vector2I(keyX + 3, 31), 3, Hit); keyX = Text(image, keyX + 9, 26, "HIT", Dim, 1) + 12;
 		FillRect(image, keyX, 29, 4, 4, DroneLost); keyX = Text(image, keyX + 7, 26, "DRONES LOST", Dim, 1) + 12;
 		FillRect(image, keyX, 27, 2, 8, Level); keyX = Text(image, keyX + 5, 26, "LEVEL", Dim, 1) + 12;
+		Ring(image, new Vector2I(keyX + 4, 31), 4, Wave, 1); keyX = Text(image, keyX + 11, 26, "W WAVE", Dim, 1) + 12;
+		Ring(image, new Vector2I(keyX + 4, 31), 4, Level, 1); keyX = Text(image, keyX + 11, 26, "E ESCALATION STEP", Dim, 1) + 12;
 		// The detectors' letters, from the log, wrapping onto a second line if needed.
 		int keyLeft = 8, keyY = 40;
 		keyLeft = Text(image, keyLeft, keyY, "DETECTORS:", Dim, 1) + 8;
@@ -352,6 +398,17 @@ public static class MapDrawer
 		{
 			FillRect(image, X(limit), top, 2, StripHeight * Strips, Level);
 			Text(image, X(limit) + 4, top + 4, "5:00", Level, 1);
+		}
+		foreach (JsonElement e in maps.GetProperty("events").EnumerateArray())
+		{
+			string kind = e.GetProperty("kind").GetString();
+			if (kind != "wave" && kind != "escalation")
+				continue;
+			int wx = X(e.GetProperty("time").GetDouble());
+			Color mark = kind == "wave" ? Wave : Level;
+			for (int y = top; y < top + StripHeight * Strips; y += 4)
+				FillRect(image, wx, y, 1, 2, mark);
+			Text(image, wx + 3, top + StripHeight * Strips - 12, $"{(kind == "wave" ? "W" : "E")}{e.GetProperty("value").GetInt32()}", mark, 1);
 		}
 		if (outcome.GetProperty("killTargetTime").ValueKind == JsonValueKind.Number)
 		{
@@ -578,6 +635,19 @@ public static class MapDrawer
 			Text(image, px + 6, py + 6, $"{(offset >= 0 ? "+" : "")}{offset:0.00}S  {Ui.Clock(t)} ({RunReview.OnScreenClock(t)})", Ink, 1);
 			Text(image, px + 6, py + 18, $"HEALTH {frame.GetProperty("health").GetDouble():0}  DRONES {frame.GetProperty("drones").GetInt32()}  " +
 				$"LEVEL {frame.GetProperty("level").GetInt32()}", Dim, 1);
+			// A wave or escalation step since the previous picture.
+			double since = f > 0 ? frames[f - 1].GetProperty("time").GetDouble() : t - spacing;
+			foreach (JsonElement e in maps.GetProperty("events").EnumerateArray())
+			{
+				string kind = e.GetProperty("kind").GetString();
+				double et = e.GetProperty("time").GetDouble();
+				if ((kind != "wave" && kind != "escalation") || et <= since || et > t)
+					continue;
+				string what = kind == "wave"
+					? $"WAVE {e.GetProperty("value").GetInt32()} ARRIVES" + (e.TryGetProperty("groups", out JsonElement g) ? $", {g.GetInt32()} GROUPS" : "")
+					: $"ESCALATION STEP {e.GetProperty("value").GetInt32()}";
+				Text(image, px + 6, py + 30, what, kind == "wave" ? Wave : Level, 1);
+			}
 		}
 		return image;
 	}

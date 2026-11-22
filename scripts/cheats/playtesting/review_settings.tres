@@ -30,6 +30,7 @@ IdleEnemyRange = 25.0
 BurstDrones = 6
 BurstSeconds = 3.0
 BurstWorsens = 2.0
+HarvestingWithin = 0.5
 TrackSeconds = 0.25
 FightReach = 15.0
 MovingAwaySpeed = 0.5

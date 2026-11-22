@@ -75,6 +75,8 @@ public class ReviewRecorder
 	private float _lastHealth = -1;
 	private int _lastLevel = 1;
 	private int _lastDronesLost;
+	private int _lastWaves;
+	private int _lastEscalation;
 
 	private readonly Queue<Dictionary<string, object>> _recent = new();
 	private double _nextSnapshot;
@@ -124,17 +126,7 @@ public class ReviewRecorder
 			return;
 		ReviewSettings s = _settings;
 
-		// Events: hits taken, drones lost and level-ups, from changes since the last frame.
-		if (_lastHealth >= 0 && vnp.Health < _lastHealth - 0.01f)
-			Event(now, "hit", Math.Round(_lastHealth - vnp.Health, 1));
-		_lastHealth = vnp.Health;
-		int lost = _fight.Stats.DronesDestroyedTotal + _fight.Stats.DronesAbsorbedTotal;
-		if (lost > _lastDronesLost)
-			Event(now, "drones_lost", lost - _lastDronesLost);
-		_lastDronesLost = lost;
-		if (_fight.Level > _lastLevel)
-			Event(now, "level", _fight.Level);
-		_lastLevel = _fight.Level;
+		RecordChanges(now);
 
 		if (now >= _nextTrack)
 		{
@@ -193,6 +185,9 @@ public class ReviewRecorder
 	/// frame, before the next Update.</summary>
 	public void FightEnded(double now)
 	{
+		// The last frame's changes, which Update never sees once the VNP is destroyed, since the fight pauses for
+		// the result screen in the same frame: the hit that destroyed it, and any drones lost with it.
+		RecordChanges(now);
 		if (_endTaken || !_fight.Vnp.IsDestroyed)
 			return;
 		_endTaken = true;
@@ -215,6 +210,33 @@ public class ReviewRecorder
 			strip.Frames.Add(last);
 	}
 
+	/// <summary>Events from changes since the last frame: hits taken, drones lost and level-ups.</summary>
+	private void RecordChanges(double now)
+	{
+		Vnp vnp = _fight.Vnp;
+		float health = Mathf.Max(0f, vnp.Health);
+		if (_lastHealth >= 0 && health < _lastHealth - 0.01f)
+			Event(now, "hit", Math.Round(_lastHealth - health, 1));
+		_lastHealth = health;
+		int lost = _fight.Stats.DronesDestroyedTotal + _fight.Stats.DronesAbsorbedTotal;
+		if (lost > _lastDronesLost)
+			Event(now, "drones_lost", lost - _lastDronesLost);
+		_lastDronesLost = lost;
+		if (_fight.Level > _lastLevel)
+			Event(now, "level", _fight.Level);
+		_lastLevel = _fight.Level;
+		// Each wave, numbered, with how many groups it sent, and each escalation step past the time limit, so a
+		// review can tell what arrived when, and how much harder enemies had just become.
+		int waves = _fight.Enemies.WavesSent;
+		if (waves > _lastWaves)
+			Event(now, "wave", waves, "groups", _fight.Enemies.LastWaveGroups);
+		_lastWaves = waves;
+		int escalation = _fight.EscalationSteps;
+		if (escalation > _lastEscalation)
+			Event(now, "escalation", escalation);
+		_lastEscalation = escalation;
+	}
+
 	/// <summary>A detector fired (or a strip was asked for): note it on the track, and start a strip from the
 	/// last few seconds of snapshots, finished over the next few.</summary>
 	public void Flag(string reason, double now)
@@ -230,17 +252,28 @@ public class ReviewRecorder
 		_pending.Add(strip);
 	}
 
-	private void Event(double now, string kind, object value) =>
-		_events.Add(new Dictionary<string, object>
+	private void Event(double now, string kind, object value, string extraKey = null, object extraValue = null)
+	{
+		var entry = new Dictionary<string, object>
 		{
 			["time"] = Math.Round(now, 2), ["kind"] = kind, ["value"] = value,
 			["x"] = Round(_fight.Vnp.PlanePosition.X), ["y"] = Round(_fight.Vnp.PlanePosition.Y),
-		});
+		};
+		if (extraKey != null)
+			entry[extraKey] = extraValue;
+		_events.Add(entry);
+	}
+
+	/// <summary>Whether the VNP itself is harvesting: its beam is on something, or it or one of its weapons, such as
+	/// Orbital Shards, harvested within HarvestingWithin seconds. Drones' harvesting doesn't count.</summary>
+	public static bool VnpHarvesting(Fight fight, ReviewSettings settings) => fight.VnpHarvester.Beaming
+		|| (fight.Harvestables.LastVnpHarvestTime >= 0
+			&& fight.Elapsed - fight.Harvestables.LastVnpHarvestTime <= settings.HarvestingWithin);
 
 	private Activity ActivityNow()
 	{
 		Vnp vnp = _fight.Vnp;
-		if (_fight.VnpHarvester.Beaming)
+		if (VnpHarvesting(_fight, _settings))
 			return Activity.Harvesting;
 		EnemySwarm enemies = _fight.Enemies;
 		Vector2 me = vnp.PlanePosition;
@@ -290,7 +323,7 @@ public class ReviewRecorder
 			Vector2 p = drones.PositionOf(i);
 			// Position, health as a fraction of a new drone's, and the ID of the enemy it is attacking (0 for none).
 			if (p.DistanceSquaredTo(me) <= reach * reach)
-				droneList.Add(new[] { Round(p.X), Round(p.Y), (float)Math.Round(drones.HealthFractionOf(i), 2), drones.TargetIdOf(i) });
+				droneList.Add(new[] { Round(p.X), Round(p.Y), (float)Math.Round(Math.Max(0f, drones.HealthFractionOf(i)), 2), drones.TargetIdOf(i) });
 		}
 
 		var materialList = new List<float[]>();
@@ -434,8 +467,13 @@ public class ReviewRecorder
 		var strips = new List<object>();
 		foreach (Strip strip in _strips.Concat(_pending))
 		{
-			var entry = new Dictionary<string, object> { ["reason"] = strip.Reason, ["time"] = strip.Time,
-				["frames"] = new List<Dictionary<string, object>>(strip.Frames) };
+			// A recorded fight's strips are drawn from its recording, which holds every moment more finely, so its
+			// log keeps only when and why; that took the designer's logs from about 1.8 MB to under 1 MB.
+			var entry = new Dictionary<string, object> { ["reason"] = strip.Reason, ["time"] = strip.Time };
+			if (RecordWholeFight)
+				entry["fromRecording"] = true;
+			else
+				entry["frames"] = new List<Dictionary<string, object>>(strip.Frames);
 			if (strip.Spacing.HasValue)
 				entry["spacing"] = Math.Round(strip.Spacing.Value, 3);
 			if (!strip.HasMoment)
@@ -448,6 +486,8 @@ public class ReviewRecorder
 			["trackSeconds"] = _settings.TrackSeconds,
 			["stripView"] = _settings.StripView,
 			["stripSpacing"] = _settings.StripSpacing,
+			["stripBefore"] = _settings.StripBefore,
+			["stripAfter"] = _settings.StripAfter,
 			["activities"] = Enum.GetNames(typeof(Activity)),
 			["track"] = new List<float[]>(_track),
 			["events"] = new List<Dictionary<string, object>>(_events),

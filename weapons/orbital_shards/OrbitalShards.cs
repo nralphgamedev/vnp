@@ -168,7 +168,7 @@ public partial class OrbitalShards : VnpWeapon
 			if (_nextHarvestAt.TryGetValue(key, out double readyAt) && readyAt > now)
 				continue;
 			_nextHarvestAt[key] = now + Cooldown;
-			if (harvestables.Harvest(item, Damage * Shards.HarvestPerDamage) > 0f)
+			if (harvestables.Harvest(item, Damage * Shards.HarvestPerDamage, byVnp: true) > 0f)
 				Fight.Effects.Impact(position, Tuning.Look.ExperienceColor, 0.35f);
 		}
 	}

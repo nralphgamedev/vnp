@@ -75,6 +75,11 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Waves sent so far.</summary>
 	public int WavesSent { get; private set; }
 
+#if RECORDING
+	/// <summary>How many groups the last wave had, for the run review's log.</summary>
+	public int LastWaveGroups { get; private set; }
+#endif
+
 	/// <summary>Fight time, in seconds, when the next wave arrives.</summary>
 	public float NextWaveTime => Tuning.EnemySpawning.WaveFirstSeconds + WavesSent * Tuning.EnemySpawning.WaveIntervalSeconds;
 
@@ -334,7 +339,8 @@ public partial class EnemySwarm : Node3D
 	public EnemyDefinition DefinitionOf(int index) => _types[_enemies[index].Type].Definition;
 #endif
 
-	/// <summary>How many living enemies there are of each type, in the order of Types.</summary>
+#if RECORDING
+	/// <summary>How many living enemies there are of each type, in the order of Types. For the fight log.</summary>
 	public int[] CountByType()
 	{
 		var counts = new int[_types.Count];
@@ -345,6 +351,7 @@ public partial class EnemySwarm : Node3D
 		}
 		return counts;
 	}
+#endif
 
 	/// <summary>Health per second this enemy drains from a drone touching it.</summary>
 	public float DroneDrainOf(int index) => _types[_enemies[index].Type].DroneDrain(_enemies[index]);
@@ -496,6 +503,9 @@ public partial class EnemySwarm : Node3D
 	{
 		int groups = Tuning.EnemySpawning.WaveGroups + Tuning.EnemySpawning.WaveGroupsAddedPerWave * WavesSent;
 		WavesSent++;
+#if RECORDING
+		LastWaveGroups = groups;
+#endif
 		Fight.Camera.Shake(Tuning.Feedback.ShakeOnWave);
 		float startAngle = Rng.Range(0f, Mathf.Tau);
 		for (int g = 0; g < groups; g++)

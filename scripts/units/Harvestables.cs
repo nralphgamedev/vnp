@@ -195,9 +195,16 @@ public partial class Harvestables : Node3D
 		return kept;
 	}
 
+#if RECORDING
+	/// <summary>Fight time the VNP itself last harvested, by its beam or a weapon such as Orbital Shards, so the
+	/// run review can tell harvesting apart from travelling whichever way it is done.</summary>
+	public double LastVnpHarvestTime { get; private set; } = -1;
+#endif
+
 	/// <summary>Draws up to <paramref name="amount"/> mass out and passes it to the fight as harvest.
-	/// Returns how much was drawn out, which is less if not that much was left.</summary>
-	public float Harvest(int index, float amount)
+	/// Returns how much was drawn out, which is less if not that much was left. <paramref name="byVnp"/> marks
+	/// harvesting by the VNP itself (its beam or its weapons) rather than its drones, for the run review.</summary>
+	public float Harvest(int index, float amount, bool byVnp = false)
 	{
 		ref Item item = ref _items[index];
 		float taken = Mathf.Min(amount, item.Mass);
@@ -206,6 +213,10 @@ public partial class Harvestables : Node3D
 
 		item.Mass -= taken;
 		item.Glow = GlowTime;
+#if RECORDING
+		if (byVnp)
+			LastVnpHarvestTime = Fight.Elapsed;
+#endif
 		Fight.AddHarvest(taken, fromDebris: !item.IsAsteroid);
 		// Used up: it pops. It is cleared away at the start of the next update.
 		if (item.Mass <= UsedUp && item.Mass + taken > UsedUp)

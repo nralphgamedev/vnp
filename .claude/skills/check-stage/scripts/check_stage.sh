@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every mechanical check on the VNP project and prints a summary at the end.
 #
-#   bash check_stage.sh                                  # the full check
+#   bash check_stage.sh                                  # every check
+#   bash check_stage.sh --full                           # every check, plus the full recording check: run before each commit
 #   bash check_stage.sh --scenario [--window] ARGS...   # only a fight set up by the scenario harness
 #
 # --scenario runs res://scripts/cheats/scenario.tscn with its arguments (see ScenarioRunner.cs), such as
@@ -42,6 +43,9 @@ run_scenario() {
 	# The harness's exit code, not the filters': 2 means its arguments couldn't be used.
 	return "${PIPESTATUS[0]}"
 }
+
+full=0
+if [ "$1" = "--full" ]; then full=1; shift; fi
 
 if [ "$1" = "--scenario" ]; then
 	shift
@@ -191,6 +195,19 @@ if [ $? -eq 0 ]; then
 else
 	echo "$record_out" | grep -E "FAIL|Traceback|Error"
 	fail "a weapon doesn't show up in the recording (see above)"
+fi
+
+if [ $full -eq 1 ]; then
+	echo "== Full recording check (before each commit)"
+	# A few recorded fights into escalation that between them use every weapon, Drone Weapon, mod and asteroid
+	# amount, each recording checked field by field against the fight's own statistics. See check_recording_full.py.
+	full_out="$(python "$SKILL_DIR/check_recording_full.py" "$GODOT" 2>&1)"
+	if [ $? -eq 0 ]; then
+		note "Full recording check: $(echo "$full_out" | grep -c '^  PASS') checks passed in $(echo "$full_out" | grep -c '^== fight') fights"
+	else
+		echo "$full_out" | grep -E "^==|FAIL|Traceback|Error"
+		fail "the full recording check failed (see above)"
+	fi
 fi
 
 echo "== Cheats kept out of export builds"
