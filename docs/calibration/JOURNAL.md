@@ -43,3 +43,12 @@ Both tested on 50 seeds each against the base, which replays exactly (GAP 0.135,
 - **Chunk 4, regrouping earlier (RegroupBelow 0.2 to 0.35, RegroupUntil 0.4 to 0.55):** GAP 0.147, worse. Rejected.
 
 No improvement: 2 of 6. Drones at 3:00 remain the clearest gap (about 20 against 30). Next: what feeds drones rather than what protects them, such as harvesting more at the drone cap (HarvestAtCap) or a stronger pull toward concentrations (ConcentrationPull).
+
+### 2026-11-22: chunks 5 and 6, feeding drones (both rejected)
+
+The base replays exactly on the same seeds, so it isn't re-run: its 50-seed GAP is 0.135 (chunk 2). Two candidates in one batch, 50 seeds each:
+
+- **Chunk 5, ConcentrationPull 1.2 to 1.6:** GAP 0.153, worse; drones at 3:00 fell to 14.
+- **Chunk 6, HarvestAtCap 0.8 to 1.0:** GAP 0.184, worse; fewer kills and drones from 4:00.
+
+No improvement: 4 of 6. Pulling the pilot toward material doesn't raise its drones; neither did fighting more (chunk 1). Next: the opposite of chunk 1, fighting a little less readily (Caution up, FightWeight down), and how fast pressure eases (PressureFall).
