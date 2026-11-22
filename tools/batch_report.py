@@ -9,6 +9,7 @@ upgrades, and performance, each by combination of pilot, build and starting weap
 
 Editor-only testing tool: nothing here is part of the game.
 """
+import glob
 import json
 import re
 import os
@@ -433,8 +434,9 @@ def write_report(folder):
 
         def rates(log_list):
             minutes = sum(l['outcome']['time'] for l in log_list) / 60
-            return [num(sum(l['review']['detectors'][d]['count'] for l in log_list) / minutes, 2) if minutes else '-'
-                    for d in detector_ids]
+            # A log from before a detector existed, or before it was renamed, counts it as none.
+            return [num(sum(l['review']['detectors'].get(d, {}).get('count', 0) for l in log_list) / minutes, 2)
+                    if minutes else '-' for d in detector_ids]
         rows = []
         for label, group in by_combo.items():
             ls = [logs[f['name']] for f in group if f['name'] in logs and logs[f['name']].get('review')]
@@ -442,12 +444,11 @@ def write_report(folder):
                 rows.append([label] + rates(ls))
         human = []
         human_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'playtests', 'human')
-        if os.path.isdir(human_folder):
-            for name in sorted(os.listdir(human_folder)):
-                if name.endswith('.json'):
-                    log = json.load(open(os.path.join(human_folder, name), encoding='utf-8'))
-                    if log.get('review') and log['outcome']['time'] > 30:
-                        human.append(log)
+        # Each of the designer's fights has its own folder; older logs sit loose in playtests/human/.
+        for path in sorted(glob.glob(os.path.join(human_folder, '*.json')) + glob.glob(os.path.join(human_folder, '*', '*.json'))):
+            log = json.load(open(path, encoding='utf-8'))
+            if log.get('review') and log['outcome']['time'] > 30:
+                human.append(log)
         rows.append([f'**designer** ({len(human)} fights)'] + (rates(human) if human else ['-'] * len(detector_ids)))
         out.append(table(['Combination'] + [names[d] for d in detector_ids], rows))
 

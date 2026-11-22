@@ -29,6 +29,7 @@ public class ReviewRecorder
 	private readonly int[] _enemies = new int[1024];
 	private readonly int[] _material = new int[512];
 	private readonly List<string> _enemyTypes = new();
+	private readonly List<Dictionary<string, object>> _enemyTypeInfo = new();
 
 	private readonly List<float[]> _track = new();
 	private readonly List<Dictionary<string, object>> _events = new();
@@ -165,7 +166,7 @@ public class ReviewRecorder
 		{
 			int e = _enemies[c];
 			Vector2 p = enemies.PositionOf(e);
-			enemyList.Add(new[] { Round(p.X), Round(p.Y), Round(enemies.RadiusOf(e)), TypeIndex(enemies.TypeIdOf(e)) });
+			enemyList.Add(new[] { Round(p.X), Round(p.Y), Round(enemies.RadiusOf(e)), TypeIndex(enemies, e) });
 		}
 
 		var droneList = new List<float[]>();
@@ -214,12 +215,25 @@ public class ReviewRecorder
 		};
 	}
 
-	private float TypeIndex(string id)
+	/// <summary>An enemy's type as an index into the log's enemy types, adding the type the first time it is seen
+	/// with what a map needs to draw it: its name, its colour and what it does that matters, such as absorbing
+	/// drones or damaging by touch. So maps need no list of enemy types of their own.</summary>
+	private float TypeIndex(EnemySwarm enemies, int enemy)
 	{
+		string id = enemies.TypeIdOf(enemy);
 		int i = _enemyTypes.IndexOf(id);
 		if (i < 0)
 		{
+			EnemyDefinition definition = enemies.DefinitionOf(enemy);
 			_enemyTypes.Add(id);
+			_enemyTypeInfo.Add(new Dictionary<string, object>
+			{
+				["id"] = id,
+				["name"] = definition.Name ?? id,
+				["color"] = new[] { definition.Color.R, definition.Color.G, definition.Color.B },
+				["absorbsDrones"] = enemies.AbsorbsDronesOf(enemy),
+				["damagesByTouch"] = enemies.DamagesByTouchOf(enemy),
+			});
 			i = _enemyTypes.Count - 1;
 		}
 		return i;
@@ -248,7 +262,7 @@ public class ReviewRecorder
 			["track"] = new List<float[]>(_track),
 			["events"] = new List<Dictionary<string, object>>(_events),
 			["gateway"] = new[] { Round(gateway.X), Round(gateway.Y) },
-			["enemyTypes"] = new List<string>(_enemyTypes),
+			["enemyTypes"] = new List<Dictionary<string, object>>(_enemyTypeInfo),
 			["strips"] = strips,
 		};
 	}

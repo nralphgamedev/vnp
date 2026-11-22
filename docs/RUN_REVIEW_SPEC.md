@@ -31,7 +31,7 @@ Starting detectors, each from something the designer reported:
 
 | Detector | Fires when | From |
 |---|---|---|
-| Touched a Goo | the VNP touches an enemy that damages by touch | flew into a Goo (clock 4:06) |
+| Touched a contact enemy | the VNP touches an enemy that damages by touch, such as a Goo | flew into a Goo (clock 4:06) |
 | Flew through a group | the VNP passes within a short distance of several enemies within a few seconds | flew through a group to a cluster beyond it (clock 4:36) |
 | Closed in on a near enemy | the VNP moves toward an enemy that is already close, for more than a moment | moved even closer to an enemy that was already close |
 | Indecision | the VNP's direction reverses several times within a few seconds with enemies near | juggled between regrouping and fighting (clock 2:25) |
@@ -40,7 +40,7 @@ Starting detectors, each from something the designer reported:
 | Idle | the VNP neither harvests nor has an enemy within reach for a while | pilots ending fights far from the gateway, noticed by Claude |
 | Drones lost in a burst | many drones are absorbed or destroyed within a few seconds | drones locking onto one Goo and flying into others |
 
-Detectors are a list, so more can be added as new kinds of moments come up. Each counts how often it fired, per minute of fight, and keeps its flagged moments.
+Detectors are a list, so more can be added as new kinds of moments come up. They judge enemies by what they do (absorbing drones, damaging by touch), never by which enemy they are, so they keep working as enemy types are added. Each counts how often it fired, per minute of fight, and keeps its flagged moments.
 
 ## Overview maps
 
@@ -59,6 +59,16 @@ A few small top-down pictures of one moment, about a second apart, side by side 
 - **Any moment of a pilot fight:** a pilot fight repeats exactly from its seed, so the scenario harness can replay it headless and draw a strip around any fight time, such as something Claude spotted on an overview map.
 - **Drawn by the game:** maps are drawn by the game's editor-only code with Godot's own image drawing, which works headless and needs nothing installed. Batch scripts stay Python-only.
 - **How many:** a batch draws strips for a limited number of each detector's moments, picked to cover different fights, so a big batch doesn't write thousands of pictures.
+
+## At the scale of the full game
+
+The full game will have dozens of enemy types and hundreds of weapons, weapon combinations and upgrades. Nothing in the review may depend on a fixed list of them.
+
+- **Built:** detectors work from enemy traits; fight logs carry each enemy type's name, colour and traits from its definition, and each detector's name; maps draw enemies in their own colour, marked by shape for what they do (striped for damaging by touch, an outer ring for absorbing drones), with a key to the types in each picture, and take detector names and letters from the log. A new enemy type or detector appears on maps with no change to the drawer.
+- **Planned, for when content grows:**
+  - **Coverage:** batches can't play every combination, so random starts sample them. The report gains a coverage view: which weapons, combinations and upgrades a batch tried, and how often, so gaps are visible.
+  - **Outliers:** the report flags combinations and upgrades whose win rate or detector rates sit far from the rest. Those flags pick what Claude looks at closely, since hundreds of combinations can't each be reviewed by eye.
+  - **Weapon effects on maps:** things a weapon leaves in the world, such as mines, orbiting shards and future hazards, are drawn on strips through a small generic hook any weapon can offer, as Mine Layer already offers its mines to pilots.
 
 ## Claude's review of a batch
 
@@ -132,7 +142,8 @@ The prototype now does the following; any of it can still change.
 - **Maps (stage 2):**
   - **Recording:** `ReviewRecorder.cs`, run with the detectors, records the track (position, what the VNP was doing, and speed, every `TrackSeconds`), events (hits taken, drones lost, level-ups, detector firings) and snapshots every `StripSpacing` of everything within `StripView` of the VNP: enemies with type and size, drones, material, enemy shots. It keeps the last `StripBefore` snapshots, and when a detector fires saves them with the next `StripAfter` as a strip, up to `MaxStripsPerFight`. All of it goes in the fight log's `maps` section. What the VNP was doing is judged from what can be seen: harvesting while its beam works, fighting with an enemy within `FightReach`, moving away when also moving away from it at `MovingAwaySpeed`, otherwise travelling. Small read-only position accessors were added to the drones and projectiles for it.
   - **Drawing:** `MapDrawer.cs` draws PNGs from a fight log with Godot's `Image`, headless, with a small built-in pixel font for labels. Overview maps are 1000 pixels wide: the path coloured by activity, the gateway, start and end, events (hits sized by damage, drones lost, level-ups, detector firings lettered), the fight time every 30 seconds, and health, drones, level and speed over time with the time limit and the win marked. Strip maps are rows of 320-pixel panels a second apart, centred on the VNP, with its last 4 seconds of path and heading; the panel at the moment has a yellow border.
-  - **When maps are drawn:** the designer's fights draw their overview and every strip when the log is written, into `playtests/human/maps/`. The scenario harness draws them with `maps=yes`, and `strip=T1,T2` saves strips around chosen fight times too, so any moment of a pilot fight can be drawn by replaying it. `draw_maps.tscn` draws any log's maps afterwards. A batch draws overviews of each combination's best, worst and typical fight and a few strips per detector (`OverviewsPerCombination`, `StripsPerDetector`), in one run of the drawer, and the report's Review section links them.
+  - **When maps are drawn:** the designer's fights draw their overview and every strip when the log is written. At the designer's request each of their fights has a folder of its own in `playtests/human/`, holding its log and its maps (`overview.png`, `strip0_...png`), so they stay together; pilot fights logged by the scenario harness to `playtests/pilot/` do the same. Batches keep all their logs in `logs/` and the few maps they draw in `maps/`, since a folder per fight would mostly hold a lone log. Scripts that read the designer's logs look in each fight's folder, and in `playtests/human/` itself for logs from before. The scenario harness draws them with `maps=yes`, and `strip=T1,T2` saves strips around chosen fight times too, so any moment of a pilot fight can be drawn by replaying it. `draw_maps.tscn` draws any log's maps afterwards. A batch draws overviews of each combination's best, worst and typical fight and a few strips per detector (`OverviewsPerCombination`, `StripsPerDetector`), in one run of the drawer, and the report's Review section links them.
+  - **Ready for many enemy types and detectors:** the log records each enemy type's name, colour and traits (`EnemySwarm.DefinitionOf`, read-only), and the drawer takes enemy colours, trait markings, each strip's key of types and the detectors' names and letters from the log, with no lists of its own. The Goo-touch detector was renamed "Touched a contact enemy" (`touched_by_contact`), since it fires on any enemy that damages by touch; reports count a detector missing from an older log as zero.
   - **No hitch at the end of a fight:** the designer noticed a hitch when the fight was won and again when the endless run ended. Writing the log and drawing every map on the main thread took over a second in a long fight. Now the main thread only gathers the log, copying every list that keeps growing so an endless run carrying on can't change it, and turning it into text, writing it and drawing the maps happen on a background thread, one write after another. Drawing reads only the log, never Godot's resources, so it is safe off the main thread. Leaving a fight or quitting waits for any write still running. The first write of a fight also spent about 70 ms compiling the log's code, so the log is built once and thrown away as the fight is set up, while the starting weapon menu is open. The main thread's share of a write fell from over a second to about 5 ms. The scenario prints a `FIGHT LOG:` line with both times.
   - **Log size:** the track and strips made indented logs about 700 KB; pilot and batch logs are now written compact, about 170 KB, while the designer's stay indented for reading.
   - **Checked:** the stage check's headless fight now draws maps with `maps=yes strip=20` and fails if no overview or strip appears. Drawing a fight's maps takes under a second.

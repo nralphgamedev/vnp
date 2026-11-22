@@ -55,10 +55,16 @@ EQUIP, SWITCH_DRONE = 0, 2  # UpgradeEffect values for equipping a weapon and sw
 DRONE_ATTACK = {'drone_damage', 'drone_attack_rate'}
 
 
+def designer_logs():
+    """The designer's fight logs: each in its own folder in playtests/human/, or loose there from before."""
+    folder = os.path.join(ROOT, 'playtests', 'human')
+    return sorted(glob.glob(os.path.join(folder, '*.json')) + glob.glob(os.path.join(folder, '*', '*.json')))
+
+
 def choices(info):
     """Every answered offer in the designer's logs: (the three IDs, the taken ID, which improve owned things)."""
     out = []
-    for path in sorted(glob.glob(os.path.join(ROOT, 'playtests', 'human', '*.json'))):
+    for path in designer_logs():
         log = json.load(open(path, encoding='utf-8'))
         if log['settings'].get('player') != 'designer':
             continue
@@ -132,7 +138,7 @@ def main():
     cats = [round((cat[c] - low) * scale + 0.1, 2) for c in range(4)]
     owned = round(max(0.0, owned_bonus) * scale, 2)
     new = round(new_bonus * scale, 2)
-    n_logs = len(glob.glob(os.path.join(ROOT, 'playtests', 'human', '*.json')))
+    n_logs = len(designer_logs())
     print(f'{len(data)} choices from {n_logs} designer logs.')
     print(f'Category weights (VNP Weapon, Drone Weapon, Stats, Drones): {cats}')
     print(f'Bonus for improving what it owns: {owned}; for a new weapon: {new}')

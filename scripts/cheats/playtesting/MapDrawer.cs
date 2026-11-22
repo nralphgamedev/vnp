@@ -27,7 +27,64 @@ public static class MapDrawer
 		new(0.95f, 0.63f, 0.25f),  // fighting
 		new(0.76f, 0.50f, 0.95f),  // moving away
 	};
-	private static readonly Color[] EnemyColors = { new(0.90f, 0.28f, 0.30f), new(0.70f, 0.50f, 0.95f), new(0.95f, 0.80f, 0.30f) };
+	// Only for logs from before enemy types carried their own colour.
+	private static readonly Color[] FallbackEnemyColors = { new(0.90f, 0.28f, 0.30f), new(0.70f, 0.50f, 0.95f), new(0.95f, 0.80f, 0.30f) };
+
+	/// <summary>An enemy type as the log describes it: its name, colour, and the traits maps mark by shape, so any
+	/// number of types can be read by what they do rather than by memorising colours.</summary>
+	private record EnemyType(string Name, Color Color, bool AbsorbsDrones, bool DamagesByTouch);
+
+	private static List<EnemyType> EnemyTypes(JsonElement maps)
+	{
+		var types = new List<EnemyType>();
+		int i = 0;
+		foreach (JsonElement t in maps.GetProperty("enemyTypes").EnumerateArray())
+		{
+			if (t.ValueKind == JsonValueKind.String)
+				types.Add(new EnemyType(t.GetString(), FallbackEnemyColors[i % FallbackEnemyColors.Length], false, false));
+			else
+			{
+				JsonElement c = t.GetProperty("color");
+				types.Add(new EnemyType(t.GetProperty("name").GetString(),
+					new Color((float)c[0].GetDouble(), (float)c[1].GetDouble(), (float)c[2].GetDouble()),
+					t.GetProperty("absorbsDrones").GetBoolean(), t.GetProperty("damagesByTouch").GetBoolean()));
+			}
+			i++;
+		}
+		return types;
+	}
+
+	/// <summary>The fight's detectors in the log's order, each with a letter for marking its moments on overview
+	/// maps, so a new detector appears on maps without changing the drawer.</summary>
+	private static List<(string Id, string Name, string Letter)> Detectors(JsonElement log)
+	{
+		var detectors = new List<(string, string, string)>();
+		if (log.TryGetProperty("review", out JsonElement review) && review.ValueKind == JsonValueKind.Object)
+		{
+			int i = 0;
+			foreach (JsonProperty d in review.GetProperty("detectors").EnumerateObject())
+				detectors.Add((d.Name, d.Value.GetProperty("name").GetString(), ((char)('A' + i++)).ToString()));
+		}
+		detectors.Add(("requested", "Requested moment", "R"));
+		return detectors;
+	}
+
+	/// <summary>Draws one enemy: a disc in its type's colour, striped if it damages by touch, with an outer ring if
+	/// it absorbs drones.</summary>
+	private static void Enemy(Image image, Vector2I at, int radius, EnemyType type)
+	{
+		Disc(image, at, radius, type.Color);
+		if (type.DamagesByTouch)
+		{
+			Color stripe = type.Color.Darkened(0.55f);
+			for (int j = -radius; j <= radius; j++)
+				for (int i = -radius; i <= radius; i++)
+					if (i * i + j * j <= radius * radius && ((i + j) % 4 + 4) % 4 == 0)
+						Plot(image, at.X + i, at.Y + j, stripe);
+		}
+		if (type.AbsorbsDrones)
+			Ring(image, at, radius + 3, type.Color.Lightened(0.4f), 1);
+	}
 	private static readonly Color Hit = new(1f, 0.25f, 0.25f);
 	private static readonly Color DroneLost = new(1f, 0.55f, 0.80f);
 	private static readonly Color Level = new(0.95f, 0.85f, 0.30f);
@@ -37,18 +94,13 @@ public static class MapDrawer
 	private static readonly Color Shot = new(1f, 0.6f, 0.2f);
 	private static readonly Color Gateway = new(0.95f, 0.85f, 0.30f);
 
-	/// <summary>One letter per detector, used to mark its moments on overview maps.</summary>
-	private static readonly Dictionary<string, string> DetectorLetters = new()
-	{
-		["touched_goo"] = "G", ["through_group"] = "T", ["closed_in"] = "C", ["indecision"] = "I",
-		["creeping"] = "S", ["no_drones_fighting"] = "N", ["idle"] = "Z", ["drones_lost_burst"] = "B", ["requested"] = "R",
-	};
-
 	/// <summary>
 	/// Draws a fight log's maps into <paramref name="folder"/>: its overview if <paramref name="overview"/>, and
-	/// the strips whose indices are in <paramref name="strips"/> (null for all). Returns the files written.
+	/// the strips whose indices are in <paramref name="strips"/> (null for all). Each file's name starts with
+	/// <paramref name="prefix"/>, the log's name and an underscore unless given, such as "" for maps that sit in
+	/// the fight's own folder. Returns the files written.
 	/// </summary>
-	public static List<string> DrawLog(string logPath, string folder, bool overview, ICollection<int> strips)
+	public static List<string> DrawLog(string logPath, string folder, bool overview, ICollection<int> strips, string prefix = null)
 	{
 		var written = new List<string>();
 		using JsonDocument document = JsonDocument.Parse(File.ReadAllText(logPath));
@@ -56,10 +108,10 @@ public static class MapDrawer
 		if (!log.TryGetProperty("maps", out JsonElement maps) || maps.ValueKind != JsonValueKind.Object)
 			return written;
 		Directory.CreateDirectory(folder);
-		string name = Path.GetFileNameWithoutExtension(logPath);
+		string name = prefix ?? Path.GetFileNameWithoutExtension(logPath) + "_";
 		if (overview)
 		{
-			string file = Path.Combine(folder, $"{name}_overview.png");
+			string file = Path.Combine(folder, $"{name}overview.png");
 			DrawOverview(log, maps).SavePng(file);
 			written.Add(file);
 		}
@@ -71,7 +123,7 @@ public static class MapDrawer
 			JsonElement strip = stripList[i];
 			string reason = strip.GetProperty("reason").GetString();
 			double time = strip.GetProperty("time").GetDouble();
-			string file = Path.Combine(folder, $"{name}_strip{i}_{reason}_{(int)time}s.png");
+			string file = Path.Combine(folder, $"{name}strip{i}_{reason}_{(int)time}s.png");
 			DrawStrip(log, maps, strip).SavePng(file);
 			written.Add(file);
 		}
@@ -82,7 +134,8 @@ public static class MapDrawer
 
 	private static Image DrawOverview(JsonElement log, JsonElement maps)
 	{
-		const int Width = 1000, MapSize = 1000, Header = 56, StripHeight = 64, Strips = 4, Footer = 26;
+		const int Width = 1000, MapSize = 1000, Header = 70, StripHeight = 64, Strips = 4, Footer = 26;
+		var detectors = Detectors(log);
 		int height = Header + MapSize + Strips * StripHeight + Footer;
 		Image image = Image.CreateEmpty(Width, height, false, Image.Format.Rgba8);
 		image.Fill(Ground);
@@ -123,7 +176,8 @@ public static class MapDrawer
 		// Gateway, start and end.
 		Vector2I gate = ToPixel(gateway);
 		FillRect(image, gate.X - 6, gate.Y - 6, 12, 12, Gateway);
-		Text(image, gate.X + 9, gate.Y - 6, "GATEWAY", Gateway, 2);
+		// The label goes on whichever side of the gateway has room.
+		Text(image, gate.X + 9 + 84 > Width ? gate.X - 9 - 84 : gate.X + 9, gate.Y - 6, "GATEWAY", Gateway, 2);
 		if (count > 0)
 		{
 			Vector2I start = ToPixel(new Vector2((float)track[0][1].GetDouble(), (float)track[0][2].GetDouble()));
@@ -151,7 +205,8 @@ public static class MapDrawer
 				case "detector":
 					string id = e.GetProperty("value").GetString();
 					Ring(image, at, 9, Ink, 2);
-					Text(image, at.X + 11, at.Y - 7, DetectorLetters.GetValueOrDefault(id, "?"), Ink, 2);
+					string letter = detectors.Find(d => d.Id == id).Letter ?? "?";
+					Text(image, at.X + 11, at.Y - 7, letter, Ink, 2);
 					break;
 			}
 		}
@@ -191,8 +246,19 @@ public static class MapDrawer
 		Disc(image, new Vector2I(keyX + 3, 31), 3, Hit); keyX = Text(image, keyX + 9, 26, "HIT", Dim, 1) + 12;
 		FillRect(image, keyX, 29, 4, 4, DroneLost); keyX = Text(image, keyX + 7, 26, "DRONES LOST", Dim, 1) + 12;
 		FillRect(image, keyX, 27, 2, 8, Level); keyX = Text(image, keyX + 5, 26, "LEVEL", Dim, 1) + 12;
-		Text(image, 8, 40, "DETECTORS: G GOO  T GROUP  C CLOSE IN  I INDECISION  S CREEPING  N NO DRONES  Z IDLE  " +
-			"B DRONE BURST  R REQUESTED", Dim, 1);
+		// The detectors' letters, from the log, wrapping onto a second line if needed.
+		int keyLeft = 8, keyY = 40;
+		keyLeft = Text(image, keyLeft, keyY, "DETECTORS:", Dim, 1) + 8;
+		foreach (var d in detectors)
+		{
+			string entry = $"{d.Letter} {d.Name}";
+			if (keyLeft + entry.Length * 6 > Width - 130)
+			{
+				keyLeft = 74;
+				keyY += 12;
+			}
+			keyLeft = Text(image, keyLeft, keyY, entry, Dim, 1) + 14;
+		}
 		Text(image, Width - 120, 40, $"GRID {gridStep:0} UNITS", Dim, 1);
 
 		// Strips over time: health, drones, level and speed.
@@ -259,7 +325,9 @@ public static class MapDrawer
 
 	private static Image DrawStrip(JsonElement log, JsonElement maps, JsonElement strip)
 	{
-		const int Panel = 320, Columns = 4, Header = 40, Gap = 6;
+		const int Panel = 320, Columns = 4, Header = 54, Gap = 6;
+		List<EnemyType> types = EnemyTypes(maps);
+		var detectors = Detectors(log);
 		JsonElement frames = strip.GetProperty("frames");
 		int n = frames.GetArrayLength();
 		int rows = Math.Max(1, (n + Columns - 1) / Columns);
@@ -285,9 +353,24 @@ public static class MapDrawer
 				momentFrame = f;
 		}
 
-		Text(image, Gap, 8, $"{ReasonName(reason)} AT {Ui.Clock(moment)} (CLOCK {RunReview.OnScreenClock(moment)})  " +
+		string reasonName = detectors.Find(d => d.Id == reason).Name ?? reason;
+		Text(image, Gap, 8, $"{reasonName} AT {Ui.Clock(moment)} (CLOCK {RunReview.OnScreenClock(moment)})  " +
 			$"{StripWho(log)}  VIEW {view:0} UNITS ACROSS, PICTURES {spacing:0.#}S APART", Ink, 2);
-		Text(image, Gap, 28, "VNP WHITE WITH ITS PATH, RED BASIC ENEMY, VIOLET GOO, CYAN DRONES, GREY ASTEROID, BROWN DEBRIS, ORANGE SHOTS", Dim, 1);
+		Text(image, Gap, 28, "VNP WHITE WITH ITS PATH AND HEADING, CYAN DRONES, GREY ASTEROID, BROWN DEBRIS, ORANGE ENEMY SHOTS. " +
+			"ENEMIES IN THEIR OWN COLOUR: STRIPED DAMAGES BY TOUCH, OUTER RING ABSORBS DRONES", Dim, 1);
+		// A key to the enemy types in this strip only.
+		var present = new SortedSet<int>();
+		for (int f = 0; f < n; f++)
+			foreach (JsonElement e in frames[f].GetProperty("enemies").EnumerateArray())
+				present.Add((int)e[3].GetDouble());
+		int legendX = Gap;
+		foreach (int t in present)
+		{
+			if (t < 0 || t >= types.Count)
+				continue;
+			Enemy(image, new Vector2I(legendX + 5, 44), 4, types[t]);
+			legendX = Text(image, legendX + 14, 41, types[t].Name, Dim, 1) + 16;
+		}
 
 		for (int f = 0; f < n; f++)
 		{
@@ -316,9 +399,10 @@ public static class MapDrawer
 			foreach (JsonElement e in frame.GetProperty("enemies").EnumerateArray())
 			{
 				Vector2I at = P(new Vector2((float)e[0].GetDouble(), (float)e[1].GetDouble()));
-				int type = Math.Clamp((int)e[3].GetDouble(), 0, EnemyColors.Length - 1);
+				int type = (int)e[3].GetDouble();
 				int radius = Math.Max(3, (int)(e[2].GetDouble() * scale));
-				Disc(image, at, radius, EnemyColors[type]);
+				Enemy(image, at, radius, type >= 0 && type < types.Count ? types[type]
+					: new EnemyType("?", FallbackEnemyColors[0], false, false));
 			}
 			foreach (JsonElement d in frame.GetProperty("droneDots").EnumerateArray())
 				Disc(image, P(new Vector2((float)d[0].GetDouble(), (float)d[1].GetDouble())), 2, Drone);
@@ -363,14 +447,6 @@ public static class MapDrawer
 		JsonElement s = log.GetProperty("settings");
 		return s.GetProperty("player").GetString() == "designer" ? "DESIGNER" : $"{s.GetProperty("pilot").GetString()} SEED {s.GetProperty("seed").GetInt64()}";
 	}
-
-	private static string ReasonName(string reason) => reason switch
-	{
-		"touched_goo" => "TOUCHED A GOO", "through_group" => "FLEW THROUGH A GROUP", "closed_in" => "CLOSED IN ON A NEAR ENEMY",
-		"indecision" => "INDECISION", "creeping" => "CREEPING", "no_drones_fighting" => "FIGHTING WITHOUT DRONES",
-		"idle" => "IDLE", "drones_lost_burst" => "DRONES LOST IN A BURST", "requested" => "REQUESTED MOMENT",
-		_ => reason.ToUpperInvariant(),
-	};
 
 	private static IEnumerable<string> JsonStrings(JsonElement array)
 	{

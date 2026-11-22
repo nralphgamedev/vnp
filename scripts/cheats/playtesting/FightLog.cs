@@ -26,6 +26,12 @@ public partial class FightLog : Node
 	/// </summary>
 	public static string NextFolder;
 
+	/// <summary>Give the next fight a folder of its own, inside its log folder, holding its log and its maps. The
+	/// designer's fights always get one, at the designer's request; the scenario harness asks for one for pilot
+	/// fights logged to playtests/pilot. Batches don't: they keep every log in one folder and maps in another.</summary>
+	public static bool NextOwnFolder;
+	private bool _ownFolder;
+
 	/// <summary>For the next fight only: who is playing, written in the log. The designer, unless set.</summary>
 	public static string NextPlayer;
 
@@ -102,12 +108,14 @@ public partial class FightLog : Node
 		NextFileName = null;
 		string variant = NextVariant, variantText = NextVariantText;
 		NextVariant = NextVariantText = null;
+		bool ownFolder = NextOwnFolder || NextFolder == null;
+		NextOwnFolder = false;
 		NextFolder = null;
 		NextPlayer = null;
 		if (!Settings.WriteLogs || string.IsNullOrEmpty(folder))
 			return null;
 
-		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player, _fileName = fileName, _variant = variant, _variantText = variantText };
+		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player, _fileName = fileName, _variant = variant, _variantText = variantText, _ownFolder = ownFolder };
 		// Before everything else in the fight, and the log after everything, to time the fight's update.
 		fight.AddChild(new FrameStart { Name = "FightLogFrameStart", Log = log, ProcessPriority = int.MinValue });
 		log.ProcessPriority = int.MaxValue;
@@ -266,7 +274,11 @@ public partial class FightLog : Node
 			string folder = ProjectSettings.GlobalizePath(_folder);
 			Directory.CreateDirectory(folder);
 			KeepOutOfImport(folder);
-			_path ??= Path.Combine(folder, (_fileName ?? $"{_startedAt:yyyy-MM-dd_HH-mm-ss}_seed{_fight.Seed}") + ".json");
+			string name = _fileName ?? $"{_startedAt:yyyy-MM-dd_HH-mm-ss}_seed{_fight.Seed}";
+			// In a folder of its own, the log and its maps sit together, and the maps need no name of their own.
+			string fightFolder = _ownFolder ? Path.Combine(folder, name) : folder;
+			Directory.CreateDirectory(fightFolder);
+			_path ??= Path.Combine(fightFolder, name + ".json");
 			// Gathering the log happens here, on the main thread: Build copies every list that keeps growing, so
 			// it is a fixed picture of the fight as it is now, which an endless run carrying on can't change. The
 			// rest, turning it into text, writing it and drawing its maps, happens in the background. The
@@ -276,7 +288,8 @@ public partial class FightLog : Node
 			Dictionary<string, object> data = Build(result);
 			bool indented = _player == "designer";
 			long gathered = watch.ElapsedMilliseconds;
-			string path = _path, maps = Path.Combine(folder, "maps");
+			string path = _path, maps = _ownFolder ? Path.GetDirectoryName(_path) : Path.Combine(folder, "maps");
+			string prefix = _ownFolder ? "" : null;
 			bool draw = _drawMaps;
 			// Writing the file and drawing the maps (an overview and strips of flagged moments) work only from that
 			// copy, so they can run in the background without touching the fight.
@@ -289,7 +302,7 @@ public partial class FightLog : Node
 						var background = System.Diagnostics.Stopwatch.StartNew();
 						File.WriteAllText(path, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = indented }));
 						if (draw)
-							MapDrawer.DrawLog(path, maps, true, null);
+							MapDrawer.DrawLog(path, maps, true, null, prefix);
 						GD.Print($"FIGHT LOG: {Path.GetFileName(path)}: {gathered} ms on the main thread, " +
 							$"{background.ElapsedMilliseconds} ms writing{(draw ? " and drawing maps" : "")} in the background");
 					}

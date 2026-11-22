@@ -54,7 +54,7 @@ public class RunReview
 	{
 		_fight = fight;
 		_settings = settings;
-		_touchedGoo = Add("touched_goo", "Touched a Goo");
+		_touchedGoo = Add("touched_by_contact", "Touched a contact enemy");
 		_throughGroup = Add("through_group", "Flew through a group");
 		_closedIn = Add("closed_in", "Closed in on a near enemy");
 		_indecision = Add("indecision", "Indecision");

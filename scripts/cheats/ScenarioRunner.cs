@@ -105,6 +105,8 @@ public partial class ScenarioRunner : Node
 		Fight.NextSeed = _seed;
 		FightLog.NextFolder = _logFolder == "none" ? ""
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
+		// A pilot fight logged to playtests/pilot gets a folder of its own, like the designer's fights.
+		FightLog.NextOwnFolder = _logFolder == null && _pilotId != null;
 		FightLog.NextPlayer = "scenario";
 		FightLog.NextFileName = _logName;
 		if (_variant != null && _variant != "base")

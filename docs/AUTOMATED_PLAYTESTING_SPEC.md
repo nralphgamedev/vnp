@@ -55,7 +55,7 @@ The result screen shows the damage breakdown, drones lost and shots blocked, as 
   - a timeline sampled every second: time, health, level, experience, drones, enemies alive by type, and kills.
   - frame times: the game logic's average, 95th percentile and worst, with the most enemies and drones alive at once.
 - The game keeps the statistics, as totals and events. Sampling the timeline, timing frames and writing the file are the editor-only log writer's job.
-- **The designer's playtests** in the editor write a fight log automatically, to `playtests/human/`. The result screen notes where it was saved. These logs are how pilots are calibrated (see Pilots). They also record the designer's movement input over time at a low rate, as the start of the data any future learning from human play would need. Pilot fights record their pilot's movement the same way, so the two can be compared.
+- **The designer's playtests** in the editor write a fight log automatically, to `playtests/human/`, each fight in a folder of its own with its run review maps beside the log (see the run review spec). The result screen notes where it was saved. These logs are how pilots are calibrated (see Pilots). They also record the designer's movement input over time at a low rate, as the start of the data any future learning from human play would need. Pilot fights record their pilot's movement the same way, so the two can be compared.
 - **Batch fights** write their logs into the batch's folder.
 - The format is JSON, one file per fight, readable by scripts.
 - Writing fight logs is a testing aid: it exists only in the editor, like the cheats. An exported game writes no logs.
