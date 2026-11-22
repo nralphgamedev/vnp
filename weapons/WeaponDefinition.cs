@@ -23,4 +23,8 @@ public partial class WeaponDefinition : Resource
 
 	/// <summary>Colour of the weapon's shots or shapes.</summary>
 	[Export] public Color Color;
+
+	/// <summary>How a pilot plays to this weapon's strengths, usually pilot_profile.tres in the weapon's folder.
+	/// None leaves the pilot to fight its own way. See pilots/WeaponPilotProfile.cs.</summary>
+	[Export] public WeaponPilotProfile PilotProfile;
 }

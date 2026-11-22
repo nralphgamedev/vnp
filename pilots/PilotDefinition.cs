@@ -141,6 +141,15 @@ public partial class PilotDefinition : Resource
 	/// as much as material beside it, both in whether it returns and where to. Very high returns by mass alone.</summary>
 	[Export] public float ReturnHalfDistance;
 
+	/// <summary>From 0 to 1: how well it plays to its weapons' strengths, as their pilot profiles describe. 0
+	/// ignores the profiles and fights its own way; 1 follows them fully.</summary>
+	[ExportGroup("Weapons")]
+	[Export(PropertyHint.Range, "0,1,0.01")] public float TacticSkill;
+
+	/// <summary>How strongly it steers through its weapons' lure spots, such as its mines, when enemies are
+	/// chasing it, at full TacticSkill and a profile's full LeadChasers.</summary>
+	[Export] public float LeadWeight;
+
 	/// <summary>Randomness added to every upgrade's score when it chooses, on top of its build's. Lower is more
 	/// consistent.</summary>
 	[ExportGroup("Choosing upgrades")]

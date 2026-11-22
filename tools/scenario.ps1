@@ -7,8 +7,10 @@ Builds the game, then runs one scenario fight and prints what happens. It runs h
 given, so add -Window to watch it. Every argument after the switches goes to the harness; ScenarioRunner.cs
 lists them all. The most useful:
 
-  pilot=average          a pilot flies the VNP (skill levels in pilots/skill_levels/)
-  build=greedy           its build (pilots/builds/): greedy or random
+  pilot=average          a pilot flies the VNP: novice, average or expert (pilots/skill_levels/)
+  build=greedy           its build (pilots/builds/): greedy, random, designer, drone_swarm, weapon_focus,
+                         area or tank
+  variant=NAME           apply a tuning variant from tools/variants/, such as gentle_levels
   seed=N                 repeat a fight exactly
   weapon=ID              the starting VNP Weapon, such as scatter_shot
   drone_weapon=ID        the starting Drone Weapon: projectile, beam or ram

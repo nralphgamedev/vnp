@@ -1,0 +1,4 @@
+# A gentler experience curve: each level needs less, so later levels come sooner.
+# The base tuning is 150 for the first level, then 75 more for each level after.
+levels.ExperienceForFirstLevel = 120
+levels.ExperienceIncreasePerLevel = 50

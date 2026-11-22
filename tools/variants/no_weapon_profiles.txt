@@ -1,0 +1,4 @@
+# Pilots ignore their weapons' pilot profiles and fight their own way, to measure what the profiles do.
+pilots/skill_levels/average.tres:TacticSkill = 0
+pilots/skill_levels/novice.tres:TacticSkill = 0
+pilots/skill_levels/expert.tres:TacticSkill = 0

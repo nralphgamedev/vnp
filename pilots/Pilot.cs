@@ -142,6 +142,7 @@ public partial class Pilot : Node, IVnpController
 		}
 
 		float pressure = threat / Mathf.Max(0.01f, Affordable());
+		BlendWeaponProfiles(out float preferredDistance, out float keepMoving, out float leadChasers);
 		// Back off more and more as the fight stops being affordable, fully once it is well past.
 		float backOff = Mathf.Clamp((pressure - 0.75f) / 0.5f, 0f, 1f);
 		float engage = 1f - backOff;
@@ -156,7 +157,11 @@ public partial class Pilot : Node, IVnpController
 		bool fighting = nearest >= 0 && engage > 0f;
 		float fightWeight = Skill.FightWeight * Mathf.Lerp(Skill.FightWithoutDrones, 1f, droneReliance);
 		if (fighting)
-			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance) * fightWeight * engage;
+			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance, preferredDistance) * fightWeight * engage;
+
+		// Weapons that leave spots behind, such as mines, want the enemies chasing it led across them.
+		if (leadChasers > 0.01f && away != Vector2.Zero && nearestDistance < Skill.ThreatRange)
+			want += LeadAcrossSpots(me, away.Normalized()) * Skill.LeadWeight * leadChasers;
 
 		// Harvesting: toward the best material, and holding still beside it once the beam reaches. It carries on
 		// while backing off, since material near enemies is already scored down: a hurt pilot keeps harvesting
@@ -183,6 +188,15 @@ public partial class Pilot : Node, IVnpController
 		if (committing)
 			want = harvest + dodge * Skill.DodgeWeight;
 
+		// Weapons that only work while moving, such as Mine Layer, want it circling the rock it harvests rather
+		// than holding still beside it.
+		bool circling = false;
+		if (holding && keepMoving > 0.01f && want.LengthSquared() < 0.01f)
+		{
+			want = CircleTarget(me);
+			circling = want != Vector2.Zero;
+		}
+
 		bool idle = want.LengthSquared() < 0.01f && !holding && !fighting;
 		if (idle)
 			want = WhenIdle(me, awareness);
@@ -204,8 +218,11 @@ public partial class Pilot : Node, IVnpController
 			// ahead and enemies behind, left it crawling: below 80% of top speed for two-thirds of a fight.
 			bool arriving = harvest != Vector2.Zero && (committing || (!fighting && backOff <= 0f && dodge == Vector2.Zero));
 			const float ClearDirection = 0.25f;
-			float speed = arriving
-				? harvest.Length()
+			// Circling a rock goes slowly, just fast enough for weapons that need movement (Mine Layer drops mines
+			// above 3 units a second), so the beam stays on the rock. Faster circling, at up to 45% of top speed,
+			// cost about a tenth of the fight experience by 2:00 in a batch.
+			float speed = circling ? CircleSpeed
+				: arriving ? harvest.Length()
 				: Mathf.Min(1f, want.Length() / ClearDirection);
 			float wander = Mathf.DegToRad(Skill.WanderDegrees);
 			want = want.Normalized().Rotated(Rng.Range(-wander, wander)) * speed;
@@ -238,7 +255,108 @@ public partial class Pilot : Node, IVnpController
 			$" | {fight} | {doing}" + (dodge != Vector2.Zero ? " | dodging" : "") +
 			$" | drones {_drones.Count} (reliance {droneReliance:0.00}) | drone eaters on screen {drainers}" +
 			(drainers > 0 ? $", nearest edge {nearestDrainer:0.0}" : "") +
-			$" | health {_vnp.Health:0} | stick {want.Length():0.00}";
+			$" | health {_vnp.Health:0} | stick {want.Length():0.00}" +
+			$" | weapons: distance {_lastProfile.Distance:0}, keep moving {_lastProfile.KeepMoving:0.00}, lead {_lastProfile.Lead:0.00}";
+	}
+
+	/// <summary>
+	/// Blends the pilot profiles of the VNP Weapons it has equipped, each weighted by how invested it is in that
+	/// weapon: 1 for having it, plus 1 for each upgrade taken for it. Then scales the blend by TacticSkill: the
+	/// preferred distance moves from its own toward the weapons', and the other behaviors grow from nothing.
+	/// </summary>
+	private void BlendWeaponProfiles(out float preferredDistance, out float keepMoving, out float leadChasers)
+	{
+		float distanceSum = 0f, distanceWeight = 0f, keepSum = 0f, leadSum = 0f, total = 0f;
+		foreach (VnpWeapon weapon in _fight.Weapons)
+		{
+			WeaponPilotProfile profile = weapon.Definition.PilotProfile;
+			float investment = 1f;
+			foreach (UpgradeDefinition upgrade in _fight.TakenUpgrades)
+			{
+				if (upgrade.Weapon != null && upgrade.Weapon.Id == weapon.Definition.Id
+					&& upgrade.Effect != UpgradeEffect.EquipWeapon)
+					investment += 1f;
+			}
+			total += investment;
+			if (profile == null)
+				continue;
+			if (profile.PreferredDistance > 0f)
+			{
+				distanceSum += profile.PreferredDistance * investment;
+				distanceWeight += investment;
+			}
+			keepSum += profile.KeepMoving * investment;
+			leadSum += profile.LeadChasers * investment;
+		}
+		float tactic = Mathf.Clamp(Skill.TacticSkill, 0f, 1f);
+		float weaponsDistance = distanceWeight > 0f ? distanceSum / distanceWeight : Skill.PreferredEnemyDistance;
+		preferredDistance = Mathf.Lerp(Skill.PreferredEnemyDistance, weaponsDistance, tactic);
+		keepMoving = total > 0f ? keepSum / total * tactic : 0f;
+		leadChasers = total > 0f ? leadSum / total * tactic : 0f;
+		_lastProfile = (preferredDistance, keepMoving, leadChasers);
+	}
+
+	private (float Distance, float KeepMoving, float Lead) _lastProfile;
+
+	// Stick strength while circling a rock: 0.2 of top speed, about 4 units a second at the VNP's base speed.
+	private const float CircleSpeed = 0.2f;
+	private readonly List<Vector2> _lureSpots = new();
+
+	/// <summary>
+	/// Toward one of its weapons' lure spots, such as a mine, that lies ahead as it moves away from the enemies
+	/// chasing it, so they follow it across. Nearer spots, and ones more squarely ahead, are better. Nothing if
+	/// no spot lies ahead.
+	/// </summary>
+	private Vector2 LeadAcrossSpots(Vector2 me, Vector2 awayFromEnemies)
+	{
+		_lureSpots.Clear();
+		foreach (VnpWeapon weapon in _fight.Weapons)
+		{
+			if (weapon is IPilotLure lure)
+				lure.CollectLureSpots(_lureSpots);
+		}
+		Vector2 best = Vector2.Zero;
+		float bestScore = 0f;
+		foreach (Vector2 spot in _lureSpots)
+		{
+			Vector2 toSpot = spot - me;
+			float distance = toSpot.Length();
+			if (distance < 2f || distance > 30f)
+				continue; // On top of it already, or too far to lead anything across.
+			float ahead = (toSpot / distance).Dot(awayFromEnemies);
+			if (ahead < 0.2f)
+				continue;
+			float score = ahead / (1f + distance / 15f);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = toSpot / distance;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>Around the rock it is harvesting, staying within beam reach, instead of holding still.</summary>
+	private Vector2 CircleTarget(Vector2 me)
+	{
+		Harvestables harvestables = _fight.Harvestables;
+		int count = harvestables.CollectNear(me, harvestables.BeamRange + 20f, _material);
+		for (int c = 0; c < count; c++)
+		{
+			int m = _material[c];
+			if (harvestables.IdOf(m) != _harvestTargetId)
+				continue;
+			Vector2 fromRock = me - harvestables.PositionOf(m);
+			float distance = fromRock.Length();
+			if (distance < 0.01f)
+				return Vector2.Right;
+			Vector2 outward = fromRock / distance;
+			// Keep about half the beam's reach from its edge: drift in or out toward that while going round.
+			float wanted = harvestables.RadiusOf(m) + harvestables.BeamRange * 0.5f;
+			float radial = Mathf.Clamp((wanted - distance) / 3f, -1f, 1f);
+			return (new Vector2(-outward.Y, outward.X) * _orbitSign + outward * radial).Normalized();
+		}
+		return Vector2.Zero;
 	}
 
 	/// <summary>The threat it can afford right now: more with health, drones and level, less with caution.</summary>
@@ -276,11 +394,10 @@ public partial class Pilot : Node, IVnpController
 	}
 
 	/// <summary>Keep the preferred distance from an enemy: close in from farther, edge away from closer, circling it.</summary>
-	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance)
+	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance, float preferred)
 	{
 		Vector2 toEnemy = enemy - me;
 		Vector2 direction = toEnemy.LengthSquared() > 0.0001f ? toEnemy.Normalized() : Vector2.Up;
-		float preferred = Skill.PreferredEnemyDistance;
 		float radial = Mathf.Clamp((distance - preferred) / (preferred * 0.5f), -1f, 1f);
 		Vector2 circle = new Vector2(-direction.Y, direction.X) * _orbitSign * 0.6f;
 		return direction * radial + circle;

@@ -41,6 +41,7 @@ using System.Reflection;
 ///   maxtime=SECONDS    stop the fight at this fight time, counted from its start, and log it as "capped"
 ///                      (it survived to the cap). Batches use it to stop endless runs.
 ///   logname=NAME       the fight log's file name, without .json, in place of its start time and seed
+///   variant=NAME       apply the tuning variant tools/variants/NAME.txt before the fight starts (see TuningVariant)
 ///   mute=yes           silence all sound, as batches do whenever they run more than one fight
 ///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
 ///                      Headless runs, and runs taking a screenshot, always quit when finished.
@@ -59,6 +60,7 @@ public partial class ScenarioRunner : Node
 	// Level-ups already printed, and rerolls already printed for the latest one.
 	private int _levelUpsPrinted;
 	private double _nextReport = 30.0;
+	private double _lastStatusTime = -1;
 	private int _rerollsPrinted;
 	private bool _invulnerable;
 	private string _shotPath;
@@ -78,6 +80,7 @@ public partial class ScenarioRunner : Node
 	private double _maxTime = -1;
 	private string _logName;
 	private bool _mute;
+	private string _variant;
 	private bool _capped;
 	private float _explainFrom = -1f;
 	private float _explainTo = -1f;
@@ -99,6 +102,12 @@ public partial class ScenarioRunner : Node
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		FightLog.NextPlayer = "scenario";
 		FightLog.NextFileName = _logName;
+		if (_variant != null && _variant != "base")
+		{
+			// Before the fight is made, so everything in it reads the changed values.
+			FightLog.NextVariant = _variant;
+			FightLog.NextVariantText = TuningVariant.Apply(_variant);
+		}
 		if (_mute)
 		{
 			AudioServer.SetBusMute(AudioServer.GetBusIndex("Master"), true);
@@ -133,6 +142,7 @@ public partial class ScenarioRunner : Node
 				case "maxtime": _maxTime = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture); break;
 				case "logname": _logName = value; break;
 				case "mute": _mute = value != "no"; break;
+				case "variant": _variant = value; break;
 				case "explain":
 				{
 					string[] window = value.Split('-');
@@ -192,6 +202,7 @@ public partial class ScenarioRunner : Node
 		if (_frame > 2 && _fight.Elapsed >= _nextReport)
 		{
 			PrintStatus();
+			_lastStatusTime = _fight.Elapsed;
 			_nextReport += _report / 60.0;
 		}
 		if (_trace > 0 && _frame % _trace == 0)
@@ -222,7 +233,8 @@ public partial class ScenarioRunner : Node
 
 		if (finishing)
 		{
-			PrintStatus();
+			if (_fight.Elapsed != _lastStatusTime)
+				PrintStatus();
 			PrintTiming();
 			// Watched in a window, it stays open on the final screen until the window is closed: the result screen
 			// if the fight ended, or the fight paused where the frame limit stopped it.

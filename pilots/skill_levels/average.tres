@@ -35,5 +35,7 @@ PreferredEnemyDistance = 12.0
 ExploreUrge = 30.0
 ExploreRethinkSeconds = 5.0
 ReturnHalfDistance = 80.0
+TacticSkill = 0.7
+LeadWeight = 1.5
 PickNoise = 0.3
 UpgradeDecisionSeconds = 0.5

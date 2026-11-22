@@ -7,7 +7,7 @@ using System;
 /// Each lasts a set time; if a new mine would go over the most allowed at once, the oldest one disappears.
 /// Area of effect upgrades widen the blast; damage upgrades make mines and blasts bigger.
 /// </summary>
-public partial class MineLayer : VnpWeapon
+public partial class MineLayer : VnpWeapon, IPilotLure
 {
 	private struct Mine
 	{
@@ -137,5 +137,12 @@ public partial class MineLayer : VnpWeapon
 			_batch.Set(i, mine.Position, MineHeight, mine.Yaw + mine.Age * 0.6f, size, color);
 		}
 		_batch.Commit(_count);
+	}
+
+	/// <summary>Mines are where a pilot should lead the enemies chasing it.</summary>
+	public void CollectLureSpots(System.Collections.Generic.List<Vector2> spots)
+	{
+		for (int i = 0; i < _count; i++)
+			spots.Add(_mines[i].Position);
 	}
 }

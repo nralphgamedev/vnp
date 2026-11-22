@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="ShockwaveDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ShockwaveDefinition" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://weapons/shockwave/ShockwaveDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/shockwave/pilot_profile.tres" id="pilot_profile"]
 
 [resource]
 script = ExtResource("1_script")
@@ -11,3 +12,4 @@ Name = "Shockwave"
 Damage = 10.0
 Cooldown = 2.5
 Color = Color(0.6, 0.65, 1, 1)
+PilotProfile = ExtResource("pilot_profile")

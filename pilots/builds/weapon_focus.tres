@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/BuildDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "weapon_focus"
+Name = "Weapon focus"
+UpgradeWeights = Dictionary[String, float]({})
+VnpWeaponWeight = 2.0
+DroneWeaponWeight = 0.5
+StatsWeight = 0.8
+DronesWeight = 0.5
+FavourOwned = 2.5
+NewWeaponWeight = -1.5
+Randomness = 0.5
+RerollBelow = 2.0

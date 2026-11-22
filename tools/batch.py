@@ -8,9 +8,12 @@ Run it from PowerShell through tools/batch.cmd, or with python from the vnp fold
     tools\\batch.cmd --builds greedy --weapons all     Greedy with every starting VNP Weapon
     tools\\batch.cmd --drone-weapons all --seeds 10    every starting Drone Weapon, 10 seeds each
     tools\\batch.cmd --rendered --seeds 2              watch the fights in a window, one at a time, muted
+    tools\\batch.cmd --variants base,gentle_levels     compare the tuning with a variant, on the same fights
 
-Every combination of pilot, build, starting VNP Weapon and starting Drone Weapon is played on seeds 1 to N, so
-two batches of the same size play the same fights. A fight still going at the endless cap is stopped and counted
+Every combination of pilot, build, starting VNP Weapon, starting Drone Weapon and tuning variant is played on
+seeds 1 to N, so two batches of the same size play the same fights. A tuning variant is a file in tools/variants/
+listing changed tuning values (see scripts/cheats/playtesting/TuningVariant.cs); "base" is the tuning as it is.
+With more than one variant, the report compares them side by side. A fight still going at the endless cap is stopped and counted
 as having survived to the cap. Sizes, the cap and how many fights run at once are in
 scripts/cheats/playtesting/batch_settings.tres.
 
@@ -95,6 +98,8 @@ def main():
                         help='starting VNP Weapons, comma-separated, "all", or "default" for the game\'s own')
     parser.add_argument('--drone-weapons', default='default',
                         help='starting Drone Weapons, comma-separated, "all", or "default" for the game\'s own')
+    parser.add_argument('--variants', default='base',
+                        help='tuning variants from tools/variants/, comma-separated; "base" is the tuning as it is')
     parser.add_argument('--cap', type=float, help='endless cap in seconds of fight time, in place of the setting')
     parser.add_argument('--at-once', type=int, help='fights run at once, in place of the setting')
     parser.add_argument('--rendered', action='store_true',
@@ -123,7 +128,11 @@ def main():
         if not os.path.exists(os.path.join(PROJECT, 'pilots', 'builds', b + '.tres')):
             sys.exit(f'No build {b} in pilots/builds/')
 
-    combos = [(p, b, w, d) for p in pilots for b in builds for w in weapons for d in drone_weapons]
+    variants = [v.strip() for v in args.variants.split(',') if v.strip()] or ['base']
+    for v in variants:
+        if v != 'base' and not os.path.exists(os.path.join(PROJECT, 'tools', 'variants', v + '.txt')):
+            sys.exit(f'No tuning variant {v} in tools/variants/')
+    combos = [(p, b, w, d, v) for v in variants for p in pilots for b in builds for w in weapons for d in drone_weapons]
     fights = [(combo, seed) for combo in combos for seed in range(1, seeds + 1)]
     if args.rendered:
         at_once = args.at_once or int(settings.get('RenderedAtOnce', 1)) or 1
@@ -149,8 +158,8 @@ def main():
         sys.exit('The build failed; fix it first.')
 
     def run(fight):
-        (pilot, build_id, weapon, drone), seed = fight
-        name = f'{pilot}_{build_id}_{weapon}_{drone}_s{seed}'
+        (pilot, build_id, weapon, drone, variant), seed = fight
+        name = f'{variant}_{pilot}_{build_id}_{weapon}_{drone}_s{seed}'
         cmd = [GODOT] + ([] if args.rendered else ['--headless']) + [
             '--path', PROJECT, '--fixed-fps', '60', 'res://scripts/cheats/scenario.tscn', '--',
             f'seed={seed}', f'pilot={pilot}', f'build={build_id}', f'maxtime={cap}',
@@ -164,6 +173,8 @@ def main():
             cmd.append(f'drone_weapon={drone}')
         if mute:
             cmd.append('mute=yes')
+        if variant != 'base':
+            cmd.append(f'variant={variant}')
         started = time.time()
         try:
             result = subprocess.run(cmd, cwd=PROJECT, capture_output=True, text=True, encoding='utf-8',
@@ -178,7 +189,7 @@ def main():
         logged = os.path.exists(os.path.join(folder, 'logs', name + '.json'))
         status = 'ok' if code == 0 and logged and not problems else (
             'timed out' if code == 'timeout' else 'crashed' if code != 0 else 'no log' if not logged else 'errors')
-        return {'name': name, 'pilot': pilot, 'build': build_id, 'weapon': weapon, 'droneWeapon': drone,
+        return {'name': name, 'variant': variant, 'pilot': pilot, 'build': build_id, 'weapon': weapon, 'droneWeapon': drone,
                 'seed': seed, 'status': status, 'exitCode': code, 'problems': problems[:5],
                 'seconds': round(time.time() - started, 1)}
 
@@ -194,7 +205,7 @@ def main():
         'id': batch_id, 'started': stamp, 'seconds': round(time.time() - started, 1),
         'size': args.size if not args.seeds else f'{seeds} seeds', 'seeds': seeds, 'cap': cap,
         'rendered': args.rendered, 'atOnce': at_once, 'pilots': pilots, 'builds': builds,
-        'weapons': weapons, 'droneWeapons': drone_weapons, 'fights': results,
+        'weapons': weapons, 'droneWeapons': drone_weapons, 'variants': variants, 'fights': results,
     }
     with open(os.path.join(folder, 'batch.json'), 'w', encoding='utf-8') as f:
         json.dump(batch, f, indent=1)

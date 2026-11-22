@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/BuildDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "designer"
+Name = "Designer"
+UpgradeWeights = Dictionary[String, float]({"drone_cap": 3.0, "debris_reward": 2.5, "drone_attack_rate": 2.2, "harvest_rate": 1.8, "drone_damage": 1.6, "health": 0.3, "armor": 0.3, "movement_speed": 0.4, "new_drones": 0.4, "ram": 0.3})
+VnpWeaponWeight = 1.2
+DroneWeaponWeight = 0.8
+StatsWeight = 1.0
+DronesWeight = 1.0
+FavourOwned = 0.8
+NewWeaponWeight = 1.5
+Randomness = 0.6
+RerollBelow = 0.0

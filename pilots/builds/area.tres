@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/BuildDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "area"
+Name = "Area"
+UpgradeWeights = Dictionary[String, float]({"shockwave": 3.0, "mine_layer": 3.0, "shockwave_area": 2.5, "mine_layer_area": 2.5, "orbital_shards_area": 2.0, "shockwave_damage": 2.0, "mine_layer_damage": 2.0, "shockwave_cooldown": 2.0, "mine_layer_cooldown": 2.0})
+VnpWeaponWeight = 1.0
+DroneWeaponWeight = 1.0
+StatsWeight = 1.0
+DronesWeight = 1.0
+FavourOwned = 0.5
+NewWeaponWeight = 0.0
+Randomness = 0.5
+RerollBelow = 1.5

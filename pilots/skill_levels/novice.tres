@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="PilotDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/PilotDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "novice"
+Name = "Novice"
+ReactionSeconds = 0.5
+AwarenessRadius = 55.0
+DodgeChance = 0.15
+WanderDegrees = 25.0
+AffordableThreat = 2.5
+ThreatRange = 38.0
+StrengthPerDrone = 0.08
+StrengthPerLevel = 0.1
+Caution = 0.3
+DroneEaterThreat = 1.5
+HarvestWeight = 1.0
+HarvestAtCap = 0.8
+ConcentrationPull = 0.5
+ConcentrationMass = 25.0
+DebrisRewardInfluence = 1.0
+HarvestRateInfluence = 0.5
+HarvestCommitDistance = 8.0
+HarvestDangerWhenBackingOff = 1.0
+FightWeight = 0.8
+FightWithoutDrones = 0.5
+ClusterWeight = 0.25
+DebrisClusterWeight = 0.15
+ClusterRadius = 15.0
+BackOffWeight = 1.5
+DodgeWeight = 1.5
+PreferredEnemyDistance = 12.0
+ExploreUrge = 60.0
+ExploreRethinkSeconds = 5.0
+ReturnHalfDistance = 80.0
+TacticSkill = 0.3
+LeadWeight = 1.5
+PickNoise = 1.0
+UpgradeDecisionSeconds = 0.5

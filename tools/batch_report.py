@@ -64,21 +64,24 @@ def at(log, seconds):
     return None
 
 
-def combo_label(fight):
+def combo_label(fight, show_variant=False):
     parts = [fight['pilot'], fight['build']]
     if fight['weapon'] != 'default':
         parts.append(fight['weapon'])
     if fight['droneWeapon'] != 'default':
         parts.append(fight['droneWeapon'] + ' drones')
-    return ' / '.join(parts)
+    label = ' / '.join(parts)
+    return f'[{fight.get("variant", "base")}] {label}' if show_variant else label
 
 
 def write_report(folder):
     batch, logs = load(folder)
     fights = batch['fights']
+    variants = batch.get('variants', ['base'])
+    several_variants = len(variants) > 1
     by_combo = {}
     for fight in fights:
-        by_combo.setdefault(combo_label(fight), []).append(fight)
+        by_combo.setdefault(combo_label(fight, several_variants), []).append(fight)
     limit = None
     out = []
 
@@ -100,11 +103,59 @@ def write_report(folder):
     out.append(f'- **Endless cap:** {clock(batch["cap"])} of fight time; a fight still going then counts as '
                f'having survived to the cap.')
     out.append(f'- **Game version:** {", ".join(versions) or "-"}. **Tuning fingerprint:** {", ".join(fingerprints) or "-"}.')
-    if len(fingerprints) > 1:
+    if several_variants:
+        out.append(f'- **Tuning variants compared:** {", ".join(variants)} (from tools/variants/; base is the tuning '
+                   f'as it is). Each tuning fingerprint stands for one variant.')
+    elif len(fingerprints) > 1:
         out.append('- **Warning:** these fights used different tuning, so their numbers are not comparable.')
     out.append('')
     out.append('Times are fight time. The on-screen clock counts down from the time limit, so fight time 1:30 is '
                'clock 3:30.')
+
+    # ───────────── Comparison of variants ─────────────
+    if several_variants:
+        out.append('\n## Comparison of tuning variants\n')
+        out.append(f'The same combinations on the same seeds, with each tuning variant. Differences are against '
+                   f'{variants[0]}. With few fights, small differences can be chance: a difference of a few wins in '
+                   f'{batch["seeds"]} fights is within chance.\n')
+        groups = {}
+        for fight in fights:
+            groups.setdefault(combo_label(fight), {}).setdefault(fight.get('variant', 'base'), []).append(fight)
+
+        def summary(group):
+            ls = logs_of(group)
+            wins = [l for l in ls if l['outcome']['killTargetTime'] is not None]
+            at3 = [s['level'] for s in (at(l, 180) for l in ls) if s is not None and s['health'] > 0]
+            return {
+                'fights': len(ls),
+                'win rate': 100 * len(wins) / len(ls) if ls else None,
+                'time to win': median([l['outcome']['killTargetTime'] for l in wins]),
+                'level at 3:00': mean(at3),
+                'alive at 5:00': sum(1 for l in ls if (s := at(l, 300)) is not None and s['health'] > 0),
+                'final level': mean([l['outcome']['level'] for l in ls]),
+                'time destroyed': median([l['outcome']['time'] for l in ls if l['outcome']['result'] == 'loss']),
+            }
+
+        def diff(value, base, fmt):
+            if value is None or base is None:
+                return ''
+            delta = value - base
+            return '' if abs(delta) < 1e-9 else f' ({"+" if delta > 0 else "-"}{fmt(abs(delta))})'
+
+        rows = []
+        for label, by_variant in groups.items():
+            base = summary(by_variant.get(variants[0], []))
+            for v in variants:
+                s = summary(by_variant.get(v, []))
+                rows.append([label, v, s['fights'],
+                             f'{num(s["win rate"], 0)}%' + (diff(s['win rate'], base['win rate'], lambda d: f'{d:.0f}') if v != variants[0] else ''),
+                             clock(s['time to win']) + (diff(s['time to win'], base['time to win'], clock) if v != variants[0] else ''),
+                             num(s['level at 3:00']) + (diff(s['level at 3:00'], base['level at 3:00'], lambda d: f'{d:.1f}') if v != variants[0] else ''),
+                             f'{s["alive at 5:00"]} of {s["fights"]}',
+                             num(s['final level']) + (diff(s['final level'], base['final level'], lambda d: f'{d:.1f}') if v != variants[0] else ''),
+                             clock(s['time destroyed'])])
+        out.append(table(['Combination', 'Variant', 'Fights', 'Win rate', 'Median time to win', 'Level at 3:00',
+                          'Alive at 5:00', 'Final level', 'Median time destroyed'], rows))
 
     # ───────────── Outcomes ─────────────
     out.append('\n## Outcomes\n')
@@ -239,6 +290,8 @@ def write_report(folder):
             parts.append(f'weapon={fight["weapon"]}')
         if fight['droneWeapon'] != 'default':
             parts.append(f'drone_weapon={fight["droneWeapon"]}')
+        if fight.get('variant', 'base') != 'base':
+            parts.append(f'variant={fight["variant"]}')
         parts.append(f'maxtime={batch["cap"]:g}')
         parts.append(f'frames={int(batch["cap"] * 60 * 3)}')
         return '`' + ' '.join(parts) + '`'

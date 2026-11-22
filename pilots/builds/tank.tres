@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/BuildDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "tank"
+Name = "Tank"
+UpgradeWeights = Dictionary[String, float]({"health": 3.0, "armor": 3.0, "orbital_shards": 2.5, "orbital_shards_blocking": 3.0, "orbital_shards_count": 1.5, "movement_speed": 1.2})
+VnpWeaponWeight = 1.0
+DroneWeaponWeight = 1.0
+StatsWeight = 1.5
+DronesWeight = 1.0
+FavourOwned = 0.5
+NewWeaponWeight = 0.0
+Randomness = 0.5
+RerollBelow = 1.5

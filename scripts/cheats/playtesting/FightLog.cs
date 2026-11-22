@@ -34,6 +34,11 @@ public partial class FightLog : Node
 	/// each other.</summary>
 	public static string NextFileName;
 
+	/// <summary>For the next fight only: the tuning variant applied to it, and the variant's text, which goes into
+	/// the tuning fingerprint so a variant's fights are never mistaken for the base tuning's.</summary>
+	public static string NextVariant;
+	public static string NextVariantText;
+
 	public static FightLogSettings Settings => _settings ??= LoadSettings();
 
 	private static FightLogSettings _settings;
@@ -45,6 +50,8 @@ public partial class FightLog : Node
 	private string _player;
 	private string _path;
 	private string _fileName;
+	private string _variant;
+	private string _variantText;
 	private readonly DateTime _startedAt = DateTime.Now;
 	private double _nextSample;
 	private double _nextInput;
@@ -82,12 +89,14 @@ public partial class FightLog : Node
 		string player = NextPlayer ?? "designer";
 		string fileName = NextFileName;
 		NextFileName = null;
+		string variant = NextVariant, variantText = NextVariantText;
+		NextVariant = NextVariantText = null;
 		NextFolder = null;
 		NextPlayer = null;
 		if (!Settings.WriteLogs || string.IsNullOrEmpty(folder))
 			return null;
 
-		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player, _fileName = fileName };
+		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player, _fileName = fileName, _variant = variant, _variantText = variantText };
 		// Before everything else in the fight, and the log after everything, to time the fight's update.
 		fight.AddChild(new FrameStart { Name = "FightLogFrameStart", Log = log, ProcessPriority = int.MinValue });
 		log.ProcessPriority = int.MaxValue;
@@ -235,8 +244,8 @@ public partial class FightLog : Node
 				["build"] = _fight.Pilot?.Build.Id,
 				["startingWeapons"] = _startingWeapons ?? new List<string>(),
 				["startingDroneWeapon"] = _startingDroneWeapon,
-				["tuningVariant"] = null,
-				["tuningFingerprint"] = TuningFingerprint(),
+				["tuningVariant"] = _variant,
+				["tuningFingerprint"] = _variantText == null ? TuningFingerprint() : WithVariant(TuningFingerprint(), _variantText),
 				["gitVersion"] = GitVersion(),
 				["startedAt"] = _startedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
 				["cheats"] = new Dictionary<string, object>
@@ -351,6 +360,13 @@ public partial class FightLog : Node
 		hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 		_tuningFingerprint = Convert.ToHexString(hash.Hash)[..12].ToLowerInvariant();
 		return _tuningFingerprint;
+	}
+
+	/// <summary>The tuning fingerprint with a variant's changes folded in.</summary>
+	private static string WithVariant(string fingerprint, string variantText)
+	{
+		byte[] bytes = Encoding.UTF8.GetBytes(fingerprint + "\n" + variantText.Replace("\r", ""));
+		return Convert.ToHexString(SHA256.HashData(bytes))[..12].ToLowerInvariant();
 	}
 
 	/// <summary>The git commit the game was built from, marked if there were uncommitted changes.</summary>

@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="ScatterShotDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ScatterShotDefinition" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://weapons/scatter_shot/ScatterShotDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://weapons/scatter_shot/pilot_profile.tres" id="pilot_profile"]
 
 [resource]
 script = ExtResource("1_script")
@@ -16,3 +17,4 @@ Name = "Scatter Shot"
 Damage = 5.0
 Cooldown = 1.1
 Color = Color(1, 0.92, 0.45, 1)
+PilotProfile = ExtResource("pilot_profile")
