@@ -177,3 +177,8 @@ Three fights in a row, with Level Up Rewards between them, is planned as the nex
 - Orbital Shards harvesting works, and its conversion rate can be tuned.
 - The frame rate holds in a late fight with many Goos.
 - Every new placeholder asset is in `res://placeholder/` and listed in `PLACEHOLDERS.md`.
+
+**The designer's verdict, after playing every stage:** the phase is done.
+
+- **The Goo against drones:** it plays differently. The Goos themselves don't feel threatening to the VNP at all, as the GDD intends, but approaching a larger group of them takes special care, since that is what gets the drones killed.
+- **Orbital Shards harvesting:** it feels fine at its current conversion rate, for now.
