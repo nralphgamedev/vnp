@@ -143,6 +143,9 @@ public partial class DroneSwarm : Node3D
 	}
 
 	private Drone[] _drones = new Drone[64];
+
+	/// <summary>Where a drone is, for testing tools such as the run review's maps.</summary>
+	public Vector2 PositionOf(int index) => _drones[index].Position;
 	private int _lastId;
 	private Wreck[] _wrecks = new Wreck[16];
 	private int _wreckCount;

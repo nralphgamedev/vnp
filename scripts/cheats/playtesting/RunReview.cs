@@ -31,6 +31,9 @@ public class RunReview
 
 	public readonly List<Detector> Detectors = new();
 
+	/// <summary>Told when a detector fires, so it can save a strip of the moment.</summary>
+	public ReviewRecorder Recorder;
+
 	private readonly Fight _fight;
 	private readonly ReviewSettings _settings;
 	private readonly int[] _enemies = new int[1024];
@@ -205,6 +208,7 @@ public class RunReview
 				detector.Fired = true;
 				var moment = new Moment(Math.Round(now, 2), detail());
 				detector.Moments.Add(moment);
+				Recorder?.Flag(detector.Id, now);
 				GD.Print($"REVIEW: {detector.Name} at {Ui.Clock(now)} (clock {OnScreenClock(now)}): {moment.Detail}");
 			}
 			return;

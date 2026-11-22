@@ -10,6 +10,7 @@ upgrades, and performance, each by combination of pilot, build and starting weap
 Editor-only testing tool: nothing here is part of the game.
 """
 import json
+import re
 import os
 import statistics
 import sys
@@ -72,6 +73,83 @@ def combo_label(fight, show_variant=False):
         parts.append(fight['droneWeapon'] + ' drones')
     label = ' / '.join(parts)
     return f'[{fight.get("variant", "base")}] {label}' if show_variant else label
+
+
+def review_setting(name, default):
+    """A value from the run review settings, scripts/cheats/playtesting/review_settings.tres."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'scripts', 'cheats', 'playtesting', 'review_settings.tres')
+    try:
+        m = re.search(rf'^{name} = ([\d.]+)', open(path, encoding='utf-8').read(), re.M)
+        return type(default)(float(m.group(1))) if m else default
+    except OSError:
+        return default
+
+
+def choose_maps(batch, logs):
+    """Which fights get an overview map, and which of their strips are drawn: for each combination its best,
+    worst and a typical fight; for each detector a few strips from different fights. Returns
+    {fight name: (draw its overview, set of strip indices)}."""
+    show_variant = len(batch.get('variants', ['base'])) > 1
+    by_combo = {}
+    for fight in batch['fights']:
+        if fight['name'] in logs and logs[fight['name']].get('maps'):
+            by_combo.setdefault(combo_label(fight, show_variant), []).append(fight)
+    chosen = {}
+    per_combo = review_setting('OverviewsPerCombination', 3)
+    for group in by_combo.values():
+        for name, _ in overview_picks(group, logs)[:per_combo]:
+            chosen.setdefault(name, [False, set()])[0] = True
+    per_detector = review_setting('StripsPerDetector', 3)
+    detector_ids = set()
+    for log in logs.values():
+        for strip in (log.get('maps') or {}).get('strips', []):
+            detector_ids.add(strip['reason'])
+    for d in sorted(detector_ids):
+        picked = 0
+        for fight in batch['fights']:
+            log = logs.get(fight['name'])
+            if not log or not log.get('maps'):
+                continue
+            strips = log['maps']['strips']
+            index = next((i for i, s in enumerate(strips) if s['reason'] == d), None)
+            if index is None:
+                continue
+            chosen.setdefault(fight['name'], [False, set()])[1].add(index)
+            picked += 1
+            if picked >= per_detector:
+                break
+    return {name: (overview, strips) for name, (overview, strips) in chosen.items()}
+
+
+def overview_picks(group, logs):
+    """A combination's best, worst and a typical fight (median final level), as (name, why)."""
+    pairs = [(f, logs[f['name']]) for f in group if f['name'] in logs]
+    if not pairs:
+        return []
+
+    def goodness(pair):
+        o = pair[1]['outcome']
+        return (1, -o['killTargetTime']) if o['killTargetTime'] is not None else (0, o['time'])
+    best = max(pairs, key=goodness)
+    worst = min(pairs, key=lambda pair: (pair[1]['outcome']['result'] != 'loss', pair[1]['outcome']['time']))
+    by_level = sorted(pairs, key=lambda pair: pair[1]['outcome']['level'])
+    typical = by_level[len(by_level) // 2]
+    picks = []
+    for pair, why in ((best, 'best'), (worst, 'worst'), (typical, 'typical')):
+        if pair[0]['name'] not in [p[0] for p in picks]:
+            picks.append((pair[0]['name'], why))
+    return picks
+
+
+def map_file(folder, name, kind, strip=None):
+    """The relative path of a drawn map, or None if it wasn't drawn."""
+    if kind == 'overview':
+        file = f'{name}_overview.png'
+    else:
+        index, s = strip
+        file = f'{name}_strip{index}_{s["reason"]}_{int(s["time"])}s.png'
+    return f'maps/{file}' if os.path.exists(os.path.join(folder, 'maps', file)) else None
 
 
 def write_report(folder):
@@ -384,12 +462,27 @@ def write_report(folder):
                 if not moments:
                     continue
                 m = moments[0]
+                strips = (log.get('maps') or {}).get('strips', [])
+                index = next((i for i, s in enumerate(strips) if s['reason'] == d), None)
+                drawn = map_file(folder, f['name'], 'strip', (index, strips[index])) if index is not None else None
                 rows.append([names[d], f'{clock(m["time"])} (clock {m["clock"]})', f'seed {f["seed"]}, {combo_label(f)}',
-                             m['detail'], watch_command(f)])
+                             m['detail'], f'[strip]({drawn})' if drawn else '-', watch_command(f)])
                 picked += 1
                 if picked >= 3:
                     break
-        out.append(table(['Detector', 'When', 'Fight', 'What it saw', 'Watch it'], rows) if rows else 'None fired.')
+        out.append(table(['Detector', 'When', 'Fight', 'What it saw', 'Map', 'Watch it'], rows) if rows else 'None fired.')
+
+        out.append('\n### Overview maps\n')
+        out.append('The whole of a few fights per combination, each on one map: the VNP\'s path coloured by what it was '
+                   'doing, the events along it, and health, drones, level and speed over time.\n')
+        rows = []
+        for label, group in by_combo.items():
+            for name, why in overview_picks(group, logs):
+                drawn = map_file(folder, name, 'overview')
+                if drawn:
+                    seed = next(f['seed'] for f in group if f['name'] == name)
+                    rows.append([label, why, f'seed {seed}: {describe(logs[name])}', f'[overview]({drawn})'])
+        out.append(table(['Combination', '', 'Fight', 'Map'], rows) if rows else 'No overview maps were drawn.')
 
     # ───────────── Performance ─────────────
     out.append('\n## Performance\n')

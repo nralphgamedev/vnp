@@ -225,6 +225,25 @@ def main():
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import batch_report
+    # The run review's maps: overview maps of a few fights per combination and strips of a few flagged moments
+    # per detector, drawn in one run of the game's map drawer.
+    logs_by_name = batch_report.load(folder)[1]
+    chosen = batch_report.choose_maps(batch, logs_by_name)
+    if chosen:
+        args = []
+        for name, (overview, strips) in chosen.items():
+            picks = ','.join(str(i) for i in sorted(strips)) if strips else 'none'
+            args.append(f'log={os.path.join(folder, "logs", name + ".json")}@{picks}')
+        overview_names = {n for n, (o, _) in chosen.items() if o}
+        # Overviews and strips go in one run per kind, since the drawer's overview switch applies to all its logs.
+        for with_overview in (True, False):
+            group = [a for a, n in zip(args, chosen) if (n in overview_names) == with_overview]
+            if not group:
+                continue
+            cmd = [GODOT, '--headless', '--path', PROJECT, 'res://scripts/cheats/playtesting/draw_maps.tscn', '--',
+                   f'out={os.path.join(folder, "maps")}'] + ([] if with_overview else ['overview=no']) + group
+            drawn = subprocess.run(cmd, cwd=PROJECT, capture_output=True, text=True, encoding='utf-8', errors='replace')
+            print(f'Drew {drawn.stdout.count("MAP: ")} maps.')
     report = batch_report.write_report(folder)
 
     failed = [r for r in results if r['status'] != 'ok']

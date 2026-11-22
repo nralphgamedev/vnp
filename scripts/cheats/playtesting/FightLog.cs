@@ -57,6 +57,16 @@ public partial class FightLog : Node
 	private double _nextInput;
 	private bool _recordInput;
 	private RunReview _review;
+	private ReviewRecorder _recorder;
+
+	/// <summary>Fight times at which the next fight saves strips for strip maps, as well as when detectors fire.
+	/// Set by the scenario harness's strip= option.</summary>
+	public static List<double> NextStripTimes;
+
+	/// <summary>Draw the next fight's run review maps when its log is written, into a maps folder beside it.
+	/// The designer's fights always are. Set by the scenario harness's maps=yes option.</summary>
+	public static bool NextDrawMaps;
+	private bool _drawMaps;
 	private List<string> _startingWeapons;
 	private string _startingDroneWeapon;
 	private readonly List<Dictionary<string, object>> _timeline = new();
@@ -105,9 +115,34 @@ public partial class FightLog : Node
 		// pilot's is compared with it.
 		log._recordInput = true;
 		// The run review's detectors watch every fight, the designer's and pilots' alike.
-		log._review = new RunReview(fight, LoadReviewSettings());
+		ReviewSettings reviewSettings = LoadReviewSettings();
+		log._recorder = new ReviewRecorder(fight, reviewSettings);
+		if (NextStripTimes != null)
+			log._recorder.ExtraStripTimes.AddRange(NextStripTimes);
+		NextStripTimes = null;
+		log._drawMaps = NextDrawMaps || player == "designer";
+		NextDrawMaps = false;
+		log._review = new RunReview(fight, reviewSettings) { Recorder = log._recorder };
 		fight.AddChild(log);
 		return log;
+	}
+
+	public override void _Ready()
+	{
+		// Build the log once and throw it away, as the fight is set up, so .NET compiles that code now: the first
+		// real write otherwise spent about 70 ms compiling it on the main thread, a hitch at the win. Deferred, so
+		// the fight is ready; it runs even while the starting weapon menu has the game paused.
+		Callable.From(() =>
+		{
+			try
+			{
+				Build("warm-up");
+			}
+			catch (Exception)
+			{
+				// Only compiling matters; a log of a fight not yet started may not add up.
+			}
+		}).CallDeferred();
 	}
 
 	public override void _Process(double delta)
@@ -115,6 +150,7 @@ public partial class FightLog : Node
 		// The fight clock only runs while the fight does, so this skips the paused starting weapon menu.
 		double now = _fight.Elapsed;
 		_review?.Update(now);
+		_recorder?.Update(now);
 		// The starting weapons, once they're equipped: by the fight itself, by the starting weapon cheat before
 		// the clock starts, or by the scenario harness a frame in.
 		if (_startingWeapons == null && (_fight.WeaponCount > 0 || now > 1.0))
@@ -204,6 +240,23 @@ public partial class FightLog : Node
 			Sample(_fight.Elapsed);
 			Write("unfinished");
 		}
+		// The fight is going away: let any write still running finish, so the file and maps aren't cut short.
+		WaitForWrites();
+	}
+
+	// Writing the file and drawing the maps happen on a background thread, one write after another, so the
+	// end of a fight doesn't hitch: drawing every map of a long fight took over a second on the main thread.
+	private static System.Threading.Tasks.Task _writing = System.Threading.Tasks.Task.CompletedTask;
+	private static readonly object _writingLock = new();
+
+	/// <summary>Waits for every fight log write still running, such as before quitting.</summary>
+	public static void WaitForWrites()
+	{
+		System.Threading.Tasks.Task writing;
+		lock (_writingLock)
+			writing = _writing;
+		if (!writing.Wait(TimeSpan.FromSeconds(30)))
+			GD.PushError("A fight log was still being written after 30 seconds.");
 	}
 
 	private void Write(string result)
@@ -214,7 +267,38 @@ public partial class FightLog : Node
 			Directory.CreateDirectory(folder);
 			KeepOutOfImport(folder);
 			_path ??= Path.Combine(folder, (_fileName ?? $"{_startedAt:yyyy-MM-dd_HH-mm-ss}_seed{_fight.Seed}") + ".json");
-			File.WriteAllText(_path, JsonSerializer.Serialize(Build(result), new JsonSerializerOptions { WriteIndented = true }));
+			// Gathering the log happens here, on the main thread: Build copies every list that keeps growing, so
+			// it is a fixed picture of the fight as it is now, which an endless run carrying on can't change. The
+			// rest, turning it into text, writing it and drawing its maps, happens in the background. The
+			// designer's logs are indented, to be read by a person; others are compact, since a batch writes
+			// hundreds and scripts read them.
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			Dictionary<string, object> data = Build(result);
+			bool indented = _player == "designer";
+			long gathered = watch.ElapsedMilliseconds;
+			string path = _path, maps = Path.Combine(folder, "maps");
+			bool draw = _drawMaps;
+			// Writing the file and drawing the maps (an overview and strips of flagged moments) work only from that
+			// copy, so they can run in the background without touching the fight.
+			lock (_writingLock)
+			{
+				_writing = _writing.ContinueWith(_ =>
+				{
+					try
+					{
+						var background = System.Diagnostics.Stopwatch.StartNew();
+						File.WriteAllText(path, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = indented }));
+						if (draw)
+							MapDrawer.DrawLog(path, maps, true, null);
+						GD.Print($"FIGHT LOG: {Path.GetFileName(path)}: {gathered} ms on the main thread, " +
+							$"{background.ElapsedMilliseconds} ms writing{(draw ? " and drawing maps" : "")} in the background");
+					}
+					catch (Exception error)
+					{
+						GD.PushError($"Could not write the fight log or its maps: {error.Message}");
+					}
+				}, System.Threading.Tasks.TaskScheduler.Default);
+			}
 		}
 		catch (Exception error)
 		{
@@ -299,7 +383,7 @@ public partial class FightLog : Node
 				{
 					["time"] = Math.Round(l.Time, 1),
 					["level"] = l.Level,
-					["offers"] = l.Offers,
+					["offers"] = l.Offers.Select(o => o.ToList()).ToList(),
 					["rerolls"] = l.Rerolls,
 					["freeRerolls"] = l.FreeRerolls,
 					["taken"] = l.Taken,
@@ -311,10 +395,11 @@ public partial class FightLog : Node
 					["debris"] = Math.Round(stats.ExperienceFromDebris, 1),
 				},
 			},
-			["timeline"] = _timeline,
+			["timeline"] = new List<Dictionary<string, object>>(_timeline),
 			["review"] = _review?.ToLog(_fight.Elapsed),
+			["maps"] = _recorder?.ToLog(),
 			["input"] = _recordInput
-				? new Dictionary<string, object> { ["samplesPerSecond"] = Settings.InputSamplesPerSecond, ["samples"] = _input }
+				? new Dictionary<string, object> { ["samplesPerSecond"] = Settings.InputSamplesPerSecond, ["samples"] = new List<float[]>(_input) }
 				: null,
 			["frames"] = new Dictionary<string, object>
 			{

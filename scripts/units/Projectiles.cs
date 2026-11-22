@@ -25,6 +25,15 @@ public partial class Projectiles : Node3D
 	public int Count { get; private set; }
 
 	private Shot[] _shots = new Shot[256];
+
+	/// <summary>Where a shot in flight is, for testing tools such as the run review's maps.</summary>
+	public Vector2 PositionOf(int index) => _shots[index].Position;
+
+	/// <summary>A shot's velocity on the plane.</summary>
+	public Vector2 VelocityOf(int index) => _shots[index].Velocity;
+
+	/// <summary>Whether a shot was fired by an enemy.</summary>
+	public bool IsEnemyShot(int index) => _shots[index].FromEnemy;
 	private InstanceBatch _batch;
 
 	public override void _Ready()

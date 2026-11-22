@@ -95,7 +95,7 @@ echo "== Headless fight, 30 seconds, with every enemy type"
 # Through the scenario harness: a plain run would sit on the paused starting weapon menu and test nothing.
 # It also writes a fight log, to a folder of its own that is removed afterwards, and checks the log adds up.
 rm -rf playtests/check
-fight="$(run_scenario headless spawn=all:2 invulnerable frames=1800 report=600 seed=1 log=res://playtests/check)"
+fight="$(run_scenario headless spawn=all:2 invulnerable frames=1800 report=600 seed=1 log=res://playtests/check maps=yes strip=20)"
 echo "$fight" | grep -E "^SCENARIO|^t |^TIMING"
 fight_errors="$(echo "$fight" | grep -iE "error|exception" | sort | uniq -c | head -20)"
 if ! echo "$fight" | grep -q "^TIMING"; then
@@ -117,6 +117,14 @@ else
 		fail "the fight log has inconsistencies (see above)"
 	else
 		note "Fight log: consistent ($(echo "$log_check" | grep -o '[0-9]* checks passed'))"
+	fi
+	# The run review's maps: maps=yes draws an overview, and strip=20 asks for at least one strip.
+	overview_png="$(ls playtests/check/maps/*_overview.png 2>/dev/null | head -1)"
+	strip_count="$(ls playtests/check/maps/*_strip*.png 2>/dev/null | wc -l)"
+	if [ -z "$overview_png" ] || [ "$strip_count" -lt 1 ]; then
+		fail "the run review maps were not drawn (overview: ${overview_png:-none}, strips: $strip_count)"
+	else
+		note "Run review maps: an overview and $strip_count strip(s) drawn"
 	fi
 fi
 rm -rf playtests/check

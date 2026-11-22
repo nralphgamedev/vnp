@@ -67,5 +67,25 @@ public partial class ReviewSettings : Resource
 	[ExportGroup("Drones lost in a burst")]
 	[Export] public int BurstDrones = 6;
 	[Export] public float BurstSeconds = 3f;
+
+	/// <summary>How often the track records the VNP's position and what it was doing, in seconds.</summary>
+	[ExportGroup("Maps")]
+	[Export] public float TrackSeconds = 0.25f;
+	/// <summary>The VNP counts as fighting with an enemy this close to it, and as moving away when it also moves
+	/// away from that enemy at MovingAwaySpeed or more.</summary>
+	[Export] public float FightReach = 15f;
+	[Export] public float MovingAwaySpeed = 0.5f;
+	/// <summary>A strip map's pictures: StripSpacing seconds apart, StripBefore of them before the moment and
+	/// StripAfter after, each showing StripView units across around the VNP.</summary>
+	[Export] public float StripSpacing = 1f;
+	[Export] public int StripBefore = 4;
+	[Export] public int StripAfter = 2;
+	[Export] public float StripView = 64f;
+	/// <summary>At most this many strips are saved in one fight's log, so a long fight's log stays small.</summary>
+	[Export] public int MaxStripsPerFight = 24;
+	/// <summary>How many overview maps a batch draws for each combination (its best, worst and a typical
+	/// fight), and how many strips for each detector.</summary>
+	[Export] public int OverviewsPerCombination = 3;
+	[Export] public int StripsPerDetector = 3;
 }
 #endif

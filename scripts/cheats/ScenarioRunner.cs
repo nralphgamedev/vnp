@@ -38,6 +38,10 @@ using System.Reflection;
 ///   explain=FROM-TO    print the pilot's reasoning at each of its decisions between these fight times in
 ///                      seconds, such as explain=110-131: the threat it felt against what it could afford, and
 ///                      what it chose to do. For finding out why it did something odd.
+///   maps=yes           draw the run review maps when the fight log is written: an overview of the fight and a
+///                      strip map of each flagged moment, in a maps folder beside the log
+///   strip=T1,T2        also save strips around these fight times in seconds, such as a moment spotted on an
+///                      overview map; with maps=yes they are drawn too
 ///   maxtime=SECONDS    stop the fight at this fight time, counted from its start, and log it as "capped"
 ///                      (it survived to the cap). Batches use it to stop endless runs.
 ///   logname=NAME       the fight log's file name, without .json, in place of its start time and seed
@@ -141,6 +145,11 @@ public partial class ScenarioRunner : Node
 				case "trace": _trace = Math.Max(1, int.Parse(value)); break;
 				case "close": _close = value != "no"; break;
 				case "maxtime": _maxTime = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture); break;
+				case "maps": FightLog.NextDrawMaps = value == "yes"; break;
+				case "strip":
+					FightLog.NextStripTimes = value.Split(',')
+						.Select(t => double.Parse(t, System.Globalization.CultureInfo.InvariantCulture)).ToList();
+					break;
 				case "logname": _logName = value; break;
 				case "mute": _mute = value != "no"; break;
 				case "variant": _variant = value; break;
@@ -186,6 +195,7 @@ public partial class ScenarioRunner : Node
 		if (_quitting)
 		{
 			// Clean up before quitting, as closing the game's window does (see ShutdownCleanup).
+			FightLog.WaitForWrites();
 			ShutdownCleanup.Run();
 			GetTree().Quit();
 			return;
