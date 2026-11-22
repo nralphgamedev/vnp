@@ -172,7 +172,7 @@ Build one stage at a time, and stop after each so the designer can try it.
 3. **Claude's review of a batch:** the first reviews, reported to the designer, with what was confirmed and any new detectors they suggest.
 4. **Automatic calibration,** with the detector rates among its targets.
 
-Phase 3 resumes after this spec, with its stages 3 and 4. Each stage here is finished when it does what its line describes, the check-stage skill passes, and the designer has tried it.
+All four stages are built. Phase 3 resumed after this spec, with its stages 3 and 4. Each stage here is finished when it does what its line describes, the check-stage skill passes, and the designer has tried it.
 
 ## Out of scope
 

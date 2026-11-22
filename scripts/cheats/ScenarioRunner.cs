@@ -48,6 +48,8 @@ using System.Reflection;
 ///                      (it survived to the cap). Batches use it to stop endless runs.
 ///   logname=NAME       the fight log's file name, without .json, in place of its start time and seed
 ///   variant=NAME       apply the tuning variant tools/variants/NAME.txt before the fight starts (see TuningVariant)
+///   asteroids=ID       the fight's asteroid amount (sparse, normal, rich: tuning/asteroid_amounts/), in place of
+///                      the one picked by its seed
 ///   mute=yes           silence all sound, as batches do whenever they run more than one fight
 ///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
 ///                      Headless runs, and runs taking a screenshot, always quit when finished.
@@ -97,6 +99,7 @@ public partial class ScenarioRunner : Node
 	private int _offerOpenFor;
 	private LevelUpMenu _levelUpMenu;
 	private string _logFolder;
+	private string _asteroidAmount;
 
 	public override void _Ready()
 	{
@@ -104,6 +107,7 @@ public partial class ScenarioRunner : Node
 		ProcessPriority = -100; // Before the fight, so the frame timing covers the whole fight update.
 		ParseArguments();
 		Fight.NextSeed = _seed;
+		Fight.NextAsteroidAmount = _asteroidAmount;
 		FightLog.NextFolder = _logFolder == "none" ? ""
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		// A pilot fight logged to playtests/pilot gets a folder of its own, like the designer's fights.
@@ -155,6 +159,7 @@ public partial class ScenarioRunner : Node
 				case "logname": _logName = value; break;
 				case "mute": _mute = value != "no"; break;
 				case "variant": _variant = value; break;
+				case "asteroids": _asteroidAmount = value; break;
 				case "explain":
 				{
 					string[] window = value.Split('-');

@@ -349,6 +349,7 @@ public partial class FightLog : Node
 				["build"] = _fight.Pilot?.Build.Id,
 				["startingWeapons"] = _startingWeapons ?? new List<string>(),
 				["startingDroneWeapon"] = _startingDroneWeapon,
+				["asteroidAmount"] = _fight.AsteroidAmount?.Id,
 				["tuningVariant"] = _variant,
 				["tuningFingerprint"] = _variantText == null ? TuningFingerprint() : WithVariant(TuningFingerprint(), _variantText),
 				["gitVersion"] = GitVersion(),
@@ -356,6 +357,7 @@ public partial class FightLog : Node
 				["cheats"] = new Dictionary<string, object>
 				{
 					["chooseStartingWeapon"] = InGameCheats.ChoosesStartingWeapon,
+					["asteroidAmountChosen"] = _fight.AsteroidAmountChosen,
 					["freeRerolls"] = stats.LevelUps.Sum(l => l.FreeRerolls),
 				},
 			},

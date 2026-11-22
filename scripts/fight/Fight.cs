@@ -34,6 +34,13 @@ public partial class Fight : Node3D
 	/// </summary>
 	public static int? NextSeed;
 
+	/// <summary>The next fight's asteroid amount, by ID, for the scenario harness and batches. Null picks one by
+	/// the amounts' weights.</summary>
+	public static string NextAsteroidAmount;
+
+	/// <summary>This fight's asteroid amount, picked as it starts. Null if asteroids.tres lists none.</summary>
+	public AsteroidAmountDefinition AsteroidAmount { get; private set; }
+
 	/// <summary>What has happened in this fight so far: damage by source, drones lost, kills, level-ups.</summary>
 	public readonly FightStats Stats = new();
 
@@ -155,7 +162,61 @@ public partial class Fight : Node3D
 		Seed = NextSeed ?? Rng.NewSeed();
 		NextSeed = null;
 		Rng.Seed(Seed);
+		// Before the asteroids are placed, which scale by it.
+		AsteroidAmount = PickAsteroidAmount(Seed, NextAsteroidAmount);
+		NextAsteroidAmount = null;
 	}
+
+	/// <summary>
+	/// The asteroid amount with this ID, or, for none, one picked by the amounts' weights. The pick uses its own
+	/// generator, seeded from the fight's seed, rather than the fight's random numbers: drawing one more number
+	/// from those would have changed every fight, so this way a seed with the Normal amount plays exactly as it
+	/// did before amounts were added, and older batch fights still replay.
+	/// </summary>
+	private static AsteroidAmountDefinition PickAsteroidAmount(int seed, string id)
+	{
+		Godot.Collections.Array<AsteroidAmountDefinition> amounts = Tuning.Asteroids.Amounts;
+		if (amounts == null || amounts.Count == 0)
+			return null;
+		if (id != null)
+		{
+			foreach (AsteroidAmountDefinition amount in amounts)
+			{
+				if (amount != null && amount.Id == id)
+					return amount;
+			}
+			GD.PushError($"No asteroid amount {id} in asteroids.tres; picking one at random.");
+		}
+		float total = 0f;
+		foreach (AsteroidAmountDefinition amount in amounts)
+			total += amount == null ? 0f : Mathf.Max(0f, amount.Weight);
+		if (total <= 0f)
+			return amounts[0];
+		float roll = (float)new System.Random(seed * 7919 + 3).NextDouble() * total;
+		foreach (AsteroidAmountDefinition amount in amounts)
+		{
+			if (amount == null)
+				continue;
+			roll -= Mathf.Max(0f, amount.Weight);
+			if (roll < 0f)
+				return amount;
+		}
+		return amounts[amounts.Count - 1];
+	}
+
+#if TOOLS
+	/// <summary>Playtest cheat, editor only: changes the asteroid amount as the fight starts, placing the
+	/// asteroids again for it. Whether it was chosen this way is recorded in the fight log.</summary>
+	public void ChooseAsteroidAmount(AsteroidAmountDefinition amount)
+	{
+		AsteroidAmount = amount;
+		AsteroidAmountChosen = true;
+		Harvestables.PlaceAgain(amount);
+	}
+
+	/// <summary>Whether the asteroid amount was chosen with the playtest cheat rather than picked.</summary>
+	public bool AsteroidAmountChosen { get; private set; }
+#endif
 
 	public override void _Ready()
 	{

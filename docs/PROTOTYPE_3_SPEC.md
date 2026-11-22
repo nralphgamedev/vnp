@@ -95,7 +95,7 @@ As in the phase 2 spec, this file names each value and where it lives rather tha
 | The Goo's debris mass, and how much each absorbed drone adds to it | the Goo's file |
 | How quickly the Goo grows stronger during the fight and per escalation step | `difficulty.tres`, beside the basic enemy's values |
 | The weight of each enemy type when a group spawns, and in waves | `enemy_spawning.tres` |
-| Each asteroid amount's number of fields and lone asteroids, and its weight | the asteroid tuning |
+| Each asteroid amount's number of fields and lone asteroids (`FieldScale`, `LoneScale`), and its weight | its file in `tuning/asteroid_amounts/`, listed in `asteroids.tres` |
 | The Orbital Shards harvesting conversion rate | the upgrade's file |
 
 ## Not yet decided
@@ -107,7 +107,6 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **Mixing:** each spawned group is one type, picked by weight. Waves have both.
 - **Kill target:** every kill counts as one, whichever type it is.
 - **Overkill:** left out of the damage breakdown.
-- **Asteroid amount:** picked at random each fight from Sparse, Normal, and Rich.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 
@@ -118,13 +117,29 @@ These were open when this file was written, or came up during the build. The pro
 - **One Drone Weapon choice per fight:** at the designer's request, once a Drone Weapon (Projectile, Beam or Ram) is chosen at a level up, no Drone Weapon is offered again for the rest of the fight. The Drone Weapon the fight starts with doesn't count, including one picked with the starting weapon cheat, so switches are offered until one is taken. `OneDroneWeaponChoicePerFight` in `levels.tres` turns the rule off. This changes phase 2's upgrade pool, where drones could switch whenever another Drone Weapon was offered; its table is updated. In 20 automated fights with the Random build, none took more than one Drone Weapon, or was offered one after choosing.
 
 - **Drones avoiding danger:** added at the designer's request after their playtests found drones did fine against a few Goos but, against many, locked onto one and flew into the others. The designer chose basic, imperfect avoidance, of all enemies, Ram included. Over 720 automated fights, 240 with each of Projectile, Beam and Ram drones, half of them the same fights without it (variant `no_drone_avoidance`): drones absorbed per minute fell from 11.2 to 7.9, about twice as many drones were alive at 2:00, and the pilot won 10 to 18 points more often. Drones destroyed by basic enemies rose, because drones lived longer. It cost no measurable frame time.
+- **Asteroid amounts (stage 3):** `AsteroidAmountDefinition`, in `tuning/`, with Sparse, Normal and Rich in `tuning/asteroid_amounts/`, listed in `Amounts` in `asteroids.tres`.
+  - **What an amount sets:** it scales the numbers in `asteroids.tres` rather than replacing them: `FieldScale` multiplies how many fields there are and `LoneScale` how many lone asteroids, both around the gateway and in the cells filled in as the VNP explores, so the arena stays as sparse or as rich however far it goes. Normal scales by 1, Sparse well below and Rich well above (their files hold the numbers). Field sizes and asteroid masses are unchanged. Fields keep their spacing, so a very rich amount can ask for more fields than fit; at Rich nearly all are placed.
+  - **The pick:** each fight picks one by `Weight`, all equal for now (the spec left the weights open; equal weights give each amount the same exposure while its effect is measured). The pick uses its own generator seeded from the fight's seed, not the fight's random numbers, so a fight with the Normal amount plays exactly as it did before amounts existed (checked: seed 5 matched to the kill), and older batch fights still replay.
+  - **Shown:** the result screen has an Asteroids line above the seed. The fight log records `asteroidAmount`, and whether the cheat chose it (`asteroidAmountChosen` under `cheats`).
+  - **The cheat page:** the starting choice menu ends with CHOOSE THE ASTEROID AMOUNT: Random first, keeping the fight's own pick, then each amount. Choosing one places the asteroids again for it, before the fight starts. `ChooseAsteroidAmount` in `scripts/cheats/in_game_cheats.tres` turns the page on and off, separately from `ChooseStartingWeapon`.
+  - **Testing tools:** the scenario harness takes `asteroids=ID`, and batches `--asteroids` (a list, `all`, or `random`, the default, for each fight's own pick). The batch report has a section, By asteroid amount, with every fight's results by its amount.
+  - **First measurement,** with Sparse at half and Rich at about one and a half times Normal: 50 expert fights on each amount (Designer build, random starting weapons, the same seeds):
+
+    | Amount | Wins | Level at 3:00 | Final level | Asteroid experience | Drones built | Alive at 5:00 |
+    |---|---|---|---|---|---|---|
+    | Sparse | 64% | 11.5 | 13.4 | 3,500 | 62 | 28 |
+    | Normal | 76% | 14.7 | 17.8 | 5,300 | 100 | 22 |
+    | Rich | 92% | 16.4 | 20.7 | 7,500 | 124 | 32 |
+
+    The amount clearly sets how fast the VNP grows: about three levels between each amount by 3:00, and twice the drones from Sparse to Rich, with debris experience following the same way. Wins follow. Alive at 5:00 doesn't line up (Sparse above Normal); with 50 fights each, a difference of that size can be chance. Rich costs some frame time from the extra asteroids: game logic averaged 4.1 ms a frame against 2.8 for Normal and 1.9 for Sparse, well within a frame.
+  - **Wider apart:** at the designer's request, Sparse was made sparser and Rich richer, to about a third and about twice Normal, about 60 to 80 asteroids around the gateway for Sparse, 140 to 200 for Normal and 320 to 440 for Rich. Over 50 expert fights each on the same seeds: Sparse won 58%, level 10.2 at 3:00 and 11.8 at the end, 54 drones built; Rich won 86%, level 17.0 at 3:00 and 22.7 at the end, 139 drones built. Rich's game logic stayed well within a frame.
 - **Absorbing:** a Goo drains a touching drone's health, and absorbs it when its health runs out (see The Goo). The first build absorbed drones instantly on touch, which felt bad in playtesting. A short contact time before absorbing was also considered; draining was chosen because it shows the drone being eaten, and a drone that escapes stays damaged.
 
 ## Suggested build order
 
 Build one stage at a time, and stop after each so the designer can play it.
 
-Stage 1 is built. The phase is paused for automated playtesting (`docs/AUTOMATED_PLAYTESTING_SPEC.md`), which builds stage 2's damage breakdown as part of its fight statistics. Stages 3 and 4 resume afterwards.
+Stages 1 and 2 are built, stage 2 as part of automated playtesting's fight statistics (`docs/AUTOMATED_PLAYTESTING_SPEC.md`). The phase was paused for automated playtesting and run review (`docs/RUN_REVIEW_SPEC.md`), and resumed with stage 3, now built.
 
 1. **The Goo:** movement, targeting, absorbing, growing, splitting, contact damage, debris, its look, effects, and sounds, and spawning mixed with the basic enemy.
 2. **Damage breakdown** on the result screen, including drones lost and shots blocked.

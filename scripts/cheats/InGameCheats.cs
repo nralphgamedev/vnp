@@ -30,12 +30,14 @@ public static class InGameCheats
 	/// </summary>
 	public static StartingWeaponMenu OpenStartingWeaponMenu(Fight fight, Node hud, Node drawnOver)
 	{
-		if (!Settings.ChooseStartingWeapon)
+		if (!Settings.ChooseStartingWeapon && !Settings.ChooseAsteroidAmount)
 			return null;
 		var menu = new StartingWeaponMenu { Name = "StartingWeaponMenu", Fight = fight };
 		hud.AddChild(menu);
 		hud.MoveChild(menu, drawnOver.GetIndex());
-		menu.Open(Settings.StartingWeaponChoices, Settings.StartingDroneWeaponChoices);
+		menu.Open(Settings.ChooseStartingWeapon ? Settings.StartingWeaponChoices : new(),
+			Settings.ChooseStartingWeapon ? Settings.StartingDroneWeaponChoices : new(),
+			Settings.ChooseAsteroidAmount ? Tuning.Asteroids.Amounts : new());
 		return menu;
 	}
 

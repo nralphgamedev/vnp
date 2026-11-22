@@ -69,6 +69,7 @@ public partial class Harvestables : Node3D
 	private Field[] _fields = new Field[16];
 	private int _fieldCount;
 	private readonly HashSet<(int X, int Y)> _filledCells = new();
+	private AsteroidAmountDefinition _amount;
 	private int _lastId;
 	private float _maxRadius;
 	private readonly SpatialGrid _grid = new(8f);
@@ -94,8 +95,29 @@ public partial class Harvestables : Node3D
 		// Debris can grow past this, from a Goo that absorbed many drones. AddDebris widens it when it does.
 		_maxRadius = AsteroidShapeRadius * Tuning.Asteroids.Size * Mathf.Sqrt(Tuning.Asteroids.MassMax);
 
+		// The fight's asteroid amount scales how many fields and lone asteroids there are. The fight picks it as it
+		// enters the tree, before this is ready.
+		_amount = GetParentOrNull<Fight>()?.AsteroidAmount;
+		FillStartingArea();	}
+
+#if TOOLS
+	/// <summary>Playtest cheat, editor only: removes every asteroid and places them again for another asteroid
+	/// amount, as the fight starts, before any debris.</summary>
+	public void PlaceAgain(AsteroidAmountDefinition amount)
+	{
+		_amount = amount;
+		_count = 0;
+		_fieldCount = 0;
+		_filledCells.Clear();
 		FillStartingArea();
 	}
+#endif
+
+	/// <summary>A count from asteroids.tres scaled by the fight's asteroid amount, to the nearest whole number.</summary>
+	private static int Scaled(int count, float scale) => Mathf.Max(0, Mathf.FloorToInt(count * scale + 0.5f));
+
+	private float FieldScale => _amount?.FieldScale ?? 1f;
+	private float LoneScale => _amount?.LoneScale ?? 1f;
 
 	/// <summary>Leaves a piece of debris at a point on the plane.</summary>
 	public void AddDebris(Vector2 position, float mass)
@@ -299,10 +321,10 @@ public partial class Harvestables : Node3D
 	private void FillStartingArea()
 	{
 		Vector2 gateway = Tuning.Fight.GatewayPosition;
-		PlaceFields(Rng.Int(Tuning.Asteroids.FieldsMin, Tuning.Asteroids.FieldsMax),
+		PlaceFields(Rng.Int(Scaled(Tuning.Asteroids.FieldsMin, FieldScale), Scaled(Tuning.Asteroids.FieldsMax, FieldScale)),
 			() => gateway + Rng.Direction() * Rng.Range(Tuning.Asteroids.FieldDistanceMin, Tuning.Asteroids.FieldDistanceMax),
 			_ => true);
-		PlaceLoneAsteroids(Tuning.Asteroids.LoneCount,
+		PlaceLoneAsteroids(Scaled(Tuning.Asteroids.LoneCount, LoneScale),
 			() => gateway + Rng.Direction() * Rng.Range(Tuning.Asteroids.LoneDistanceMin, Tuning.Asteroids.LoneDistanceMax),
 			_ => true);
 	}
@@ -337,8 +359,9 @@ public partial class Harvestables : Node3D
 		Vector2 Pick() => corner + new Vector2(Rng.Value(), Rng.Value()) * size;
 		bool OutsideStartingArea(Vector2 spot) => spot.DistanceTo(Tuning.Fight.GatewayPosition) > startingArea;
 
-		PlaceFields(Rng.Int(Tuning.Asteroids.FieldsPerCellMin, Tuning.Asteroids.FieldsPerCellMax), Pick, OutsideStartingArea);
-		PlaceLoneAsteroids(Tuning.Asteroids.LonePerCell, Pick, OutsideStartingArea);
+		PlaceFields(Rng.Int(Scaled(Tuning.Asteroids.FieldsPerCellMin, FieldScale), Scaled(Tuning.Asteroids.FieldsPerCellMax, FieldScale)),
+			Pick, OutsideStartingArea);
+		PlaceLoneAsteroids(Scaled(Tuning.Asteroids.LonePerCell, LoneScale), Pick, OutsideStartingArea);
 	}
 
 	/// <summary>

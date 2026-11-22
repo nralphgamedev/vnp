@@ -1,9 +1,14 @@
-[gd_resource type="Resource" script_class="AsteroidsTuning" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="AsteroidsTuning" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://tuning/AsteroidsTuning.cs" id="1_script"]
+[ext_resource type="Script" path="res://tuning/AsteroidAmountDefinition.cs" id="2_amount_script"]
+[ext_resource type="Resource" path="res://tuning/asteroid_amounts/sparse.tres" id="3_sparse"]
+[ext_resource type="Resource" path="res://tuning/asteroid_amounts/normal.tres" id="4_normal"]
+[ext_resource type="Resource" path="res://tuning/asteroid_amounts/rich.tres" id="5_rich"]
 
 [resource]
 script = ExtResource("1_script")
+Amounts = Array[ExtResource("2_amount_script")]([ExtResource("3_sparse"), ExtResource("4_normal"), ExtResource("5_rich")])
 FieldsMin = 5
 FieldsMax = 9
 FieldDistanceMin = 70.0

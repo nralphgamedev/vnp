@@ -5,7 +5,8 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Playtest cheat, editor only: at the start of a fight, a menu to choose the starting VNP Weapon, then the
-/// starting Drone Weapon, from the choices in in_game_cheats.tres. The fight waits, paused, until both are picked.
+/// starting Drone Weapon, from the choices in in_game_cheats.tres, then the asteroid amount (ChooseAsteroidAmount),
+/// where Random keeps the one the fight picked. The fight waits, paused, until every page is picked.
 /// A page with no choices is skipped. A/D or the stick picks, Space or A chooses, and the mouse works too.
 /// Turned on and off by ChooseStartingWeapon in in_game_cheats.tres. InGameCheats adds it to the HUD.
 /// </summary>
@@ -65,7 +66,8 @@ public partial class StartingWeaponMenu : Control
 	/// Pauses the fight and asks for the starting VNP Weapon, then the starting Drone Weapon. A list that
 	/// is empty is skipped; with both empty, nothing opens.
 	/// </summary>
-	public void Open(IEnumerable<WeaponDefinition> weapons, IEnumerable<DroneWeaponDefinition> droneWeapons)
+	public void Open(IEnumerable<WeaponDefinition> weapons, IEnumerable<DroneWeaponDefinition> droneWeapons,
+		IEnumerable<AsteroidAmountDefinition> asteroidAmounts)
 	{
 		_pages.Clear();
 
@@ -86,6 +88,20 @@ public partial class StartingWeaponMenu : Control
 		}
 		if (droneChoices.Count > 0)
 			_pages.Enqueue(new Page { Title = "CHOOSE A DRONE WEAPON", Choices = droneChoices });
+
+		// Random first, so the fight's own pick is one press away.
+		var amountChoices = new List<Choice>();
+		foreach (AsteroidAmountDefinition amount in asteroidAmounts)
+		{
+			if (amount != null)
+				amountChoices.Add(new Choice { Id = amount.Id, Name = amount.Name, Color = Tuning.Asteroids.Color.Lightened(0.35f),
+					Pick = () => Fight.ChooseAsteroidAmount(amount) });
+		}
+		if (amountChoices.Count > 0)
+		{
+			amountChoices.Insert(0, new Choice { Id = "random", Name = "Random", Color = Colors.White, Pick = () => { } });
+			_pages.Enqueue(new Page { Title = "CHOOSE THE ASTEROID AMOUNT", Choices = amountChoices });
+		}
 
 		if (_pages.Count == 0)
 			return;

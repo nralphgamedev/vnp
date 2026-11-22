@@ -104,6 +104,8 @@ public partial class ResultScreen : Control
 				$"\nKill target reached at   {Ui.Clock(Fight.VictoryTime)}\n" +
 				$"Endless kills   {Fight.Kills - Fight.VictoryKills}";
 		}
+		if (Fight.AsteroidAmount != null)
+			_stats.Text += $"\nAsteroids   {Fight.AsteroidAmount.Name}";
 		_stats.Text += $"\nSeed   {Fight.Seed}";
 		_upgrades.ShowUpgrades(Fight);
 		_damage.ShowFight(Fight);

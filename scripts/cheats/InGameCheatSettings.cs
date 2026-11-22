@@ -23,5 +23,10 @@ public partial class InGameCheatSettings : Resource
 	/// <summary>The Drone Weapons offered when ChooseStartingWeapon is on, in the order shown. Leave it
 	/// empty to skip that page and start with the Drone Weapon in drones.tres.</summary>
 	[Export] public Godot.Collections.Array<DroneWeaponDefinition> StartingDroneWeaponChoices = new();
+
+	/// <summary>Each fight's starting choice menu ends with a page to choose the asteroid amount, from the
+	/// amounts in asteroids.tres, or Random to keep the one the fight picked.</summary>
+	[ExportGroup("Asteroid amount")]
+	[Export] public bool ChooseAsteroidAmount;
 }
 #endif

@@ -280,6 +280,37 @@ def write_report(folder):
                               'Alive at 5:00'], rows))
             out.append('')
 
+    # ───────────── By asteroid amount ─────────────
+    # Phase 3 asks how much the amount of asteroids changes a fight's difficulty. Every fight records its amount,
+    # whether it was picked by its seed or set by the batch.
+    amount_groups = {}
+    for f in fights:
+        if f['name'] in logs:
+            amount = logs[f['name']]['settings'].get('asteroidAmount')
+            if amount:
+                amount_groups.setdefault(amount, []).append(logs[f['name']])
+    if len(amount_groups) > 1:
+        out.append('\n## By asteroid amount\n')
+        out.append('Every fight by its asteroid amount, adding together every pilot, build, weapon and variant. The '
+                   'amount scales how many asteroid fields and lone asteroids there are (tuning/asteroid_amounts/). '
+                   'Experience from asteroids and drones built are medians over whole fights.\n')
+        rows = []
+        for amount, ls in sorted(amount_groups.items(), key=lambda kv: -len(kv[1])):
+            wins = [l for l in ls if l['outcome']['killTargetTime'] is not None]
+            alive5 = sum(1 for l in ls if (s := at(l, 300)) is not None and s['health'] > 0)
+            level3 = [s['level'] for l in ls if (s := at(l, 180)) is not None]
+            asteroid_xp = [l['stats'].get('experience', {}).get('asteroids') for l in ls]
+            built = [l['stats'].get('drones', {}).get('built') for l in ls]
+            rows.append([amount, len(ls), f'{len(wins)} ({pct(len(wins), len(ls))})',
+                         clock(median([l['outcome']['killTargetTime'] for l in wins])),
+                         num(mean(level3)) if level3 else '-', num(mean([l['outcome']['level'] for l in ls])),
+                         f'{alive5} of {len(ls)}',
+                         num(median([x for x in asteroid_xp if x is not None])) if any(x is not None for x in asteroid_xp) else '-',
+                         num(median([x for x in built if x is not None])) if any(x is not None for x in built) else '-'])
+        out.append(table(['Asteroid amount', 'Fights', 'Wins', 'Median time to win', 'Level at 3:00',
+                          'Average final level', 'Alive at 5:00', 'Asteroid experience', 'Drones built'], rows))
+        out.append('')
+
     # ───────────── Level curve ─────────────
     out.append('\n## Level curve\n')
     out.append('Average level reached by each minute of fight time, among fights still going then. The last '

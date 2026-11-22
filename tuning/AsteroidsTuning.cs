@@ -4,6 +4,11 @@ using Godot;
 [GlobalClass]
 public partial class AsteroidsTuning : Resource
 {
+	/// <summary>The asteroid amounts a fight can have (res://tuning/asteroid_amounts/), each scaling how many
+	/// fields and lone asteroids there are; one is picked for each fight by their weights.</summary>
+	[ExportGroup("Amounts")]
+	[Export] public Godot.Collections.Array<AsteroidAmountDefinition> Amounts = new();
+
 	// These place the fields around the gateway at the start of the fight. Farther out, the arena is
 	// filled as the VNP explores: see "Filling the arena" below.
 
