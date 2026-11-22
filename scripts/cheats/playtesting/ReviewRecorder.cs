@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Records what the run review's maps are drawn from (docs/RUN_REVIEW_SPEC.md): the VNP's track through the
+/// Records what the run review's maps are drawn from (docs/dev/RUN_REVIEW_SPEC.md): the VNP's track through the
 /// whole fight, what it was doing and the events along the way, for the overview map; and snapshots of the
 /// fight around the VNP about a second apart, kept for the last few seconds, so that when a detector fires a
 /// strip of what led up to it, and a little after, can be saved for a strip map.

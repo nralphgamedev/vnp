@@ -46,7 +46,7 @@ public enum WeaponFeature
 /// <summary>
 /// What an upgrade is about. Its offer card takes the category's colour from look.tres, so an offer reads
 /// at a glance. Upgrades to a weapon go with that weapon's kind. The full rule and the current upgrades
-/// in each category are under "Offer card colours" in docs/PROTOTYPE_2_SPEC.md.
+/// in each category are under "Offer card colours" in docs/design/PROTOTYPE_2_SPEC.md.
 /// </summary>
 public enum UpgradeCategory
 {

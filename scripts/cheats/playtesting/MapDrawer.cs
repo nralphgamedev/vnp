@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text.Json;
 
 /// <summary>
-/// Draws the run review's maps (docs/RUN_REVIEW_SPEC.md) from a fight log, as PNG files: an overview map of the
+/// Draws the run review's maps (docs/dev/RUN_REVIEW_SPEC.md) from a fight log, as PNG files: an overview map of the
 /// whole fight, from its track, and strip maps of moments, from its strips. They are plain diagrams for reading
 /// what happened, not the game's look. Drawn with Godot's Image, which works headless, so nothing needs
 /// installing. Labels use a small built-in pixel font, since Image can't draw text.

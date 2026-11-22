@@ -1,10 +1,10 @@
 # VNP Combat Prototype: Run Review
 
-Automated playtesting (`docs/AUTOMATED_PLAYTESTING_SPEC.md`) gave the game pilots that play it and batches that summarise hundreds of fights. Getting pilots to play like the designer then meant the designer watching pilot fights and reporting what looked wrong, with clock times, and Claude replaying those moments to see why. That fixed real problems, but each round cost the designer a watched fight, and the gains became too small to measure.
+Automated playtesting (`docs/dev/AUTOMATED_PLAYTESTING_SPEC.md`) gave the game pilots that play it and batches that summarise hundreds of fights. Getting pilots to play like the designer then meant the designer watching pilot fights and reporting what looked wrong, with clock times, and Claude replaying those moments to see why. That fixed real problems, but each round cost the designer a watched fight, and the gains became too small to measure.
 
 This spec takes over most of that watching. The game notices the kinds of moments the designer kept reporting, such as flying into a Goo, and records them in every fight, the designer's own included. Beyond those known moments, the goal is for Claude to review fights visually on its own and notice problems nobody has described yet. For that, every fight can be drawn as a top-down overview map of the whole fight, and any moment as a strip of small maps a second apart. Claude scans these, the way the designer watched, and confirms what it finds against the fight's numbers and the pilot's reasoning before reporting it. Automatic calibration, kept as an option in the automated playtesting spec, moves here, with the detector counts as extra targets.
 
-It interrupts phase 3 (`docs/PROTOTYPE_3_SPEC.md`) again, at the designer's request, since it speeds up all tuning after it. Phase 3 resumes afterwards from its stage 3. Everything in the earlier specs still applies unless this file changes it.
+It interrupts phase 3 (`docs/design/PROTOTYPE_3_SPEC.md`) again, at the designer's request, since it speeds up all tuning after it. Phase 3 resumes afterwards from its stage 3. Everything in the earlier specs still applies unless this file changes it.
 
 ## What this is for
 

@@ -2,14 +2,16 @@
 
 VNP is a top-down roguelite space conquest game built in Godot. The current goal is a combat prototype: one real-time fight, with nothing from the rest of the game.
 
-The current spec is the source for what to build: @docs/PROTOTYPE_3_SPEC.md (phase 3, a second enemy type and ways to see what worked, resumed at stage 3 after the testing tools below).
+The current spec is the source for what to build: @docs/design/PROTOTYPE_3_SPEC.md (phase 3, a second enemy type and ways to see what worked, resumed at stage 3 after the testing tools below).
 
 It builds on the earlier specs:
 
-- Phase 1, one complete fight: @docs/PROTOTYPE_SPEC.md
-- Phase 2, feedback and more weapons and upgrades: @docs/PROTOTYPE_2_SPEC.md
-- Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/AUTOMATED_PLAYTESTING_SPEC.md
-- Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/RUN_REVIEW_SPEC.md
+- Phase 1, one complete fight: @docs/design/PROTOTYPE_SPEC.md
+- Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md
+- Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
+- Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
+
+Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also written into the current design spec.
 
 ## Technical rules
 
@@ -58,7 +60,7 @@ Long calibration runs on their own, without the designer, on a git branch made f
 - **Allowed without asking, on that branch only:** changing pilot code and settings (`pilots/`, weapon `pilot_profile.tres` files), tuning variants (`tools/variants/`), calibration and review tools (`tools/`, `scripts/cheats/playtesting/`), the journal, and notes in the specs; committing those changes; and pushing that branch to `origin`.
 - **Never, even there:** push to `main`, merge into or from `main`, force-push, rewrite history, or delete a branch. Never change game code or tuning outside the pilots, since that changes the game being balanced: if calibration seems to need it, stop and ask. Never delete or rewrite the designer's fight logs in `playtests/human/`.
 - **The guard:** while a run is unattended, the file `.git/vnp-unattended` exists, and the `pre-push` hook in `.git/hooks/` then refuses any push to `main`. Create the file when an unattended run starts and remove it when it ends. Never remove the hook or bypass it (`--no-verify`).
-- **Work in chunks, and keep the journal:** usage limits, a full context or a closed terminal can cut a run off at any moment, and the remaining usage can't be checked from inside a session. So work in small chunks, each ending in a commit: one change or candidate, a batch kept under about a minute, its result, and a dated entry in `docs/calibration/JOURNAL.md` saying what was tried, what was found and what comes next. A run that starts reads the journal first and carries on from its last entry, rather than from memory.
+- **Work in chunks, and keep the journal:** usage limits, a full context or a closed terminal can cut a run off at any moment, and the remaining usage can't be checked from inside a session. So work in small chunks, each ending in a commit: one change or candidate, a batch kept under about a minute, its result, and a dated entry in `docs/dev/calibration/JOURNAL.md` saying what was tried, what was found and what comes next. A run that starts reads the journal first and carries on from its last entry, rather than from memory.
 - **Every chunk passes the stage check** (`check-stage`) before it is committed. If it fails and the failure can't be fixed within that chunk, revert the chunk's changes, record why in the journal, and stop.
 - **Stop and wait for the designer** when: a change would need game code or tuning outside the pilots; the stage check fails and can't be fixed; a set number of chunks in a row (the journal's stopping rule) bring no improvement; or anything is unclear. Write the reason as the journal's last entry, so the designer sees it first.
 - **What stays with the designer:** merging the branch into `main`, any change to the game itself, and judging how the game feels.

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// The run review's detectors (docs/RUN_REVIEW_SPEC.md): each watches the fight for one kind of moment the
+/// The run review's detectors (docs/dev/RUN_REVIEW_SPEC.md): each watches the fight for one kind of moment the
 /// designer reported while watching pilots, such as the VNP touching a Goo, and records when it happens. They
 /// work from what happens in the fight, not from a pilot's reasoning, so they judge the designer's fights and a
 /// pilot's the same way. The fight log runs them every frame and writes what they found.

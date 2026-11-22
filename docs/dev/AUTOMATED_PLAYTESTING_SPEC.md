@@ -4,7 +4,7 @@ The prototype's questions are answered by playing it, and playtesting takes the 
 
 The aim is to take the numbers questions off the designer: balance, matchups, upgrade value, and performance. Playtesting by the designer then focuses on what only a person can judge: how the fight feels and reads.
 
-This spec interrupts phase 3 (`docs/PROTOTYPE_3_SPEC.md`). Phase 3's damage breakdown (its stage 2) is built here, as part of fight statistics, and phase 3's remaining stages resume afterwards. Everything in the phase 1, 2 and 3 specs still applies unless this file changes it.
+This spec interrupts phase 3 (`docs/design/PROTOTYPE_3_SPEC.md`). Phase 3's damage breakdown (its stage 2) is built here, as part of fight statistics, and phase 3's remaining stages resume afterwards. Everything in the phase 1, 2 and 3 specs still applies unless this file changes it.
 
 ## What this is for
 
@@ -152,7 +152,7 @@ Agreed with the designer during stage 2, to build in stage 4, measured with batc
 
 ## Automatic calibration
 
-Kept as an option after calibration by watching pilot fights reached diminishing returns, then moved, with the designer's agreement, into the run review spec (`docs/RUN_REVIEW_SPEC.md`), where detector counts join its targets.
+Kept as an option after calibration by watching pilot fights reached diminishing returns, then moved, with the designer's agreement, into the run review spec (`docs/dev/RUN_REVIEW_SPEC.md`), where detector counts join its targets.
 
 ## Not yet decided
 

@@ -1,6 +1,6 @@
 # VNP Combat Prototype, Phase 3: Adaptation
 
-Phase 1 (`docs/PROTOTYPE_SPEC.md`) built one complete fight. Phase 2 (`docs/PROTOTYPE_2_SPEC.md`) added feedback and more weapons and upgrades. VNP's core idea is that the player constantly adapts to the enemy, and with only one enemy type nothing has tested that yet. Phase 3 adds a second enemy type that calls for a different build, mixed into the same fight as the first, along with ways to see what worked.
+Phase 1 (`docs/design/PROTOTYPE_SPEC.md`) built one complete fight. Phase 2 (`docs/design/PROTOTYPE_2_SPEC.md`) added feedback and more weapons and upgrades. VNP's core idea is that the player constantly adapts to the enemy, and with only one enemy type nothing has tested that yet. Phase 3 adds a second enemy type that calls for a different build, mixed into the same fight as the first, along with ways to see what worked.
 
 Everything in the phase 1 and phase 2 specs still applies unless this file changes it. Where they disagree, the newest file wins.
 
@@ -145,7 +145,7 @@ These were open when this file was written, or came up during the build. The pro
 
 Build one stage at a time, and stop after each so the designer can play it.
 
-Stages 1 and 2 are built, stage 2 as part of automated playtesting's fight statistics (`docs/AUTOMATED_PLAYTESTING_SPEC.md`). The phase was paused for automated playtesting and run review (`docs/RUN_REVIEW_SPEC.md`), and resumed with stages 3 and 4, now built.
+Stages 1 and 2 are built, stage 2 as part of automated playtesting's fight statistics (`docs/dev/AUTOMATED_PLAYTESTING_SPEC.md`). The phase was paused for automated playtesting and run review (`docs/dev/RUN_REVIEW_SPEC.md`), and resumed with stages 3 and 4, now built.
 
 1. **The Goo:** movement, targeting, absorbing, growing, splitting, contact damage, debris, its look, effects, and sounds, and spawning mixed with the basic enemy.
 2. **Damage breakdown** on the result screen, including drones lost and shots blocked.

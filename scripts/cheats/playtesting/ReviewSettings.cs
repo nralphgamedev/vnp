@@ -2,7 +2,7 @@
 using Godot;
 
 /// <summary>
-/// Thresholds for the run review's detectors (see RunReview and docs/RUN_REVIEW_SPEC.md). Values live in
+/// Thresholds for the run review's detectors (see RunReview and docs/dev/RUN_REVIEW_SPEC.md). Values live in
 /// res://scripts/cheats/playtesting/review_settings.tres. Editor only, like everything in scripts/cheats/.
 /// Distances are in world units, measured from enemies' edges; speeds are fractions of the VNP's top speed.
 /// </summary>

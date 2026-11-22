@@ -461,7 +461,7 @@ def write_report(folder):
     reviewed = [(f, logs[f['name']]) for f in fights if f['name'] in logs and logs[f['name']].get('review')]
     if reviewed:
         out.append('\n## Review\n')
-        out.append('What the run review\'s detectors noticed (docs/RUN_REVIEW_SPEC.md): moments like those the designer '
+        out.append('What the run review\'s detectors noticed (docs/dev/RUN_REVIEW_SPEC.md): moments like those the designer '
                    'reported while watching pilots. Rates are per minute of fight. The designer\'s own rate comes from '
                    'their fight logs that have detectors, on any tuning, so read it as a guide.\n')
         detector_ids = list(reviewed[0][1]['review']['detectors'])

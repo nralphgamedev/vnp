@@ -24,7 +24,7 @@ public partial class LookTuning : Resource
 	[Export] public bool IndicatorAlwaysVisible;
 
 	// Each offer card takes the colour of its upgrade's Category: on its border, as a light tint, and on
-	// its top line. See "Offer card colours" in docs/PROTOTYPE_2_SPEC.md.
+	// its top line. See "Offer card colours" in docs/design/PROTOTYPE_2_SPEC.md.
 
 	/// <summary>Colour of offer cards for VNP Weapons and their upgrades.</summary>
 	[ExportGroup("Offer cards")]

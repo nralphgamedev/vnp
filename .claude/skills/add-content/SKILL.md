@@ -54,7 +54,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - for every Drone Weapon: `drone_weapons/upgrades/`;
    - otherwise `tuning/upgrades/` by what it affects (`vnp_stats/`, `drones/`, `harvesting/`).
 2. **Fields:** fill them as `UpgradeDefinition.cs` documents: `Effect`, the target it needs (`Weapon`, `WeaponStat`, `Feature`, `DroneWeapon`, or `Stat`), `Amount` (a fraction for Scale effects), `Limit` (4 for limited upgrades, per the spec), `Category`, and card text with `{percent}`, `{amount}`, `{count}` or `{drones}`.
-3. **Category:** upgrades to a weapon take that weapon's kind. Upgrades for whichever Drone Weapon is in use are DroneWeapon. Stats and harvesting are Stats; drone numbers are Drones. The rule is under "Offer card colours" in `docs/PROTOTYPE_2_SPEC.md`.
+3. **Category:** upgrades to a weapon take that weapon's kind. Upgrades for whichever Drone Weapon is in use are DroneWeapon. Stats and harvesting are Stats; drone numbers are Drones. The rule is under "Offer card colours" in `docs/design/PROTOTYPE_2_SPEC.md`.
 4. **New behavior, beyond a new file:**
    - **A new player stat:** add it at the end of `PlayerStat`, and handle it in both `ScaleStat` and `AddStat` in `Upgrades.cs`.
    - **A new weapon stat:** add it at the end of `WeaponStat`, handle it in `VnpWeapon.AddStat` and `ScaleStat`, and use it in the weapon.

@@ -29,7 +29,7 @@ These launchers stay at the top so the commands don't change. Everything else is
 ## `calibration/`
 
 - `compare_to_designer.py`: compares a batch's pilot fights with the designer's fights at the same fight times, and prints the GAP (smaller is closer).
-- `calibrate_pilot.py`: the unattended search over a pilot's settings, scored by that gap (see the run review spec, Automatic calibration, and `docs/calibration/JOURNAL.md`).
+- `calibrate_pilot.py`: the unattended search over a pilot's settings, scored by that gap (see the run review spec, Automatic calibration, and `docs/dev/calibration/JOURNAL.md`).
 - `calibrate_build.py`: fits the Designer build's upgrade weights to the designer's picks in their logs.
 
 ## `variants/`

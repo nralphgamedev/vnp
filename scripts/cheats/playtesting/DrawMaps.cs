@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 
 /// <summary>
-/// Draws run review maps from fight logs, then quits (docs/RUN_REVIEW_SPEC.md). tools\maps.cmd runs it for a
+/// Draws run review maps from fight logs, then quits (docs/dev/RUN_REVIEW_SPEC.md). tools\maps.cmd runs it for a
 /// fight's folder; headless, directly:
 ///
 ///   godot --headless --path . res://scripts/cheats/playtesting/draw_maps.tscn -- log=PATH [log=PATH ...] [options]
