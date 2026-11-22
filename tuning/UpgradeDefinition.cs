@@ -38,6 +38,9 @@ public enum WeaponFeature
 {
 	/// <summary>Orbital Shards also destroy enemy shots they touch.</summary>
 	Blocking,
+
+	/// <summary>Orbital Shards also harvest asteroids and debris they touch.</summary>
+	Harvesting,
 }
 
 /// <summary>

@@ -34,10 +34,14 @@ public abstract partial class VnpWeapon : Node3D
 	/// as a fraction of it, as the designer does.</summary>
 	public virtual float Reach => 0f;
 
+
 	private readonly System.Collections.Generic.HashSet<WeaponFeature> _features = new();
 
 	/// <summary>Whether an upgrade has switched on this behaviour for this weapon.</summary>
 	public bool HasFeature(WeaponFeature feature) => _features.Contains(feature);
+
+	/// <summary>Whether an upgrade has switched on any of this weapon's features.</summary>
+	public bool HasAnyFeature => _features.Count > 0;
 
 	/// <summary>Switches on a behaviour, for an upgrade.</summary>
 	public void Unlock(WeaponFeature feature) => _features.Add(feature);

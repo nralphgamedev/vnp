@@ -26,6 +26,12 @@ public partial class OrbitalShardsDefinition : WeaponDefinition
 	/// <summary>Scale of a shard. 1 is 2 units long.</summary>
 	[Export] public float Size;
 
+	/// <summary>With the harvesting upgrade, the mass a shard draws out of an asteroid or piece of debris each
+	/// time it passes through, per point of its damage, so damage upgrades harvest faster too. Each shard
+	/// harvests a piece once per cooldown, as it hits an enemy. Higher empties rocks faster; too high and
+	/// upgraded shards strip a cluster in a few passes, which the spec rules out.</summary>
+	[Export] public float HarvestPerDamage;
+
 	/// <summary>Colour of the shards, their trails and hit sparks once the blocking upgrade is taken, so
 	/// the player can see they now block shots. Keep it close to Color: a subtle tint, not a new weapon.</summary>
 	[Export] public Color BlockingColor;

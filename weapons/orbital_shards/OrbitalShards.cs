@@ -4,7 +4,8 @@ using System.Collections.Generic;
 /// <summary>
 /// A VNP Weapon for the second slot: shards that circle the VNP and damage enemies they touch.
 /// Each shard can hit a given enemy once per cooldown, which in practice is once each time it
-/// passes. So faster shards hit more often.
+/// passes. So faster shards hit more often. With the harvesting upgrade, they also harvest the
+/// asteroids and debris they pass through, the same way.
 /// </summary>
 public partial class OrbitalShards : VnpWeapon
 {
@@ -26,6 +27,11 @@ public partial class OrbitalShards : VnpWeapon
 	// For each pair of shard and enemy, the time that shard can hit that enemy again.
 	private readonly Dictionary<(int Shard, int Enemy), double> _nextHitAt = new();
 	private readonly int[] _nearby = new int[64];
+
+	// The same for each pair of shard and asteroid or piece of debris, with the harvesting upgrade.
+	private readonly Dictionary<(int Shard, int Material), double> _nextHarvestAt = new();
+	private readonly int[] _material = new int[64];
+
 	private InstanceBatch _batch;
 	private InstanceBatch _trailBatch;
 
@@ -80,6 +86,11 @@ public partial class OrbitalShards : VnpWeapon
 				}
 			}
 
+			// With the harvesting upgrade, a shard also harvests what it passes through: its damage, by the
+			// conversion rate, as mass drawn out, credited like any beam's harvest.
+			if (HasFeature(WeaponFeature.Harvesting) && !Fight.Vnp.IsDestroyed)
+				HarvestAt(s, position, reach, now);
+
 			// With the blocking upgrade, a shard also destroys enemy shots it touches. A shot moves about
 			// half a unit a frame, so the reach allows a little for that.
 			if (HasFeature(WeaponFeature.Blocking) && !Fight.Vnp.IsDestroyed)
@@ -114,6 +125,35 @@ public partial class OrbitalShards : VnpWeapon
 			}
 			foreach (var key in expired)
 				_nextHitAt.Remove(key);
+			var spent = new List<(int, int)>();
+			foreach (var entry in _nextHarvestAt)
+			{
+				if (entry.Value < now)
+					spent.Add(entry.Key);
+			}
+			foreach (var key in spent)
+				_nextHarvestAt.Remove(key);
+		}
+	}
+
+	/// <summary>
+	/// One shard harvesting the asteroids and debris it touches, each once per cooldown, as it hits enemies.
+	/// Each harvest shows as a small burst in the fight experience colour where the shard passes, and the
+	/// material glows as any harvested material does.
+	/// </summary>
+	private void HarvestAt(int shard, Vector2 position, float reach, double now)
+	{
+		Harvestables harvestables = Fight.Harvestables;
+		int found = harvestables.CollectNear(position, reach, _material);
+		for (int c = 0; c < found; c++)
+		{
+			int item = _material[c];
+			var key = (shard, harvestables.IdOf(item));
+			if (_nextHarvestAt.TryGetValue(key, out double readyAt) && readyAt > now)
+				continue;
+			_nextHarvestAt[key] = now + Cooldown;
+			if (harvestables.Harvest(item, Damage * Shards.HarvestPerDamage) > 0f)
+				Fight.Effects.Impact(position, Tuning.Look.ExperienceColor, 0.35f);
 		}
 	}
 

@@ -30,6 +30,7 @@ public partial class LevelUpMenu : Control
 	private readonly List<Label> _cardTags = new();
 	private readonly List<Label> _cardNames = new();
 	private readonly List<Label> _cardTexts = new();
+	private readonly List<Label> _cardNotes = new();
 	private PanelContainer _rerollCard;
 	private Label _rerollLabel;
 	private StyleBoxFlat _normalStyle;
@@ -193,6 +194,11 @@ public partial class LevelUpMenu : Control
 			_cardTags[i].AddThemeColorOverride("font_color", CategoryColor(upgrade.Category));
 			_cardNames[i].Text = upgrade.Name;
 			_cardTexts[i].Text = Upgrades.Describe(upgrade, Fight);
+			// An upgrade that locks others out says so, in its category's colour.
+			string note = Upgrades.LockNote(upgrade);
+			_cardNotes[i].Text = note ?? "";
+			_cardNotes[i].Visible = note != null;
+			_cardNotes[i].AddThemeColorOverride("font_color", CategoryColor(upgrade.Category).Lightened(0.25f));
 			_cards[i].AddThemeStyleboxOverride("panel", CardStyle(upgrade.Category, i == _selected));
 		}
 
@@ -224,6 +230,9 @@ public partial class LevelUpMenu : Control
 		};
 		if (Upgrades.IsNewWeapon(upgrade))
 			return "NEW " + category;
+		// A weapon feature, such as Orbital Shards blocking or harvesting, is a mod: one per weapon.
+		if (upgrade.Effect == UpgradeEffect.UnlockWeaponFeature)
+			category += " MOD";
 		return upgrade.Limit > 0 ? $"{category}   {Upgrades.TimesTaken(Fight, upgrade) + 1}/{upgrade.Limit}" : category;
 	}
 
@@ -295,17 +304,23 @@ public partial class LevelUpMenu : Control
 			var tag = MakeLabel("", 20, new Color(1f, 1f, 1f, 0.55f));
 			var name = MakeLabel("", 36, Colors.White);
 			var text = MakeLabel("", 24, new Color(1f, 1f, 1f, 0.85f));
+			var note = MakeLabel("", 20, Colors.White);
 			name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			text.CustomMinimumSize = new Vector2(CardSize.X - 50f, 0f);
+			note.CustomMinimumSize = new Vector2(CardSize.X - 50f, 0f);
+			note.Visible = false;
 			inside.AddChild(tag);
 			inside.AddChild(name);
 			inside.AddChild(text);
+			inside.AddChild(note);
 
 			_cards.Add(card);
 			_cardTags.Add(tag);
 			_cardNames.Add(name);
 			_cardTexts.Add(text);
+			_cardNotes.Add(note);
 		}
 
 		var rerollRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };

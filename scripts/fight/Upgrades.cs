@@ -47,7 +47,9 @@ public static class Upgrades
 			UpgradeEffect.EquipWeapon => upgrade.Weapon != null
 				&& fight.FindWeapon(upgrade.Weapon) == null && fight.WeaponCount < Tuning.Vnp.WeaponSlots,
 			UpgradeEffect.ScaleWeaponStat or UpgradeEffect.AddWeaponStat => fight.FindWeapon(upgrade.Weapon) != null,
-			UpgradeEffect.UnlockWeaponFeature => fight.FindWeapon(upgrade.Weapon) is VnpWeapon weapon && !weapon.HasFeature(upgrade.Feature),
+			// One feature per weapon (OneFeaturePerWeapon): taking one takes the weapon's others out of the pool.
+			UpgradeEffect.UnlockWeaponFeature => fight.FindWeapon(upgrade.Weapon) is VnpWeapon weapon && !weapon.HasFeature(upgrade.Feature)
+				&& !(Tuning.Levels.OneFeaturePerWeapon && weapon.HasAnyFeature),
 			UpgradeEffect.SwitchDroneWeapon => upgrade.DroneWeapon != null && fight.Drones.Weapon.Id != upgrade.DroneWeapon.Id
 				&& !(Tuning.Levels.OneDroneWeaponChoicePerFight && fight.DroneWeaponChosen),
 			// Drones already being built count, so it is not offered when they would fill the cap anyway.
@@ -103,6 +105,28 @@ public static class Upgrades
 	}
 
 	/// <summary>The card text, with the numbers filled in for this moment in the fight.</summary>
+	/// <summary>
+	/// For an upgrade that locks others out once taken, a note saying so, for its card; otherwise null. A weapon
+	/// feature (a mod, on cards) rules out the weapon's other features (OneFeaturePerWeapon), when the pool has any,
+	/// and a Drone Weapon switch rules out any other switch this fight (OneDroneWeaponChoicePerFight).
+	/// </summary>
+	public static string LockNote(UpgradeDefinition upgrade)
+	{
+		if (upgrade.Effect == UpgradeEffect.UnlockWeaponFeature && Tuning.Levels.OneFeaturePerWeapon && upgrade.Weapon != null)
+		{
+			foreach (UpgradeDefinition other in Tuning.Levels.Upgrades)
+			{
+				if (other != null && other.Effect == UpgradeEffect.UnlockWeaponFeature && other.Weapon != null
+					&& other.Weapon.Id == upgrade.Weapon.Id && other.Feature != upgrade.Feature)
+					return $"Other {upgrade.Weapon.Name} mods will not be offered this fight.";
+			}
+			return null;
+		}
+		if (upgrade.Effect == UpgradeEffect.SwitchDroneWeapon && Tuning.Levels.OneDroneWeaponChoicePerFight)
+			return "Other Drone Weapons will not be offered this fight.";
+		return null;
+	}
+
 	public static string Describe(UpgradeDefinition upgrade, Fight fight)
 	{
 		string text = (upgrade.Description ?? "")

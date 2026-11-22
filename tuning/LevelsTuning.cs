@@ -24,6 +24,11 @@ public partial class LevelsTuning : Resource
 	/// cheat. Off, the drones can switch as often as Drone Weapons are offered.</summary>
 	[Export] public bool OneDroneWeaponChoicePerFight;
 
+	/// <summary>A VNP Weapon can have only one of its features, such as Orbital Shards blocking or harvesting:
+	/// once one is taken, the weapon's other features are no longer offered for the rest of the fight. Off, a
+	/// weapon can take every feature it has.</summary>
+	[Export] public bool OneFeaturePerWeapon;
+
 	/// <summary>Every upgrade that can be offered. Each weapon's upgrades are in its own folder under
 	/// res://weapons/ or res://drone_weapons/; the rest are in res://tuning/upgrades/, by what
 	/// they affect. Take one out of this
