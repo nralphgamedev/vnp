@@ -52,3 +52,23 @@ The base replays exactly on the same seeds, so it isn't re-run: its 50-seed GAP 
 - **Chunk 6, HarvestAtCap 0.8 to 1.0:** GAP 0.184, worse; fewer kills and drones from 4:00.
 
 No improvement: 4 of 6. Pulling the pilot toward material doesn't raise its drones; neither did fighting more (chunk 1). Next: the opposite of chunk 1, fighting a little less readily (Caution up, FightWeight down), and how fast pressure eases (PressureFall).
+
+### 2026-11-22: chunks 7 and 8, fighting less and faster easing (both rejected)
+
+Against the base's 50-seed GAP of 0.135:
+
+- **Chunk 7, fighting a little less readily (Caution 0.5 to 0.65, FightWeight 0.8 to 0.6):** GAP 0.181, worse; drones at 3:00 collapsed to 6.
+- **Chunk 8, pressure easing faster (PressureFall 0.3 to 0.6):** GAP 0.134, no real change.
+
+### 2026-11-22: stopped, waiting for the designer
+
+**Why:** the stopping rule, 6 chunks in a row with no improvement (chunks 3 to 8).
+
+**Where it stands:** one change kept, the expert's StrengthPerDrone 0.08 to 0.14 (chunk 2), taking the GAP from 0.165 to 0.135 on 50 seeds. Against the designer's three fights on the current tuning, the expert now matches health and level throughout, and kills at 5:00 (252 against 253). The clearest remaining difference is drones at 3:00: about 21 against the designer's 30.
+
+**What the rejected chunks say:** fighting more readily (chunk 1) and less readily (chunk 7) both made drones collapse by 3:00, and pulling toward material (chunks 5, 6), regrouping earlier (chunk 4) and more drone weight (chunk 3) didn't raise them. The expert's settings look close to as good as these behaviours allow: the drone gap probably comes from something the pilot doesn't do at all, rather than a setting.
+
+**Suggested next steps for the designer to choose from:**
+- Look at the designer's own fights between 2:30 and 3:30 with the run review's maps (overview and strips) to see how they keep their drones, then add that as a behaviour.
+- More designer fights on the current tuning: three is a small target, and the drone gap at 3:00 rests on them.
+- Merge this branch's kept change into `main`.
