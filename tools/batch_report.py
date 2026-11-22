@@ -343,6 +343,54 @@ def write_report(folder):
             rows.append([label, 'worst', f'seed {worst[0]["seed"]}: {describe(worst[1])}', watch_command(worst[0])])
     out.append(table(['Combination', '', 'Fight', 'Watch it'], rows))
 
+    # ───────────── Review ─────────────
+    reviewed = [(f, logs[f['name']]) for f in fights if f['name'] in logs and logs[f['name']].get('review')]
+    if reviewed:
+        out.append('\n## Review\n')
+        out.append('What the run review\'s detectors noticed (docs/RUN_REVIEW_SPEC.md): moments like those the designer '
+                   'reported while watching pilots. Rates are per minute of fight. The designer\'s own rate comes from '
+                   'their fight logs that have detectors, on any tuning, so read it as a guide.\n')
+        detector_ids = list(reviewed[0][1]['review']['detectors'])
+        names = {d: reviewed[0][1]['review']['detectors'][d]['name'] for d in detector_ids}
+
+        def rates(log_list):
+            minutes = sum(l['outcome']['time'] for l in log_list) / 60
+            return [num(sum(l['review']['detectors'][d]['count'] for l in log_list) / minutes, 2) if minutes else '-'
+                    for d in detector_ids]
+        rows = []
+        for label, group in by_combo.items():
+            ls = [logs[f['name']] for f in group if f['name'] in logs and logs[f['name']].get('review')]
+            if ls:
+                rows.append([label] + rates(ls))
+        human = []
+        human_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'playtests', 'human')
+        if os.path.isdir(human_folder):
+            for name in sorted(os.listdir(human_folder)):
+                if name.endswith('.json'):
+                    log = json.load(open(os.path.join(human_folder, name), encoding='utf-8'))
+                    if log.get('review') and log['outcome']['time'] > 30:
+                        human.append(log)
+        rows.append([f'**designer** ({len(human)} fights)'] + (rates(human) if human else ['-'] * len(detector_ids)))
+        out.append(table(['Combination'] + [names[d] for d in detector_ids], rows))
+
+        out.append('\n### Flagged moments\n')
+        out.append('A few moments for each detector, from different fights. The command replays the fight in a window; '
+                   'the moment is at the clock time given.\n')
+        rows = []
+        for d in detector_ids:
+            picked = 0
+            for f, log in reviewed:
+                moments = log['review']['detectors'][d]['moments']
+                if not moments:
+                    continue
+                m = moments[0]
+                rows.append([names[d], f'{clock(m["time"])} (clock {m["clock"]})', f'seed {f["seed"]}, {combo_label(f)}',
+                             m['detail'], watch_command(f)])
+                picked += 1
+                if picked >= 3:
+                    break
+        out.append(table(['Detector', 'When', 'Fight', 'What it saw', 'Watch it'], rows) if rows else 'None fired.')
+
     # ───────────── Performance ─────────────
     out.append('\n## Performance\n')
     out.append('Game logic per frame, from the fight logs: drawing is not included. A frame has 16.7 ms at 60 frames '

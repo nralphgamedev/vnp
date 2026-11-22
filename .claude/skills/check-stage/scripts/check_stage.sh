@@ -126,10 +126,11 @@ fight_warnings="$(echo "$fight" | grep -E "^WARNING" | sort | uniq -c | head -10
 echo "== Repeatability: the same seed must give the same fight"
 # Two copies of the same pilot fight, run at once (load once exposed a bug), print the fight's exact state
 # every half second; any difference means something outside the seed changes how a fight plays. Past causes:
-# the camera shake and the window size moving where enemies spawn.
-repeat_args=(seed=7 pilot=average build=greedy frames=5400 report=100000 trace=30 log=none)
-run_scenario headless "${repeat_args[@]}" | grep "^TRACE" > /tmp/vnp_repeat_a.txt &
-run_scenario headless "${repeat_args[@]}" | grep "^TRACE" > /tmp/vnp_repeat_b.txt &
+# the camera shake and the window size moving where enemies spawn. One copy writes a fight log, which also runs
+# the run review's detectors, so anything the log or a detector does that changes the fight is caught too.
+repeat_args=(seed=7 pilot=average build=greedy frames=5400 report=100000 trace=30)
+run_scenario headless "${repeat_args[@]}" log=none | grep "^TRACE" > /tmp/vnp_repeat_a.txt &
+run_scenario headless "${repeat_args[@]}" log=res://playtests/check_repeat | grep "^TRACE" > /tmp/vnp_repeat_b.txt &
 # Meanwhile, a full pilot fight that wins, carries on into endless and ends, which must quit cleanly. A long
 # fight that ends leaves the most garbage for .NET to clean up, and quitting once crashed with it (see
 # ShutdownCleanup.cs). Exit code 0 is a clean quit; 139 was that crash.
@@ -144,9 +145,10 @@ elif ! diff -q /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt > /dev/null; then
 	diff /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt | head -4
 	fail "the same seed gave two different fights; the first differing line above shows when they parted"
 else
-	note "Repeatability: two runs of the same 90-second pilot fight matched at all $trace_lines checkpoints"
+	note "Repeatability: two runs of the same 90-second pilot fight, one with its fight log and detectors, matched at all $trace_lines checkpoints"
 fi
 rm -f /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt
+rm -rf playtests/check_repeat
 if [ "$exit_code" -eq 0 ]; then
 	note "Clean quit: a full pilot fight that ended quit cleanly"
 else

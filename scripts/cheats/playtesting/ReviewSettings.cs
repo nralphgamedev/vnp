@@ -1,0 +1,71 @@
+#if TOOLS
+using Godot;
+
+/// <summary>
+/// Thresholds for the run review's detectors (see RunReview and docs/RUN_REVIEW_SPEC.md). Values live in
+/// res://scripts/cheats/playtesting/review_settings.tres. Editor only, like everything in scripts/cheats/.
+/// Distances are in world units, measured from enemies' edges; speeds are fractions of the VNP's top speed.
+/// </summary>
+[GlobalClass]
+public partial class ReviewSettings : Resource
+{
+	/// <summary>A detector that fired is ready to fire again once its condition has been false this long.</summary>
+	[ExportGroup("All detectors")]
+	[Export] public float RearmSeconds = 2f;
+
+	/// <summary>Touched a Goo: how far past touching still counts, to allow for a frame's movement.</summary>
+	[ExportGroup("Touched a Goo")]
+	[Export] public float TouchSlack = 0.2f;
+
+	/// <summary>Flew through a group: an enemy counts as passed when the VNP comes this close to its edge.</summary>
+	[ExportGroup("Flew through a group")]
+	[Export] public float GroupPassDistance = 3f;
+	/// <summary>Flew through a group: how many different enemies passed within GroupSeconds.</summary>
+	[Export] public int GroupCount = 4;
+	[Export] public float GroupSeconds = 3f;
+
+	/// <summary>Closed in on a near enemy: an enemy this close to the VNP, which keeps moving toward it at
+	/// ClosingSpeed or more for CloseSeconds.</summary>
+	[ExportGroup("Closed in on a near enemy")]
+	[Export] public float CloseDistance = 6f;
+	[Export] public float ClosingSpeed = 0.4f;
+	[Export] public float CloseSeconds = 0.6f;
+
+	/// <summary>Indecision: the VNP's direction reverses (turns by at least ReversalDegrees between checks
+	/// ReversalCheckSeconds apart, while moving at MovingSpeed or more) IndecisionReversals times within
+	/// IndecisionSeconds, with an enemy within IndecisionRange.</summary>
+	[ExportGroup("Indecision")]
+	[Export] public float ReversalDegrees = 120f;
+	[Export] public float ReversalCheckSeconds = 0.25f;
+	[Export] public float MovingSpeed = 0.3f;
+	[Export] public int IndecisionReversals = 3;
+	[Export] public float IndecisionSeconds = 3f;
+	[Export] public float IndecisionRange = 20f;
+
+	/// <summary>Creeping: moving between CreepSpeedLow and CreepSpeedHigh of top speed for CreepSeconds, with no
+	/// harvest beam working and no material within the beam's reach plus CreepHarvestMargin, so easing in on a
+	/// rock doesn't count.</summary>
+	[ExportGroup("Creeping")]
+	[Export] public float CreepSpeedLow = 0.1f;
+	[Export] public float CreepSpeedHigh = 0.7f;
+	[Export] public float CreepSeconds = 1.5f;
+	[Export] public float CreepHarvestMargin = 6f;
+
+	/// <summary>Fighting without drones: no drones, an enemy within NoDronesRange, for NoDronesSeconds, without
+	/// moving away from it at NoDronesFleeSpeed or more.</summary>
+	[ExportGroup("Fighting without drones")]
+	[Export] public float NoDronesRange = 15f;
+	[Export] public float NoDronesSeconds = 3f;
+	[Export] public float NoDronesFleeSpeed = 0.5f;
+
+	/// <summary>Idle: no harvest beam working and no enemy within IdleEnemyRange, for IdleSeconds.</summary>
+	[ExportGroup("Idle")]
+	[Export] public float IdleSeconds = 8f;
+	[Export] public float IdleEnemyRange = 25f;
+
+	/// <summary>Drones lost in a burst: at least BurstDrones absorbed or destroyed within BurstSeconds.</summary>
+	[ExportGroup("Drones lost in a burst")]
+	[Export] public int BurstDrones = 6;
+	[Export] public float BurstSeconds = 3f;
+}
+#endif

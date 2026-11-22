@@ -56,6 +56,7 @@ public partial class FightLog : Node
 	private double _nextSample;
 	private double _nextInput;
 	private bool _recordInput;
+	private RunReview _review;
 	private List<string> _startingWeapons;
 	private string _startingDroneWeapon;
 	private readonly List<Dictionary<string, object>> _timeline = new();
@@ -103,6 +104,8 @@ public partial class FightLog : Node
 		// Movement is recorded for everyone: a person's is the data for making pilots play more like one, and a
 		// pilot's is compared with it.
 		log._recordInput = true;
+		// The run review's detectors watch every fight, the designer's and pilots' alike.
+		log._review = new RunReview(fight, LoadReviewSettings());
 		fight.AddChild(log);
 		return log;
 	}
@@ -111,6 +114,7 @@ public partial class FightLog : Node
 	{
 		// The fight clock only runs while the fight does, so this skips the paused starting weapon menu.
 		double now = _fight.Elapsed;
+		_review?.Update(now);
 		// The starting weapons, once they're equipped: by the fight itself, by the starting weapon cheat before
 		// the clock starts, or by the scenario harness a frame in.
 		if (_startingWeapons == null && (_fight.WeaponCount > 0 || now > 1.0))
@@ -308,6 +312,7 @@ public partial class FightLog : Node
 				},
 			},
 			["timeline"] = _timeline,
+			["review"] = _review?.ToLog(_fight.Elapsed),
 			["input"] = _recordInput
 				? new Dictionary<string, object> { ["samplesPerSecond"] = Settings.InputSamplesPerSecond, ["samples"] = _input }
 				: null,
@@ -389,6 +394,18 @@ public partial class FightLog : Node
 				_gitVersion += "+changes";
 		}
 		return _gitVersion;
+	}
+
+	private static ReviewSettings LoadReviewSettings()
+	{
+		const string path = "res://scripts/cheats/playtesting/review_settings.tres";
+		var settings = GD.Load<ReviewSettings>(path);
+		if (settings == null)
+		{
+			GD.PushError($"Could not load the run review settings {path}.");
+			settings = new ReviewSettings();
+		}
+		return settings;
 	}
 
 	private static FightLogSettings LoadSettings()

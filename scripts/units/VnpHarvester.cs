@@ -15,6 +15,9 @@ public partial class VnpHarvester : Node3D
 	public float Rate = Tuning.Harvesting.VnpRate;
 
 	private int _targetId;
+
+	/// <summary>Whether the beam is on something this frame.</summary>
+	public bool Beaming => _targetId != 0;
 	private readonly int[] _nearby = new int[256];
 	private MeshInstance3D _beam;
 

@@ -150,14 +150,9 @@ Agreed with the designer during stage 2, to build in stage 4, measured with batc
 - **Skill:** a skill value scales how well a pilot uses its weapon profiles, so a novice plays generically and an expert uses its weapons well.
 - **Mine Layer is the first testbed.** Its value depends most on positioning, and a designer playtest showed the pilot standing still while harvesting, dropping no mines.
 
-## Option on record: automatic calibration
+## Automatic calibration
 
-Kept as an option at the designer's request, after calibration by watching pilot fights and giving feedback reached diminishing returns. Not built.
-
-- **Targets from the designer's logs:** win rate, level at 5:00, time to the kill target, damage taken per minute, drones lost to Goos per minute, and time spent holding still, on the designer's own starting weapons.
-- **Search:** a script tries values for the average pilot's settings (such as caution, dodging, harvest weight, `PressureFall` and the regroup thresholds) as tuning variants, plays each candidate on those starting weapons, and keeps the closest match to the targets.
-- **Running it:** unattended, overnight or in the background; the designer only watches a pilot when the numbers suggest something odd. Batches run together while iterating stay under a minute.
-- **Data:** it gets more reliable as the designer's logs grow; three recent fights are too few to set targets.
+Kept as an option after calibration by watching pilot fights reached diminishing returns, then moved, with the designer's agreement, into the run review spec (`docs/RUN_REVIEW_SPEC.md`), where detector counts join its targets.
 
 ## Not yet decided
 
