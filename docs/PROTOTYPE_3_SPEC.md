@@ -110,7 +110,9 @@ For design questions this file does not answer, ask the designer rather than inv
 
 ## Settled during the build
 
-These were open when this file was written. The prototype now does the following; any of them can still change.
+These were open when this file was written, or came up during the build. The prototype now does the following; any of them can still change.
+
+- **One Drone Weapon choice per fight:** at the designer's request, once a Drone Weapon (Projectile, Beam or Ram) is chosen at a level up, no Drone Weapon is offered again for the rest of the fight. The Drone Weapon the fight starts with doesn't count, including one picked with the starting weapon cheat, so switches are offered until one is taken. `OneDroneWeaponChoicePerFight` in `levels.tres` turns the rule off. This changes phase 2's upgrade pool, where drones could switch whenever another Drone Weapon was offered; its table is updated. In 20 automated fights with the Random build, none took more than one Drone Weapon, or was offered one after choosing.
 
 - **Absorbing:** a Goo drains a touching drone's health, and absorbs it when its health runs out (see The Goo). The first build absorbed drones instantly on touch, which felt bad in playtesting. A short contact time before absorbing was also considered; draining was chosen because it shows the drone being eaten, and a drone that escapes stays damaged.
 

@@ -155,10 +155,24 @@ else
 fi
 rm -f /tmp/vnp_exit.txt
 
+echo "== Quick batch (smoke test of the batch tools)"
+# A few short pilot fights through the batch command: every fight must finish without errors and write its
+# log, and the report must be written. Its balance numbers are shown, not judged.
+batch_out="$(python tools/batch.py --size quick --builds greedy --cap 60 --name check-stage 2>&1)"
+batch_code=$?
+batch_dir="$(ls -td playtests/batches/*_check-stage 2>/dev/null | head -1)"
+if [ $batch_code -eq 0 ] && [ -f "$batch_dir/report.md" ]; then
+	note "Quick batch: $(echo "$batch_out" | grep -o '[0-9]* of [0-9]* fights ok'), report written"
+else
+	echo "$batch_out" | tail -8
+	fail "the quick batch failed (see above)"
+fi
+[ -n "$batch_dir" ] && rm -rf "$batch_dir"
+
 echo "== Cheats kept out of export builds"
 # Top-level classes only: nested ones go with their parent, and their short names (such as Page)
 # turn up in other code too.
-cheat_classes="$(grep -hoE "^(public |internal )?(static |sealed |abstract |partial )*class [A-Za-z0-9_]+" scripts/cheats/*.cs 2>/dev/null | awk '{print $NF}' | sort -u)"
+cheat_classes="$(grep -hoE "^(public |internal )?(static |sealed |abstract |partial )*class [A-Za-z0-9_]+" -r --include=*.cs scripts/cheats 2>/dev/null | awk '{print $NF}' | sort -u)"
 for config in ExportDebug ExportRelease; do
 	dll="$(find .godot/mono/temp/bin/$config -name 'VNP.dll' 2>/dev/null | head -1)"
 	if [ -z "$dll" ]; then

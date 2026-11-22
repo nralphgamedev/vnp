@@ -38,6 +38,10 @@ using System.Reflection;
 ///   explain=FROM-TO    print the pilot's reasoning at each of its decisions between these fight times in
 ///                      seconds, such as explain=110-131: the threat it felt against what it could afford, and
 ///                      what it chose to do. For finding out why it did something odd.
+///   maxtime=SECONDS    stop the fight at this fight time, counted from its start, and log it as "capped"
+///                      (it survived to the cap). Batches use it to stop endless runs.
+///   logname=NAME       the fight log's file name, without .json, in place of its start time and seed
+///   mute=yes           silence all sound, as batches do whenever they run more than one fight
 ///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
 ///                      Headless runs, and runs taking a screenshot, always quit when finished.
 ///   log=FOLDER         write a fight log there (res:// or a full path), or log=none for no log. By default,
@@ -71,6 +75,10 @@ public partial class ScenarioRunner : Node
 	private int _trace;
 	private bool _finished;
 	private bool _close;
+	private double _maxTime = -1;
+	private string _logName;
+	private bool _mute;
+	private bool _capped;
 	private float _explainFrom = -1f;
 	private float _explainTo = -1f;
 	private int _decisionsExplained;
@@ -90,6 +98,12 @@ public partial class ScenarioRunner : Node
 		FightLog.NextFolder = _logFolder == "none" ? ""
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		FightLog.NextPlayer = "scenario";
+		FightLog.NextFileName = _logName;
+		if (_mute)
+		{
+			AudioServer.SetBusMute(AudioServer.GetBusIndex("Master"), true);
+			GD.Print("SCENARIO: sound muted");
+		}
 		// Release the scene once it is instantiated, so it isn't reported as still in use when the game quits.
 		using (PackedScene scene = GD.Load<PackedScene>("res://scenes/Fight.tscn"))
 			_fight = scene.Instantiate<Fight>();
@@ -116,6 +130,9 @@ public partial class ScenarioRunner : Node
 				case "log": _logFolder = value; break;
 				case "trace": _trace = Math.Max(1, int.Parse(value)); break;
 				case "close": _close = value != "no"; break;
+				case "maxtime": _maxTime = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture); break;
+				case "logname": _logName = value; break;
+				case "mute": _mute = value != "no"; break;
 				case "explain":
 				{
 					string[] window = value.Split('-');
@@ -192,7 +209,14 @@ public partial class ScenarioRunner : Node
 		if (_fight.IsOver && _overFrame == 0)
 			_overFrame = _frame;
 		bool overLongEnough = _overFrame > 0 && _frame - _overFrame >= (_shotPath != null ? 45 : 1);
-		bool finishing = _frame >= _frames || overLongEnough;
+		// A set fight time reached before the fight ended: it survived to the cap.
+		if (!_capped && _maxTime > 0 && !_fight.IsOver && _fight.Elapsed >= _maxTime)
+		{
+			_capped = true;
+			_fight.FightLog?.FightCapped();
+			GD.Print($"SCENARIO: reached the cap of {_maxTime:0}s of fight time");
+		}
+		bool finishing = _frame >= _frames || overLongEnough || _capped;
 		if (_shotPath != null && (_frame == _shotFrame || (_shotFrame <= 0 && finishing)))
 			SaveShot();
 

@@ -19,6 +19,11 @@ public partial class LevelsTuning : Resource
 	/// <summary>Rerolls the player starts the fight with. They are not refreshed.</summary>
 	[Export] public int FreeRerolls;
 
+	/// <summary>Once a Drone Weapon has been chosen at a level up, no Drone Weapon is offered again for the rest of
+	/// the fight. The Drone Weapon the fight starts with doesn't count, even one picked with the starting weapon
+	/// cheat. Off, the drones can switch as often as Drone Weapons are offered.</summary>
+	[Export] public bool OneDroneWeaponChoicePerFight;
+
 	/// <summary>Every upgrade that can be offered. Each weapon's upgrades are in its own folder under
 	/// res://weapons/ or res://drone_weapons/; the rest are in res://tuning/upgrades/, by what
 	/// they affect. Take one out of this

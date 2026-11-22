@@ -141,6 +141,9 @@ public partial class Fight : Node3D
 #if TOOLS
 	private StartingWeaponMenu _startingWeaponMenu;
 	private FightLog _fightLog;
+
+	/// <summary>The fight log being written for this fight, or null. Editor only.</summary>
+	public FightLog FightLog => _fightLog;
 #endif
 	private FightHud _fightHud;
 	private ResultScreen _resultScreen;
@@ -330,6 +333,10 @@ public partial class Fight : Node3D
 
 	/// <summary>Fight experience from enemy debris, as a multiple starting at 1. Debris reward upgrades raise it.</summary>
 	public float DebrisExperience = 1f;
+
+	/// <summary>Whether a Drone Weapon has been chosen at a level up this fight. With OneDroneWeaponChoicePerFight
+	/// in levels.tres, no Drone Weapon is offered after that.</summary>
+	public bool DroneWeaponChosen;
 
 	/// <summary>Drones built by upgrades so far, which can be fewer than they offered if the cap was near.</summary>
 	public int DronesBuiltByUpgrades;

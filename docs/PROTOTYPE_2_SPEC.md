@@ -163,9 +163,9 @@ The pool grows from 12 upgrades to 38. Each upgrade step should be large enough 
 | Seeker Missiles damage, cooldown, missiles per volley | More missiles fire at once | Seeker Missiles equipped | 4 each |
 | Shockwave damage, cooldown, area of effect | A larger area of effect makes the ring reach farther | Shockwave equipped | 4 each |
 | Mine Layer damage, cooldown, area of effect | A shorter cooldown drops mines more often; a larger area of effect widens the blast | Mine Layer equipped | 4 each |
-| Projectile | Switches the drones back to Projectile. Only offered once they have switched to another Drone Weapon, or when the fight started with another through the starting weapon choice | Drones not using Projectile | Once |
-| Beam | Switches the drones to Beam | Drones not using Beam | Once |
-| Ram | Switches the drones to Ram | Drones not using Ram | Once |
+| Projectile | Switches the drones to Projectile. Only offered when the fight started with another Drone Weapon, through the starting weapon choice | Drones not using Projectile, and no Drone Weapon chosen at a level up yet this fight | Once |
+| Beam | Switches the drones to Beam | Drones not using Beam, and no Drone Weapon chosen at a level up yet this fight | Once |
+| Ram | Switches the drones to Ram | Drones not using Ram, and no Drone Weapon chosen at a level up yet this fight | Once |
 | Drone damage | Raises the damage of the drones' weapon | | 4 |
 | Drone attack rate | The drones attack more often | | 4 |
 | Health | Raises the VNP's health | | 4 |

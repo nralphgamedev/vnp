@@ -29,6 +29,11 @@ public partial class FightLog : Node
 	/// <summary>For the next fight only: who is playing, written in the log. The designer, unless set.</summary>
 	public static string NextPlayer;
 
+	/// <summary>For the next fight only: the log's file name, without ".json", in place of its start time and
+	/// seed. Batches name each fight, so fights started in the same second with the same seed don't overwrite
+	/// each other.</summary>
+	public static string NextFileName;
+
 	public static FightLogSettings Settings => _settings ??= LoadSettings();
 
 	private static FightLogSettings _settings;
@@ -39,6 +44,7 @@ public partial class FightLog : Node
 	private string _folder;
 	private string _player;
 	private string _path;
+	private string _fileName;
 	private readonly DateTime _startedAt = DateTime.Now;
 	private double _nextSample;
 	private double _nextInput;
@@ -74,12 +80,14 @@ public partial class FightLog : Node
 	{
 		string folder = NextFolder ?? Settings.Folder;
 		string player = NextPlayer ?? "designer";
+		string fileName = NextFileName;
+		NextFileName = null;
 		NextFolder = null;
 		NextPlayer = null;
 		if (!Settings.WriteLogs || string.IsNullOrEmpty(folder))
 			return null;
 
-		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player };
+		var log = new FightLog { Name = "FightLog", _fight = fight, _folder = folder, _player = player, _fileName = fileName };
 		// Before everything else in the fight, and the log after everything, to time the fight's update.
 		fight.AddChild(new FrameStart { Name = "FightLogFrameStart", Log = log, ProcessPriority = int.MinValue });
 		log.ProcessPriority = int.MaxValue;
@@ -151,6 +159,19 @@ public partial class FightLog : Node
 	}
 
 	/// <summary>Writes the log for a fight that has just ended. Called by the fight.</summary>
+	/// <summary>
+	/// Writes the log for a fight stopped at a set fight time, before it ended. Batches stop endless runs this
+	/// way, so one strong build can't hold up a batch; the log calls it "capped", meaning it survived to the cap.
+	/// </summary>
+	public void FightCapped()
+	{
+		Sample(_fight.Elapsed);
+		Write("capped");
+		_capped = true;
+	}
+
+	private bool _capped;
+
 	public void FightEnded(Fight.Outcome outcome)
 	{
 		Sample(_fight.Elapsed);
@@ -161,7 +182,7 @@ public partial class FightLog : Node
 	public override void _ExitTree()
 	{
 		// Left without ending, by starting a new fight or closing the game, it is still worth keeping.
-		if (!_fight.IsOver && _fight.Elapsed > 1.0)
+		if (!_fight.IsOver && !_capped && _fight.Elapsed > 1.0)
 		{
 			// A last sample, so the timeline ends where the fight did, as it does for a fight that ended.
 			Sample(_fight.Elapsed);
@@ -176,7 +197,7 @@ public partial class FightLog : Node
 			string folder = ProjectSettings.GlobalizePath(_folder);
 			Directory.CreateDirectory(folder);
 			KeepOutOfImport(folder);
-			_path ??= Path.Combine(folder, $"{_startedAt:yyyy-MM-dd_HH-mm-ss}_seed{_fight.Seed}.json");
+			_path ??= Path.Combine(folder, (_fileName ?? $"{_startedAt:yyyy-MM-dd_HH-mm-ss}_seed{_fight.Seed}") + ".json");
 			File.WriteAllText(_path, JsonSerializer.Serialize(Build(result), new JsonSerializerOptions { WriteIndented = true }));
 		}
 		catch (Exception error)

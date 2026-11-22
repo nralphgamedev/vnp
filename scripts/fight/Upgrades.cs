@@ -48,7 +48,8 @@ public static class Upgrades
 				&& fight.FindWeapon(upgrade.Weapon) == null && fight.WeaponCount < Tuning.Vnp.WeaponSlots,
 			UpgradeEffect.ScaleWeaponStat or UpgradeEffect.AddWeaponStat => fight.FindWeapon(upgrade.Weapon) != null,
 			UpgradeEffect.UnlockWeaponFeature => fight.FindWeapon(upgrade.Weapon) is VnpWeapon weapon && !weapon.HasFeature(upgrade.Feature),
-			UpgradeEffect.SwitchDroneWeapon => upgrade.DroneWeapon != null && fight.Drones.Weapon.Id != upgrade.DroneWeapon.Id,
+			UpgradeEffect.SwitchDroneWeapon => upgrade.DroneWeapon != null && fight.Drones.Weapon.Id != upgrade.DroneWeapon.Id
+				&& !(Tuning.Levels.OneDroneWeaponChoicePerFight && fight.DroneWeaponChosen),
 			// Drones already being built count, so it is not offered when they would fill the cap anyway.
 			UpgradeEffect.BuildDrones => fight.Drones.CountWithBuilds < fight.Drones.Cap,
 			_ => true,
@@ -72,6 +73,7 @@ public static class Upgrades
 				fight.FindWeapon(upgrade.Weapon)?.Unlock(upgrade.Feature);
 				break;
 			case UpgradeEffect.SwitchDroneWeapon:
+				fight.DroneWeaponChosen = true;
 				fight.Drones.SwitchWeapon(upgrade.DroneWeapon);
 				break;
 			case UpgradeEffect.ScaleStat:
