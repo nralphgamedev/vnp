@@ -5,6 +5,8 @@ fights misleads, since fights that last longer reach the fastest part of endless
 
     python tools/compare_to_designer.py playtests/batches/<batch folder>              all the designer's fights
     python tools/compare_to_designer.py playtests/batches/<batch folder> --same-tuning  only those on the batch's tuning
+    ... --variant=NAME             only the batch's fights with that tuning variant ("base" for none), to score
+                                   each variant of a comparison batch on its own
     ... --since=2026-11-22_01-40   only the designer's fights started at or after that time (from their names), for
                                    fights whose fingerprint was taken before pilots' files were left out of it
 
@@ -78,6 +80,9 @@ def main():
     if len(args) != 1:
         sys.exit('Usage: python tools/compare_to_designer.py <batch folder> [--same-tuning]')
     pilots = [json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(args[0], 'logs', '*.json'))]
+    variant = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--variant=')), None)
+    if variant is not None:
+        pilots = [l for l in pilots if (l['settings'].get('tuningVariant') or 'base') == variant]
     # The batch's tuning fingerprints, without any variant's text folded in, for comparing on the same tuning.
     base = {l['settings']['tuningFingerprint'] for l in pilots if not l['settings'].get('tuningVariant')}
     since = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--since=')), None)
