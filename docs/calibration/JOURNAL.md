@@ -72,3 +72,31 @@ Against the base's 50-seed GAP of 0.135:
 - Look at the designer's own fights between 2:30 and 3:30 with the run review's maps (overview and strips) to see how they keep their drones, then add that as a behaviour.
 - More designer fights on the current tuning: three is a small target, and the drone gap at 3:00 rests on them.
 - Merge this branch's kept change into `main`.
+
+### 2026-11-22: unattended settings search (one change kept)
+
+`tools/calibrate_pilot.py --since=2026-11-22_01-40 --passes 3` ran on its own for about 2 hours 10 minutes. It searched 17 of the expert's settings, each raised and lowered, on seeds 1 to 50. A change was kept only if it beat the current gap by 0.01 there and also won on seeds 101 to 150. The full log is `playtests/calibration/2026-11-22_03-25-37.md`.
+
+- **Kept:** HarvestAtCap 0.8 to 0.9, harvesting a little more at the drone cap. GAP 0.135 to 0.120 on the search seeds, and 0.189 to 0.179 on the confirmation seeds. (Chunk 6's 1.0 was too far.)
+- **Nothing else** beat 0.120 in pass 1, in pass 2 at the same step, or in pass 3 at half the step. The nearest were FightWeight 1.0 (0.115, a gain under 0.01) and PreferredEnemyDistance and Caution 0.55 (both 0.120, no change). The search ended after its 3 passes.
+- **The same pilot scores 0.120 on one seed set and 0.179 on the other.** With only three designer fights to aim at, that spread is larger than any single setting's effect.
+
+### 2026-11-22: chunk 9, no regrouping (rejected)
+
+The designer's Shockwave fight, between 2:30 and 3:30, shows them staying in one area near the fighting and rebuilding drones there (2 to 10 to 18) without regrouping. Candidate: the expert never regroups (`tools/variants/no_regroup.txt`, RegroupBelow 0). 50 seeds on each set:
+
+- **Search seeds:** base 0.120, no regroup 0.153. That's worse, though it held more drones at 4:00 (8 against 5).
+- **Confirmation seeds:** base 0.179, no regroup 0.177, no real change. Fewer were alive at 4:00 (66% against 74%).
+
+Rejected. Not regrouping on its own doesn't recover the drones at 3:00 (18 to 20 against the designer's 30). What the designer does there is more than staying put: they weave close beside enemies while their drones rebuild on the spot. The pilot has nothing that does that yet. No improvement since the search: 1 of 6.
+
+### 2026-11-22: stopped, waiting for the designer
+
+**Why:** the settings are searched out. Three full passes of the automatic search kept one change, and the one behaviour hypothesis that settings can express (no regrouping) failed. What remains needs a new pilot behaviour or more designer fights, and the designer should choose which.
+
+**Where it stands:** the expert now has StrengthPerDrone 0.14 and HarvestAtCap 0.9. Its GAP against the designer's three current fights is 0.120 on seeds 1 to 50, down from 0.165 at the start. It matches health, level and alive fraction to 3:00. The remaining differences are drones at 3:00 (about 19 against 30) and kills (about 110 against 130).
+
+**Suggested next steps:**
+- A new behaviour, building drones while fighting: with few drones, keep close to the fight and harvest debris and rocks beside it, instead of leaving or just holding back. This is pilot code, allowed on this branch, but it is a design judgement worth agreeing first.
+- More designer fights on the current tuning (now matched with `--same-tuning`). Three fights make seed luck larger than any setting's effect.
+- Merge the two kept settings into `main`.
