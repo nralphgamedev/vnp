@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Playtest cheat, editor only: at the start of a fight, a menu to choose the starting VNP Weapon, then the
-/// starting Drone Weapon, from the choices in cheats.tres. The fight waits, paused, until both are picked.
+/// starting Drone Weapon, from the choices in in_game_cheats.tres. The fight waits, paused, until both are picked.
 /// A page with no choices is skipped. A/D or the stick picks, Space or A chooses, and the mouse works too.
-/// Turned on and off by ChooseStartingWeapon in cheats.tres. PlaytestCheats adds it to the HUD.
+/// Turned on and off by ChooseStartingWeapon in in_game_cheats.tres. InGameCheats adds it to the HUD.
 /// </summary>
 public partial class StartingWeaponMenu : Control
 {
@@ -52,7 +52,7 @@ public partial class StartingWeaponMenu : Control
 		VBoxContainer column = Ui.DimmedColumn(this, 0.6f, 26);
 		_title = Ui.Label("", 56, Colors.White);
 		column.AddChild(_title);
-		column.AddChild(Ui.Label("Playtest cheat. Turn this off with ChooseStartingWeapon in scripts/cheats/cheats.tres.", 24, new Color(1f, 1f, 1f, 0.6f)));
+		column.AddChild(Ui.Label("Playtest cheat. Turn this off with ChooseStartingWeapon in scripts/cheats/in_game_cheats.tres.", 24, new Color(1f, 1f, 1f, 0.6f)));
 
 		_row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
 		_row.AddThemeConstantOverride("separation", 24);

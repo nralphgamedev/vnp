@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="CheatsTuning" load_steps=13 format=3]
+[gd_resource type="Resource" script_class="InGameCheatSettings" load_steps=13 format=3]
 
-[ext_resource type="Script" path="res://scripts/cheats/CheatsTuning.cs" id="1_script"]
+[ext_resource type="Script" path="res://scripts/cheats/InGameCheatSettings.cs" id="1_script"]
 [ext_resource type="Script" path="res://weapons/WeaponDefinition.cs" id="2_weapon_script"]
 [ext_resource type="Resource" path="res://weapons/pulse_laser/pulse_laser.tres" id="3_pulse_laser"]
 [ext_resource type="Resource" path="res://weapons/orbital_shards/orbital_shards.tres" id="4_orbital_shards"]

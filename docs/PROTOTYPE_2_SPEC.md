@@ -91,10 +91,10 @@ These change or add to the screens in the phase 1 spec.
 
 ### Playtest cheats (editor only)
 
-Testing aids, not part of the design. They work only when the game is run from the editor; an exported game plays as if every cheat were off. Their settings are in `scripts/cheats/cheats.tres`.
+Testing aids, not part of the design. They work only when the game is run from the editor; an exported game plays as if every cheat were off. Their settings are in `scripts/cheats/in_game_cheats.tres`.
 
 **Starting weapon choice.**
-- While `ChooseStartingWeapon` is on in `cheats.tres`, each fight starts paused on a menu to choose the starting VNP Weapon, with one card per weapon in `StartingWeaponChoices`: Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, and Mine Layer. A second page then chooses the starting Drone Weapon from `StartingDroneWeaponChoices`: Projectile, Beam, and Ram. A/D or the stick picks, Space or A chooses, and the mouse works too. A page whose list is empty is skipped.
+- While `ChooseStartingWeapon` is on in `in_game_cheats.tres`, each fight starts paused on a menu to choose the starting VNP Weapon, with one card per weapon in `StartingWeaponChoices`: Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, and Mine Layer. A second page then chooses the starting Drone Weapon from `StartingDroneWeaponChoices`: Projectile, Beam, and Ram. A/D or the stick picks, Space or A chooses, and the mouse works too. A page whose list is empty is skipped.
 - The chosen Drone Weapon replaces the one in `drones.tres`. Its switch upgrade is then not offered, since the drones already use it.
 - The chosen weapon takes the first slot in place of the Pulse Laser. Its upgrades are offered as usual, and the other weapons can still be taken for the second slot. The Pulse Laser then has its own equip upgrade, offered for a free slot like the other new weapons. In a normal fight it is already equipped, so that upgrade is never offered.
 - With `ChooseStartingWeapon` off, and always in an exported game, the fight starts with `StartingWeapons` in `vnp.tres` (the Pulse Laser), as the phase 1 spec describes.
@@ -108,8 +108,9 @@ Testing aids, not part of the design. They work only when the game is run from t
 - They live in `scripts/cheats/`, which `VNP.csproj` compiles only in Godot's Debug configuration, the one the editor runs. Exports build as ExportDebug or ExportRelease without it. That code, and every line that uses it, is also inside `#if TOOLS`, a symbol Godot defines only in Debug.
 - The starting weapon menu is not in the fight scene: the fight adds it from code, inside `#if TOOLS`, so a build has no node whose script is missing.
 - A build of each configuration confirmed both cheats are in Debug and absent from both export builds.
-- No export preset exists yet. When one is made, it should also leave `scripts/cheats/` out of the exported files, so `cheats.tres` is not packed. A build could not load it anyway, without its class.
-- New cheats go in the same folder, behind the same guard, with any settings in `cheats.tres`.
+- No export preset exists yet. When one is made, it should also leave `scripts/cheats/` out of the exported files, so `in_game_cheats.tres` is not packed. A build could not load it anyway, without its class.
+- New cheats go in the same folder, behind the same guard, with any settings in `in_game_cheats.tres`.
+- **Names:** the cheats used while playing are reached through `InGameCheats.cs`, with their settings class `InGameCheatSettings.cs` and file `in_game_cheats.tres`. They were `PlaytestCheats`, `CheatsTuning` and `cheats.tres` until the designer found them easy to confuse with the automated playtesting tools in `scripts/cheats/playtesting/`.
 
 ### Endless mode
 

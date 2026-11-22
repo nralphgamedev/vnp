@@ -168,7 +168,7 @@ rm -f /tmp/vnp_exit.txt
 echo "== Quick batch (smoke test of the batch tools)"
 # A few short pilot fights through the batch command: every fight must finish without errors and write its
 # log, and the report must be written. Its balance numbers are shown, not judged.
-batch_out="$(python tools/batch.py --size quick --builds greedy --cap 60 --name check-stage 2>&1)"
+batch_out="$(python tools/batches/batch.py --size quick --builds greedy --cap 60 --name check-stage 2>&1)"
 batch_code=$?
 batch_dir="$(ls -td playtests/batches/*_check-stage 2>/dev/null | head -1)"
 if [ $batch_code -eq 0 ] && [ -f "$batch_dir/report.md" ]; then

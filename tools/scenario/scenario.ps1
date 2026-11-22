@@ -27,10 +27,10 @@ lists them all. The most useful:
 Editor-only testing tool: nothing here is part of the game.
 
 .EXAMPLE
-.\tools\scenario.ps1 -Window pilot=average build=greedy frames=20000
+.\tools\scenario.cmd -Window pilot=average build=greedy frames=20000
 
 .EXAMPLE
-.\tools\scenario.ps1 pilot=average build=random seed=3 frames=20000 report=1800
+.\tools\scenario.cmd pilot=average build=random seed=3 frames=20000 report=1800
 #>
 param(
 	# Show the fight in a window, at normal speed, instead of running it headless.
@@ -40,7 +40,7 @@ param(
 	[string[]]$ScenarioArgs
 )
 
-$project = Split-Path -Parent $PSScriptRoot
+$project = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $godot = if ($env:GODOT) { $env:GODOT } else { 'F:\GameDev\godot\bin\godot.windows.editor.x86_64.mono.console.exe' }
 if (-not (Test-Path $godot)) {
 	Write-Error "Godot not found at $godot. Set the GODOT environment variable to the editor's console executable."

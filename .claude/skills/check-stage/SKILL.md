@@ -23,7 +23,7 @@ It takes a few minutes (three builds and several Godot launches), so run it with
 - **Headless fight:** 600 frames at a fixed 60 fps, through the scenario harness (step 2), with two groups of every enemy type spawned around the VNP and the VNP kept alive. A plain run would sit on the starting weapon cheat's paused menu and test nothing. It reports any errors or exceptions, and how long each frame's game logic took. The fight also writes a fight log, which `scripts/check_log.py` cross-checks: totals against their parts, kills counted three ways, drones in and out, levels against level-ups, and the timeline against the outcome. The same script checks any fight log, such as one from the designer's playtests: `python scripts/check_log.py <log.json>`.
 - **Repeatability:** the same 90-second pilot fight is run twice at once with `trace=30`, and the two traces must match line for line. Any difference means something outside the seed now changes how a fight plays. Past causes were the camera shake and the window size changing where enemies spawn. The first differing line shows when the runs parted: compare what changed between it and the line before.
 - **Clean quit:** a full pilot fight that wins, carries on into endless and ends must quit with exit code 0. Long fights that end once crashed the game as it quit (exit code 139); see `ShutdownCleanup.cs`.
-- **Quick batch:** a few short pilot fights through `tools/batch.py`, as a smoke test of the batch tools. Every fight must finish without errors and write its log, and the report must be written. Its balance numbers are shown, not judged.
+- **Quick batch:** a few short pilot fights through `tools/batches/batch.py`, as a smoke test of the batch tools. Every fight must finish without errors and write its log, and the report must be written. Its balance numbers are shown, not judged.
 - **Cheats:** no class from `scripts/cheats/` or its subfolders appears in either export DLL.
 - **Working tree:** untracked files that look temporary, and placeholder model scenes changed only by new node IDs.
 
@@ -66,7 +66,7 @@ Read the diff (`git diff` and the untracked files) with these questions. Each co
 - **Tuning:** are new numbers that affect play in a data file, not hard-coded in a script? A few fixed constants that only shape a look or a motion are fine if they're commented.
 - **Placeholders:** is every new mesh, material, sound or icon in `res://placeholder/` and listed in `PLACEHOLDERS.md`, with what uses it? Is a code-made one listed with the script that makes it?
 - **Files together:** are new files in their feature's folder, Definitions and Tunings named by kind, and moved files' `.uid` and `path=` references updated?
-- **Cheats:** is any testing aid in `scripts/cheats/` behind `#if TOOLS`, with its settings in `cheats.tres`?
+- **Cheats:** is any testing aid in `scripts/cheats/` behind `#if TOOLS`, with its settings in `in_game_cheats.tres`?
 - **Older specs:** if the change contradicts an earlier phase's spec, does the current spec say so, or was the earlier text updated?
 
 ## 4. Report

@@ -2,7 +2,7 @@
 Writes a batch's report as a page with charts, report.html, beside report.md. batch_report.py runs this after
 writing report.md; run it yourself to write the page again:
 
-    python tools/batch_report_html.py playtests/batches/<batch folder>
+    python tools/batches/batch_report_html.py playtests/batches/<batch folder>
 
 The page holds the same content as report.md, with charts at the top of the sections they illustrate: outcomes,
 fights alive over time, level over time, what destroyed the VNP, and damage by source. It is one file with
@@ -424,5 +424,5 @@ for (const fig of document.querySelectorAll('[data-chart]')) draw[fig.dataset.ch
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        sys.exit('Usage: python tools/batch_report_html.py <batch folder>')
+        sys.exit('Usage: python tools/batches/batch_report_html.py <batch folder>')
     print(write_page(sys.argv[1]))

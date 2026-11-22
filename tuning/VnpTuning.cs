@@ -35,7 +35,7 @@ public partial class VnpTuning : Resource
 	[Export] public int WeaponSlots;
 
 	/// <summary>VNP Weapons the VNP starts the fight with, in slot order. One folder each in res://weapons/.
-	/// In the editor, the starting weapon playtest cheat (scripts/cheats/cheats.tres) can choose them instead.</summary>
+	/// In the editor, the starting weapon playtest cheat (scripts/cheats/in_game_cheats.tres) can choose them instead.</summary>
 	[Export] public Godot.Collections.Array<WeaponDefinition> StartingWeapons = new();
 
 	/// <summary>Scale of the VNP model. 1 is about 3 units long.</summary>

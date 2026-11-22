@@ -5,7 +5,7 @@ The record of unattended calibration runs on `calibration/` branches (see CLAUDE
 ## How a run works
 
 - **A chunk** is one candidate or change, a batch kept under about a minute, its result against the designer's fights, the stage check, an entry here, and a commit (and a push of the branch).
-- **The measure:** `python tools/compare_to_designer.py <batch folder>` compares the expert pilot's fights with the designer's at the same fight times, and prints a GAP: smaller is closer. A candidate is kept only if it lowers the gap by more than chance, judged by running the same seeds with and without it as variants.
+- **The measure:** `python tools/calibration/compare_to_designer.py <batch folder>` compares the expert pilot's fights with the designer's at the same fight times, and prints a GAP: smaller is closer. A candidate is kept only if it lowers the gap by more than chance, judged by running the same seeds with and without it as variants.
 - **Stopping rule:** stop and wait for the designer after 6 chunks in a row that bring no improvement, or for any reason in CLAUDE.md's list. The stop's reason is the last entry, so the designer sees it first.
 - **Entries** are newest last, each dated, saying what was tried, what was found, what is kept, and what comes next.
 
@@ -13,7 +13,7 @@ The record of unattended calibration runs on `calibration/` branches (see CLAUDE
 
 ### 2026-11-22: setup
 
-Branch `calibration/expert` created at the designer's request. Rules added to CLAUDE.md; the `pre-push` guard installed; this journal and `tools/compare_to_designer.py` added. Next: a test chunk measuring the expert pilot as it is, to check a chunk works end to end.
+Branch `calibration/expert` created at the designer's request. Rules added to CLAUDE.md; the `pre-push` guard installed; this journal and `tools/calibration/compare_to_designer.py` added. Next: a test chunk measuring the expert pilot as it is, to check a chunk works end to end.
 
 ### 2026-11-22: test chunk, the expert pilot as it is
 
@@ -75,7 +75,7 @@ Against the base's 50-seed GAP of 0.135:
 
 ### 2026-11-22: unattended settings search (one change kept)
 
-`tools/calibrate_pilot.py --since=2026-11-22_01-40 --passes 3` ran on its own for about 2 hours 10 minutes. It searched 17 of the expert's settings, each raised and lowered, on seeds 1 to 50. A change was kept only if it beat the current gap by 0.01 there and also won on seeds 101 to 150. The full log is `playtests/calibration/2026-11-22_03-25-37.md`.
+`tools/calibration/calibrate_pilot.py --since=2026-11-22_01-40 --passes 3` ran on its own for about 2 hours 10 minutes. It searched 17 of the expert's settings, each raised and lowered, on seeds 1 to 50. A change was kept only if it beat the current gap by 0.01 there and also won on seeds 101 to 150. The full log is `playtests/calibration/2026-11-22_03-25-37.md`.
 
 - **Kept:** HarvestAtCap 0.8 to 0.9, harvesting a little more at the drone cap. GAP 0.135 to 0.120 on the search seeds, and 0.189 to 0.179 on the confirmation seeds. (Chunk 6's 1.0 was too far.)
 - **Nothing else** beat 0.120 in pass 1, in pass 2 at the same step, or in pass 3 at half the step. The nearest were FightWeight 1.0 (0.115, a gain under 0.01) and PreferredEnemyDistance and Caution 0.55 (both 0.120, no change). The search ended after its 3 passes.

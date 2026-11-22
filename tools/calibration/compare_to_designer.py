@@ -3,8 +3,8 @@ Compares a batch's pilot fights with the designer's own fights at the same fight
 health, drones, kills and level at each minute, and how many are still alive. Comparing per minute over whole
 fights misleads, since fights that last longer reach the fastest part of endless mode (see the run review spec).
 
-    python tools/compare_to_designer.py playtests/batches/<batch folder>              all the designer's fights
-    python tools/compare_to_designer.py playtests/batches/<batch folder> --same-tuning  only those on the batch's tuning
+    python tools/calibration/compare_to_designer.py playtests/batches/<batch folder>              all the designer's fights
+    python tools/calibration/compare_to_designer.py playtests/batches/<batch folder> --same-tuning  only those on the batch's tuning
     ... --variant=NAME             only the batch's fights with that tuning variant ("base" for none), to score
                                    each variant of a comparison batch on its own
     ... --since=2026-11-22_01-40   only the designer's fights started at or after that time (from their names), for
@@ -22,7 +22,7 @@ import os
 import statistics
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TIMES = [60, 120, 180, 240, 300]
 MEASURES = ['health', 'drones', 'kills', 'level']
 
@@ -78,7 +78,7 @@ def gap(pilot, designer):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if len(args) != 1:
-        sys.exit('Usage: python tools/compare_to_designer.py <batch folder> [--same-tuning]')
+        sys.exit('Usage: python tools/calibration/compare_to_designer.py <batch folder> [--same-tuning]')
     pilots = [json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(args[0], 'logs', '*.json'))]
     variant = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--variant=')), None)
     if variant is not None:

@@ -2,12 +2,12 @@
 Searches a pilot's settings for the values that play most like the designer, unattended (the run review spec's
 Automatic calibration). It runs batches itself and needs no one to pick candidates or read results.
 
-    python tools/calibrate_pilot.py                        search the expert, writing what it finds
-    python tools/calibrate_pilot.py --dry-run              search, but leave the skill level file unchanged
-    python tools/calibrate_pilot.py --passes 2 --params Caution,FightWeight
+    python tools/calibration/calibrate_pilot.py                        search the expert, writing what it finds
+    python tools/calibration/calibrate_pilot.py --dry-run              search, but leave the skill level file unchanged
+    python tools/calibration/calibrate_pilot.py --passes 2 --params Caution,FightWeight
 
 How it works:
-- **The measure** is tools/compare_to_designer.py's gap: the expert's fights against the designer's at the same
+- **The measure** is tools/calibration/compare_to_designer.py's gap: the expert's fights against the designer's at the same
   fight times. Smaller is closer.
 - **One setting at a time:** for each setting it plays the same seeds with the setting raised and lowered by a
   step (a factor, or a fixed amount for settings from 0 to 1), as two tuning variants in one batch.
@@ -29,7 +29,7 @@ import re
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import compare_to_designer  # noqa: E402
 
@@ -105,7 +105,7 @@ class Search:
 
     def variant(self, name, settings):
         """Writes a tuning variant setting the pilot's values, and returns its name."""
-        lines = [f'# Written by tools/calibrate_pilot.py; removed when the search ends.']
+        lines = [f'# Written by tools/calibration/calibrate_pilot.py; removed when the search ends.']
         lines += [f'{self.res_level}:{k} = {number(v)}' for k, v in settings.items()]
         path = os.path.join(ROOT, 'tools', 'variants', name + '.txt')
         open(path, 'w', encoding='utf-8', newline='').write('\n'.join(lines) + '\n')
@@ -114,7 +114,7 @@ class Search:
 
     def batch(self, variants, first_seed):
         """Plays the variants on the search seeds and returns {variant: gap}."""
-        cmd = [sys.executable, os.path.join(ROOT, 'tools', 'batch.py'), '--pilots', self.args.pilot,
+        cmd = [sys.executable, os.path.join(ROOT, 'tools', 'batches', 'batch.py'), '--pilots', self.args.pilot,
                '--builds', self.args.build, '--seeds', str(self.args.seeds), '--first-seed', str(first_seed),
                '--variants', ','.join(variants), '--name', 'autocal']
         out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace').stdout

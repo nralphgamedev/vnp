@@ -2,8 +2,8 @@
 Fits the Designer build's upgrade weights to the designer's own choices, from their fight logs in
 playtests/human/, and writes them to pilots/builds/designer.tres:
 
-    python tools/calibrate_build.py            fit, write the build, and print what it fitted
-    python tools/calibrate_build.py --dry-run  fit and print, without writing
+    python tools/calibration/calibrate_build.py            fit, write the build, and print what it fitted
+    python tools/calibration/calibrate_build.py --dry-run  fit and print, without writing
 
 Every level-up offer the designer answered is a choice among three upgrades (the offer after any reroll). The
 fit finds a weight per upgrade, plus a bonus for upgrades that improve something already owned and one for new
@@ -23,7 +23,7 @@ import os
 import re
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'pilots', 'builds', 'designer.tres')
 PRIOR = 1.0       # How strongly an upgrade's weight is pulled toward its category's (L2, in fitted units).
 STEPS = 4000

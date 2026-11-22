@@ -203,7 +203,7 @@ public partial class Fight : Node3D
 		// The starting weapons come from vnp.tres, unless a playtest cheat in the editor lets the player choose.
 		bool chooseStartingWeapon = false;
 #if TOOLS
-		chooseStartingWeapon = PlaytestCheats.ChoosesStartingWeapon;
+		chooseStartingWeapon = InGameCheats.ChoosesStartingWeapon;
 #endif
 		if (!chooseStartingWeapon)
 		{
@@ -225,7 +225,7 @@ public partial class Fight : Node3D
 		GetNode<WeaponSlots>("Hud/WeaponSlots").Fight = this;
 
 #if TOOLS
-		_startingWeaponMenu = PlaytestCheats.OpenStartingWeaponMenu(this, GetNode("Hud"), _resultScreen);
+		_startingWeaponMenu = InGameCheats.OpenStartingWeaponMenu(this, GetNode("Hud"), _resultScreen);
 		// Editor only: the fight is logged to a file for playtesting analysis.
 		_fightLog = FightLog.Attach(this);
 #endif

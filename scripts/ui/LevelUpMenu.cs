@@ -139,7 +139,7 @@ public partial class LevelUpMenu : Control
 	{
 		bool free = false;
 #if TOOLS
-		free = PlaytestCheats.FreeRerolls; // Editor only: Alt held rerolls for free.
+		free = InGameCheats.FreeRerolls; // Editor only: Alt held rerolls for free.
 #endif
 		if (!free)
 		{
@@ -174,7 +174,7 @@ public partial class LevelUpMenu : Control
 		if (Input.IsActionJustPressed("menu_select")) Confirm();
 #if TOOLS
 		// Editor only: show the free reroll as soon as Alt is pressed or let go.
-		if (PlaytestCheats.FreeRerolls != _cheatShown)
+		if (InGameCheats.FreeRerolls != _cheatShown)
 			Refresh();
 #endif
 	}
@@ -199,7 +199,7 @@ public partial class LevelUpMenu : Control
 		bool canReroll = Fight.Rerolls > 0;
 		_rerollLabel.Text = canReroll ? $"Reroll   ({Fight.Rerolls} free)" : "No rerolls left";
 #if TOOLS
-		_cheatShown = PlaytestCheats.FreeRerolls;
+		_cheatShown = InGameCheats.FreeRerolls;
 		if (_cheatShown)
 		{
 			canReroll = true;

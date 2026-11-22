@@ -14,8 +14,8 @@ using System.Reflection;
 ///   godot --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- spawn=goo:4 drones=40 frames=900
 ///
 /// Arguments, all optional:
-///   weapon=ID          equip this VNP Weapon instead of the first starting weapon (any from cheats.tres)
-///   drone_weapon=ID    switch the drones to this Drone Weapon (any from cheats.tres)
+///   weapon=ID          equip this VNP Weapon instead of the first starting weapon (any from in_game_cheats.tres)
+///   drone_weapon=ID    switch the drones to this Drone Weapon (any from in_game_cheats.tres)
 ///   spawn=ID:GROUPS[:DISTANCE]   spawn groups of this enemy type around the VNP, hunting it, at about this
 ///                      distance (default 15). Repeat for several types. ID "all" spawns that many groups
 ///                      of every enemy type.
@@ -30,8 +30,7 @@ using System.Reflection;
 ///   pilot=ID           a pilot flies the VNP, with this skill level from res://pilots/skill_levels/. It
 ///                      picks its own upgrades, and after a win carries on into endless mode.
 ///   build=ID           the pilot's build, from res://pilots/builds/ (default greedy)
-///   upgrades=first|none   without a pilot: answer level-up offers by taking the first option, half a second after each
-///                      opens (the default), or leave the fight paused on the offer
+///   (without a pilot, level-up offers are answered by taking the first option, half a second after each opens)
 ///   trace=N            every N frames, print a line describing the fight's exact state: where the VNP, the
 ///                      enemies and the drones are, and how many random numbers have been drawn. Two runs of
 ///                      the same fight should print the same lines; the first that differs shows where they parted.
@@ -93,7 +92,6 @@ public partial class ScenarioRunner : Node
 	private float _explainFrom = -1f;
 	private float _explainTo = -1f;
 	private int _decisionsExplained;
-	private bool _takeUpgrades = true;
 	private string _pilotId;
 	private string _buildId = "greedy";
 	private int _offerOpenFor;
@@ -164,7 +162,6 @@ public partial class ScenarioRunner : Node
 					_explainTo = float.Parse(window[1], System.Globalization.CultureInfo.InvariantCulture);
 					break;
 				}
-				case "upgrades": _takeUpgrades = value != "none"; break;
 				case "pilot": _pilotId = value; break;
 				case "build": _buildId = value; break;
 				case "frames": _frames = int.Parse(value); _framesGiven = true; break;
@@ -280,7 +277,7 @@ public partial class ScenarioRunner : Node
 	/// </summary>
 	private void TakeUpgrade()
 	{
-		if (!_takeUpgrades || _fight.IsOver || _fight.Pilot != null)
+		if (_fight.IsOver || _fight.Pilot != null)
 			return;
 		_levelUpMenu ??= _fight.GetNodeOrNull<LevelUpMenu>("Hud/LevelUpMenu");
 		if (_levelUpMenu == null || !_levelUpMenu.IsOpen)
@@ -302,19 +299,19 @@ public partial class ScenarioRunner : Node
 		GetTree().Paused = false;
 		if (_fight.GetNodeOrNull<Control>("Hud/StartingWeaponMenu") is Control menu)
 			menu.Visible = false;
-		CheatsTuning cheats = PlaytestCheats.Settings;
+		InGameCheatSettings cheats = InGameCheats.Settings;
 		WeaponDefinition weapon = _weaponId == null
 			? Tuning.Vnp.StartingWeapons.FirstOrDefault()
 			: cheats.StartingWeaponChoices.FirstOrDefault(w => w.Id == _weaponId);
 		if (weapon == null)
-			GD.PushError($"Scenario: no weapon {_weaponId} in cheats.tres StartingWeaponChoices.");
+			GD.PushError($"Scenario: no weapon {_weaponId} in in_game_cheats.tres StartingWeaponChoices.");
 		if (_fight.WeaponCount == 0)
 			_fight.Equip(weapon);
 		if (_droneWeaponId != null)
 		{
 			DroneWeaponDefinition droneWeapon = cheats.StartingDroneWeaponChoices.FirstOrDefault(w => w.Id == _droneWeaponId);
 			if (droneWeapon == null)
-				GD.PushError($"Scenario: no Drone Weapon {_droneWeaponId} in cheats.tres StartingDroneWeaponChoices.");
+				GD.PushError($"Scenario: no Drone Weapon {_droneWeaponId} in in_game_cheats.tres StartingDroneWeaponChoices.");
 			_fight.Drones.SwitchWeapon(droneWeapon);
 		}
 

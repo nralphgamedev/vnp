@@ -3,7 +3,7 @@ using Godot;
 
 /// <summary>
 /// Settings for batches of automated fights. Values live in res://scripts/cheats/playtesting/batch_settings.tres.
-/// The batch command (tools/batch.py) reads that file. Editor only, like the cheats.
+/// The batch command (tools/batches/batch.py) reads that file. Editor only, like the cheats.
 /// </summary>
 [GlobalClass]
 public partial class BatchSettings : Resource

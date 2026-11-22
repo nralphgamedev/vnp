@@ -8,14 +8,14 @@ using Godot;
 ///   editor runs. Exports build as ExportDebug or ExportRelease, which leave this folder out.
 /// - Every file here, and every line that uses one, is inside #if TOOLS, a symbol Godot defines only in
 ///   Debug. An export that somehow kept a use of it would fail to compile rather than ship a cheat.
-/// Their settings are in res://scripts/cheats/cheats.tres.
+/// Their settings are in res://scripts/cheats/in_game_cheats.tres.
 /// </summary>
-public static class PlaytestCheats
+public static class InGameCheats
 {
 	/// <summary>The cheats' settings, read the first time a cheat needs them.</summary>
-	public static CheatsTuning Settings => _settings ??= LoadSettings();
+	public static InGameCheatSettings Settings => _settings ??= LoadSettings();
 
-	private static CheatsTuning _settings;
+	private static InGameCheatSettings _settings;
 
 	/// <summary>While Alt is held, rerolling a level-up offer is free, so it never runs out.</summary>
 	public static bool FreeRerolls => Input.IsKeyPressed(Key.Alt);
@@ -39,14 +39,14 @@ public static class PlaytestCheats
 		return menu;
 	}
 
-	private static CheatsTuning LoadSettings()
+	private static InGameCheatSettings LoadSettings()
 	{
-		const string path = "res://scripts/cheats/cheats.tres";
-		var settings = GD.Load<CheatsTuning>(path);
+		const string path = "res://scripts/cheats/in_game_cheats.tres";
+		var settings = GD.Load<InGameCheatSettings>(path);
 		if (settings == null)
 		{
 			GD.PushError($"Could not load the cheat settings {path}.");
-			settings = new CheatsTuning();
+			settings = new InGameCheatSettings();
 		}
 		return settings;
 	}

@@ -38,7 +38,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 
    Copy a sibling weapon's files. Add every one to the pool with the helper (`tuning/levels.tres`, `Upgrades`).
 4. **Count:** if the weapon has a count that `{count}` card text should show, add it to the `count` switch in `Upgrades.Describe` (`scripts/fight/Upgrades.cs`).
-5. **Cheat menu:** add the weapon's `.tres` to `StartingWeaponChoices` in `scripts/cheats/cheats.tres` with the helper.
+5. **Cheat menu:** add the weapon's `.tres` to `StartingWeaponChoices` in `scripts/cheats/in_game_cheats.tres` with the helper.
 6. **Look and sound:**
    - its own colour, distinct from the other weapons';
    - firing and impact effects (`scripts/effects/Effects.cs` has the building blocks);
@@ -72,7 +72,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    `Range` and `AttackDistance` are measured from the enemy's edge: use `EdgeDistance` and `RadiusOf`, never the enemy's center. Decide whether the attack should keep back from enemies that ask for it (`KeepsBack`).
 3. **Register it:**
    - add the equip upgrade to the pool;
-   - add the `.tres` to `StartingDroneWeaponChoices` in `cheats.tres`;
+   - add the `.tres` to `StartingDroneWeaponChoices` in `in_game_cheats.tres`;
    - add an icon named after its ID.
 
 ## An enemy type

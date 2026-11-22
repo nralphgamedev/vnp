@@ -1,8 +1,8 @@
 """
-Writes a batch's report, report.md, from its fight logs. tools/batch.py runs this at the end of every batch; run
+Writes a batch's report, report.md, from its fight logs. tools/batches/batch.py runs this at the end of every batch; run
 it yourself to write a report again, for example after improving this script:
 
-    python tools/batch_report.py playtests/batches/<batch folder>
+    python tools/batches/batch_report.py playtests/batches/<batch folder>
 
 The report covers outcomes, the level curve, losses, endless survival, matchups between weapons and enemy types,
 upgrades, and performance, each by combination of pilot, build and starting weapons where that matters.
@@ -78,7 +78,7 @@ def combo_label(fight, show_variant=False):
 
 def review_setting(name, default):
     """A value from the run review settings, scripts/cheats/playtesting/review_settings.tres."""
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                         'scripts', 'cheats', 'playtesting', 'review_settings.tres')
     try:
         m = re.search(rf'^{name} = ([\d.]+)', open(path, encoding='utf-8').read(), re.M)
@@ -453,7 +453,7 @@ def write_report(folder):
             if ls:
                 rows.append([label] + rates(ls))
         human = []
-        human_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'playtests', 'human')
+        human_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'playtests', 'human')
         # Each of the designer's fights has its own folder; older logs sit loose in playtests/human/.
         for path in sorted(glob.glob(os.path.join(human_folder, '*.json')) + glob.glob(os.path.join(human_folder, '*', '*.json'))):
             log = json.load(open(path, encoding='utf-8'))
@@ -529,5 +529,5 @@ def write_report(folder):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        sys.exit('Usage: python tools/batch_report.py <batch folder>')
+        sys.exit('Usage: python tools/batches/batch_report.py <batch folder>')
     print(write_report(sys.argv[1]))

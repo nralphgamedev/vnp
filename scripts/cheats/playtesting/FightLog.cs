@@ -355,7 +355,7 @@ public partial class FightLog : Node
 				["startedAt"] = _startedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
 				["cheats"] = new Dictionary<string, object>
 				{
-					["chooseStartingWeapon"] = PlaytestCheats.ChoosesStartingWeapon,
+					["chooseStartingWeapon"] = InGameCheats.ChoosesStartingWeapon,
 					["freeRerolls"] = stats.LevelUps.Sum(l => l.FreeRerolls),
 				},
 			},

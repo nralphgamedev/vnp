@@ -2,12 +2,12 @@
 using Godot;
 
 /// <summary>
-/// Settings for the playtest cheats. Values live in res://scripts/cheats/cheats.tres. Editor only, like
+/// Settings for the playtest cheats. Values live in res://scripts/cheats/in_game_cheats.tres. Editor only, like
 /// everything in scripts/cheats/: an exported game never has these settings, and plays as if every cheat
 /// were off.
 /// </summary>
 [GlobalClass]
-public partial class CheatsTuning : Resource
+public partial class InGameCheatSettings : Resource
 {
 	/// <summary>Each fight starts with a menu to choose the starting VNP Weapon from StartingWeaponChoices,
 	/// in place of StartingWeapons in vnp.tres, then the starting Drone Weapon from

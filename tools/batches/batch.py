@@ -24,7 +24,7 @@ scripts/cheats/playtesting/batch_settings.tres.
 
 Each batch gets a folder in playtests/batches/, holding batch.json (what was run and how each fight went), the
 fight logs in logs/, each fight's console output in output/, and the report, report.md, with the same report as a page with charts, report.html. The report can be written
-again from the logs with tools/batch_report.py.
+again from the logs with tools/batches/batch_report.py.
 
 Editor-only testing tool: nothing here is part of the game.
 """
@@ -39,10 +39,10 @@ import subprocess
 import sys
 import time
 
-PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GODOT = os.environ.get('GODOT', r'F:\GameDev\godot\bin\godot.windows.editor.x86_64.mono.console.exe')
 SETTINGS = os.path.join(PROJECT, 'scripts', 'cheats', 'playtesting', 'batch_settings.tres')
-CHEATS = os.path.join(PROJECT, 'scripts', 'cheats', 'cheats.tres')
+CHEATS = os.path.join(PROJECT, 'scripts', 'cheats', 'in_game_cheats.tres')
 
 # Lines a headless run prints that are not problems: sounds that played are reported as leaked when it quits,
 # because its dummy audio driver never finishes them.
@@ -68,7 +68,7 @@ def read_tres_values(path):
 
 
 def starting_choices():
-    """The VNP Weapon and Drone Weapon IDs the starting weapon cheat offers, from cheats.tres, in order."""
+    """The VNP Weapon and Drone Weapon IDs the starting weapon cheat offers, from in_game_cheats.tres, in order."""
     text = open(CHEATS, encoding='utf-8').read()
     paths = dict(re.findall(r'\[ext_resource type="Resource" path="res://([^"]+)" id="([^"]+)"\]', text))
     paths = {rid: path for path, rid in paths.items()}
