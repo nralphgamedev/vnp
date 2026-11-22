@@ -3,7 +3,10 @@ Compares a batch's pilot fights with the designer's own fights at the same fight
 health, drones, kills and level at each minute, and how many are still alive. Comparing per minute over whole
 fights misleads, since fights that last longer reach the fastest part of endless mode (see the run review spec).
 
-    python tools/compare_to_designer.py playtests/batches/<batch folder>
+    python tools/compare_to_designer.py playtests/batches/<batch folder>              all the designer's fights
+    python tools/compare_to_designer.py playtests/batches/<batch folder> --same-tuning  only those on the batch's tuning
+    ... --since=2026-11-22_01-40   only the designer's fights started at or after that time (from their names), for
+                                   fights whose fingerprint was taken before pilots' files were left out of it
 
 Prints a table, then one number, the gap: the average difference from the designer across those measures and
 times, each as a fraction of the designer's value. Smaller is closer. Calibration tries to bring it down.
@@ -43,14 +46,17 @@ def profile(logs):
     return rows
 
 
-def designer_logs():
+def designer_logs(fingerprints=None, since=None):
     folder = os.path.join(ROOT, 'playtests', 'human')
     paths = glob.glob(os.path.join(folder, '*.json')) + glob.glob(os.path.join(folder, '*', '*.json'))
     logs = []
     for p in sorted(paths):
+        if since and os.path.basename(p) < since:
+            continue
         log = json.load(open(p, encoding='utf-8'))
         # Very short fights, such as one restarted at once, say nothing about how the designer plays.
-        if log.get('timeline') and log['outcome']['time'] > 60:
+        if log.get('timeline') and log['outcome']['time'] > 60 and (
+                fingerprints is None or log['settings'].get('tuningFingerprint') in fingerprints):
             logs.append(log)
     return logs
 
@@ -68,10 +74,16 @@ def gap(pilot, designer):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit('Usage: python tools/compare_to_designer.py <batch folder>')
-    pilots = [json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(sys.argv[1], 'logs', '*.json'))]
-    human = designer_logs()
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    if len(args) != 1:
+        sys.exit('Usage: python tools/compare_to_designer.py <batch folder> [--same-tuning]')
+    pilots = [json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(args[0], 'logs', '*.json'))]
+    # The batch's tuning fingerprints, without any variant's text folded in, for comparing on the same tuning.
+    base = {l['settings']['tuningFingerprint'] for l in pilots if not l['settings'].get('tuningVariant')}
+    since = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--since=')), None)
+    human = designer_logs(base if '--same-tuning' in sys.argv else None, since)
+    print('Designer fights:', ', '.join(f"{l['settings']['startingWeapons'][0]}/{l['settings']['startingDroneWeapon']}"
+                                       for l in human))
     if not pilots or not human:
         sys.exit(f'Need pilot fights and designer fights: found {len(pilots)} and {len(human)}.')
     p, d = profile(pilots), profile(human)

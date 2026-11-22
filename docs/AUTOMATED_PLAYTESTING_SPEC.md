@@ -22,7 +22,7 @@ This spec interrupts phase 3 (`docs/PROTOTYPE_3_SPEC.md`). Phase 3's damage brea
 - **Batch:** a set of fights run one after another, or several at a time, with chosen pilots, builds, starting weapons, seeds and tuning.
 - **Seed:** the number that sets every random choice in a fight. The same seed, pilot and tuning give the same fight.
 - **Tuning variant:** a set of changed tuning values, applied on top of the tuning files for a batch, without editing them.
-- **Tuning fingerprint:** a short hash of every tuning and content file, so two fights can be checked to have used the same tuning.
+- **Tuning fingerprint:** a short hash of every tuning and content file, so two fights can be checked to have used the same tuning. The pilots' own files are left out, since they describe the pilots, not the game; until that was done, calibrating a pilot made the designer's fights look as if they had been played on other tuning.
 
 ## Seeds
 

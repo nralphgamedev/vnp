@@ -450,10 +450,13 @@ public partial class FightLog : Node
 		if (_tuningFingerprint != null)
 			return _tuningFingerprint;
 		string root = ProjectSettings.GlobalizePath("res://");
-		string[] skip = { "placeholder/", "scripts/cheats/", "playtests/", ".godot/", ".claude/", "addons/" };
+		// The pilots' own files (pilots/ and each weapon's pilot_profile.tres) are left out: they describe the
+		// pilots, not the game being balanced, so calibrating pilots mustn't make the designer's fights look as if
+		// they were played on other tuning.
+		string[] skip = { "placeholder/", "scripts/cheats/", "playtests/", ".godot/", ".claude/", "addons/", "pilots/" };
 		var files = Directory.EnumerateFiles(root, "*.tres", SearchOption.AllDirectories)
 			.Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
-			.Where(f => !skip.Any(f.StartsWith))
+			.Where(f => !skip.Any(f.StartsWith) && !f.EndsWith("/pilot_profile.tres"))
 			.OrderBy(f => f, StringComparer.Ordinal);
 		using var hash = SHA256.Create();
 		foreach (string file in files)

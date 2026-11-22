@@ -18,3 +18,11 @@ Branch `calibration/expert` created at the designer's request. Rules added to CL
 ### 2026-11-22: test chunk, the expert pilot as it is
 
 40 expert fights (Designer build, random starts) against the designer's 9 fights with timelines, some played on earlier tuning. GAP 0.210. The pilots match the designer on health to 3:00 and on drones to 2:00; from 3:00 they fall behind on kills and level, and by 4:00 their drones have collapsed (median 3 against the designer's 19). This is the late-fight gap the first review found. Kept: nothing changed; this sets the baseline. Next: the designer is playing a few more fights first, then calibration starts, aiming at the late fight.
+
+### 2026-11-22: baseline on the designer's current tuning
+
+The designer played three fights on the current tuning: Seeker Missiles with Ram, Orbital Shards with Projectile, and Shockwave with Beam. The Designer build was refitted to 13 logs (238 choices).
+
+- **Fingerprint fix:** the tuning fingerprint covered the pilots' own files, so refitting the Designer build made the designer's fights look as if they were on other tuning. It now leaves out `pilots/` and every `pilot_profile.tres`. The three fights' fingerprints were taken the old way and their logs aren't rewritten; the game's files are unchanged since they were played (only `pilots/builds/designer.tres` differs), so they are picked by time with `compare_to_designer.py --since=2026-11-22_01-40`. Fights from now on can use `--same-tuning`.
+- **Baseline:** 40 expert fights against those three: GAP 0.171. Health and level match to 3:00 (pilots a level ahead at 3:00). Pilots hold fewer drones from 3:00 (18 against 30), make fewer kills (110 against 130 at 3:00), and fewer are alive at 4:00 (78% against all three). At 4:00 both are low on drones (2 against 5). Three designer fights is a small target: treat differences under about a tenth as chance.
+- **Next:** calibration, aiming at drones and kills from 3:00 and survival at 4:00. Use `--since=2026-11-22_01-40` until the designer has played on the new fingerprint, then `--same-tuning`.
