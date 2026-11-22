@@ -67,7 +67,7 @@ public partial class FightLog : Node
 
 	/// <summary>Fight times at which the next fight saves strips for strip maps, as well as when detectors fire.
 	/// Set by the scenario harness's strip= option.</summary>
-	public static List<double> NextStripTimes;
+	public static List<ReviewRecorder.StripRequest> NextStripTimes;
 
 	/// <summary>Draw the next fight's run review maps when its log is written, into a maps folder beside it.
 	/// The designer's fights always are. Set by the scenario harness's maps=yes option.</summary>
@@ -126,7 +126,7 @@ public partial class FightLog : Node
 		ReviewSettings reviewSettings = LoadReviewSettings();
 		log._recorder = new ReviewRecorder(fight, reviewSettings);
 		if (NextStripTimes != null)
-			log._recorder.ExtraStripTimes.AddRange(NextStripTimes);
+			log._recorder.RequestStrips(NextStripTimes);
 		NextStripTimes = null;
 		log._drawMaps = NextDrawMaps || player == "designer";
 		NextDrawMaps = false;
@@ -235,6 +235,7 @@ public partial class FightLog : Node
 	public void FightEnded(Fight.Outcome outcome)
 	{
 		Sample(_fight.Elapsed);
+		_recorder?.FightEnded(_fight.Elapsed);
 		Write(outcome.ToString().ToLowerInvariant());
 		ShowNote();
 	}

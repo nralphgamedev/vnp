@@ -339,23 +339,31 @@ public static class MapDrawer
 		// From the log rather than the settings file, so drawing never loads a resource and can run off the main
 		// thread.
 		float view = maps.TryGetProperty("stripView", out JsonElement viewValue) ? (float)viewValue.GetDouble() : 64f;
-		float spacing = maps.TryGetProperty("stripSpacing", out JsonElement spacingValue) ? (float)spacingValue.GetDouble() : 1f;
+		float spacing = strip.TryGetProperty("spacing", out JsonElement ownSpacing) ? (float)ownSpacing.GetDouble()
+			: maps.TryGetProperty("stripSpacing", out JsonElement spacingValue) ? (float)spacingValue.GetDouble() : 1f;
+		bool hasMoment = !strip.TryGetProperty("moment", out JsonElement momentValue) || momentValue.GetBoolean();
 		float scale = Panel / view;
 		double moment = strip.GetProperty("time").GetDouble();
 		string reason = strip.GetProperty("reason").GetString();
 		JsonElement track = maps.GetProperty("track");
 
-		// Which frame is the moment: the last one at or before it.
-		int momentFrame = 0;
-		for (int f = 0; f < n; f++)
+		// Which frame is the moment: the nearest to it, since pictures land on the first game frame at or after
+		// their time. A stretch asked for has none.
+		int momentFrame = -1;
+		double nearest = double.MaxValue;
+		for (int f = 0; hasMoment && f < n; f++)
 		{
-			if (frames[f].GetProperty("time").GetDouble() <= moment + 0.01)
+			double off = Math.Abs(frames[f].GetProperty("time").GetDouble() - moment);
+			if (off < nearest)
+			{
+				nearest = off;
 				momentFrame = f;
+			}
 		}
 
 		string reasonName = detectors.Find(d => d.Id == reason).Name ?? reason;
 		Text(image, Gap, 8, $"{reasonName} AT {Ui.Clock(moment)} (CLOCK {RunReview.OnScreenClock(moment)})  " +
-			$"{StripWho(log)}  VIEW {view:0} UNITS ACROSS, PICTURES {spacing:0.#}S APART", Ink, 2);
+			$"{StripWho(log)}  VIEW {view:0} UNITS ACROSS, PICTURES {spacing:0.##}S APART", Ink, 2);
 		Text(image, Gap, 28, "VNP WHITE WITH ITS PATH AND HEADING, CYAN DRONES, GREY ASTEROID, BROWN DEBRIS, ORANGE ENEMY SHOTS. " +
 			"ENEMIES IN THEIR OWN COLOUR: STRIPED DAMAGES BY TOUCH, OUTER RING ABSORBS DRONES", Dim, 1);
 		// A key to the enemy types in this strip only.
@@ -435,7 +443,7 @@ public static class MapDrawer
 			FillRect(image, px, py, Panel, 2, border); FillRect(image, px, py + Panel - 2, Panel, 2, border);
 			FillRect(image, px, py, 2, Panel, border); FillRect(image, px + Panel - 2, py, 2, Panel, border);
 			double offset = t - moment;
-			Text(image, px + 6, py + 6, $"{(offset >= 0 ? "+" : "")}{offset:0.0}S  {Ui.Clock(t)} ({RunReview.OnScreenClock(t)})", Ink, 1);
+			Text(image, px + 6, py + 6, $"{(offset >= 0 ? "+" : "")}{offset:0.00}S  {Ui.Clock(t)} ({RunReview.OnScreenClock(t)})", Ink, 1);
 			Text(image, px + 6, py + 18, $"HEALTH {frame.GetProperty("health").GetDouble():0}  DRONES {frame.GetProperty("drones").GetInt32()}  " +
 				$"LEVEL {frame.GetProperty("level").GetInt32()}", Dim, 1);
 		}

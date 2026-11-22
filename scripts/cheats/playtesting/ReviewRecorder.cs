@@ -2,6 +2,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Records what the run review's maps are drawn from (docs/RUN_REVIEW_SPEC.md): the VNP's track through the
@@ -22,6 +23,43 @@ public class ReviewRecorder
 		public double Time;
 		public readonly List<Dictionary<string, object>> Frames = new();
 		public int AfterLeft;
+		/// <summary>Seconds between its pictures, when not the settings' StripSpacing.</summary>
+		public double? Spacing;
+		/// <summary>False for a stretch of the fight asked for as FROM-TO, which has no single moment to highlight.</summary>
+		public bool HasMoment = true;
+	}
+
+	/// <summary>A strip asked for before the fight, by the scenario harness's strip= option, for replaying a pilot
+	/// fight. Since it is known ahead, its pictures are taken on its own schedule rather than from the snapshots
+	/// kept for detectors: centred exactly on its moment, or across a stretch, at any spacing.</summary>
+	public class StripRequest
+	{
+		public double Time;
+		public double? End;
+		public double? Spacing;
+
+		/// <summary>Reads one of strip='s comma-separated entries: T (a moment), T:S (a moment, pictures S seconds
+		/// apart), FROM-TO (a stretch) or FROM-TO:S.</summary>
+		public static StripRequest Parse(string text)
+		{
+			var culture = System.Globalization.CultureInfo.InvariantCulture;
+			var request = new StripRequest();
+			string[] parts = text.Split(':');
+			if (parts.Length > 1)
+				request.Spacing = Math.Max(1.0 / 60, double.Parse(parts[1], culture));
+			string[] range = parts[0].Split('-');
+			request.Time = double.Parse(range[0], culture);
+			if (range.Length > 1)
+				request.End = double.Parse(range[1], culture);
+			return request;
+		}
+	}
+
+	private class Scheduled
+	{
+		public Strip Strip;
+		public double Next, Last, Spacing;
+		public bool EventNoted;
 	}
 
 	private readonly Fight _fight;
@@ -42,15 +80,34 @@ public class ReviewRecorder
 	private double _nextSnapshot;
 	private readonly List<Strip> _pending = new();
 	private readonly List<Strip> _strips = new();
+	private readonly List<Scheduled> _scheduled = new();
+	private bool _endTaken;
 
-	/// <summary>Fight times at which to save a strip as well as when detectors fire, such as a moment Claude
-	/// spotted on an overview map. Set by the scenario harness's strip= option.</summary>
-	public readonly List<double> ExtraStripTimes = new();
+	/// <summary>Most pictures in one asked-for strip, so a long stretch at a fine spacing can't make a huge image.</summary>
+	private const int MaxRequestedFrames = 48;
 
 	public ReviewRecorder(Fight fight, ReviewSettings settings)
 	{
 		_fight = fight;
 		_settings = settings;
+	}
+
+	/// <summary>Strips to take as well as when detectors fire, such as a moment Claude spotted on an overview map.
+	/// A moment gets the settings' StripBefore pictures before it and StripAfter after; a stretch gets pictures
+	/// from its start to its end.</summary>
+	public void RequestStrips(IEnumerable<StripRequest> requests)
+	{
+		foreach (StripRequest r in requests)
+		{
+			double spacing = r.Spacing ?? Math.Max(0.1, _settings.StripSpacing);
+			double from = r.End.HasValue ? Math.Min(r.Time, r.End.Value) : r.Time - Math.Max(0, _settings.StripBefore) * spacing;
+			double to = r.End.HasValue ? Math.Max(r.Time, r.End.Value) : r.Time + Math.Max(1, _settings.StripAfter) * spacing;
+			if ((to - from) / spacing + 1 > MaxRequestedFrames)
+				spacing = (to - from) / (MaxRequestedFrames - 1);
+			var strip = new Strip { Reason = "requested", Time = Math.Round(r.Time, 2), HasMoment = !r.End.HasValue,
+				Spacing = r.Spacing.HasValue || spacing != _settings.StripSpacing ? spacing : null };
+			_scheduled.Add(new Scheduled { Strip = strip, Next = Math.Max(0, from), Last = to + 1e-6, Spacing = spacing });
+		}
 	}
 
 	/// <summary>Records one frame of the fight, at fight time <paramref name="now"/>.</summary>
@@ -81,10 +138,21 @@ public class ReviewRecorder
 				(float)Math.Round(vnp.Velocity.Length() / Mathf.Max(0.01f, vnp.MoveSpeed), 2) });
 		}
 
-		foreach (double time in ExtraStripTimes)
+		foreach (Scheduled r in _scheduled)
 		{
-			if (time <= now && time > now - 1.0 / 30 && !_strips.Exists(x => x.Time == time) && !_pending.Exists(x => x.Time == time))
-				Flag("requested", time);
+			if (!r.EventNoted && now >= r.Strip.Time)
+			{
+				r.EventNoted = true;
+				Event(now, "detector", "requested");
+			}
+			if (now < r.Next || now > r.Last)
+				continue;
+			if (r.Strip.Frames.Count == 0)
+				_strips.Add(r.Strip);
+			r.Strip.Frames.Add(Snapshot(now));
+			// Kept to its own cadence, skipping any picture times a long frame jumped past.
+			while (r.Next <= now)
+				r.Next += r.Spacing;
 		}
 
 		if (now >= _nextSnapshot)
@@ -107,6 +175,32 @@ public class ReviewRecorder
 		}
 	}
 
+	/// <summary>The fight ended: if the VNP was destroyed, one last picture of that moment for every strip still being
+	/// taken, so a strip of how a fight ended reaches its end rather than stopping up to a picture's spacing short
+	/// of it. Called by the fight log as the fight ends, since the fight pauses for the result screen in the same
+	/// frame, before the next Update.</summary>
+	public void FightEnded(double now)
+	{
+		if (_endTaken || !_fight.Vnp.IsDestroyed)
+			return;
+		_endTaken = true;
+		Dictionary<string, object> last = Snapshot(now);
+		foreach (Strip strip in _pending)
+			AddLast(strip, last);
+		foreach (Scheduled r in _scheduled)
+		{
+			if (r.Strip.Frames.Count > 0 && now <= r.Last)
+				AddLast(r.Strip, last);
+		}
+	}
+
+	/// <summary>Adds the picture of the VNP's destruction, unless a detector firing in the same frame already took one.</summary>
+	private static void AddLast(Strip strip, Dictionary<string, object> last)
+	{
+		if (strip.Frames.Count == 0 || (double)strip.Frames[^1]["time"] < (double)last["time"])
+			strip.Frames.Add(last);
+	}
+
 	/// <summary>A detector fired (or a strip was asked for): note it on the track, and start a strip from the
 	/// last few seconds of snapshots, finished over the next few.</summary>
 	public void Flag(string reason, double now)
@@ -116,6 +210,9 @@ public class ReviewRecorder
 			return;
 		var strip = new Strip { Reason = reason, Time = Math.Round(now, 2), AfterLeft = Math.Max(1, _settings.StripAfter) };
 		strip.Frames.AddRange(_recent);
+		// A picture of the moment itself, since the last kept snapshot can be up to StripSpacing before it.
+		if (_recent.Count == 0 || (double)_recent.Last()["time"] < Math.Round(now, 2))
+			strip.Frames.Add(Snapshot(now));
 		_pending.Add(strip);
 	}
 
@@ -244,14 +341,19 @@ public class ReviewRecorder
 	/// <summary>The track, events and strips, for the fight log.</summary>
 	public Dictionary<string, object> ToLog()
 	{
-		var strips = new List<object>();
-		foreach (Strip strip in _strips)
-			strips.Add(new Dictionary<string, object> { ["reason"] = strip.Reason, ["time"] = strip.Time, ["frames"] = strip.Frames });
 		// Copies of everything that keeps growing, since the log may be written in the background while the fight
 		// carries on. A strip still waiting for its last frames when the fight ended is kept as far as it got.
-		foreach (Strip strip in _pending)
-			strips.Add(new Dictionary<string, object> { ["reason"] = strip.Reason, ["time"] = strip.Time,
-				["frames"] = new List<Dictionary<string, object>>(strip.Frames) });
+		var strips = new List<object>();
+		foreach (Strip strip in _strips.Concat(_pending))
+		{
+			var entry = new Dictionary<string, object> { ["reason"] = strip.Reason, ["time"] = strip.Time,
+				["frames"] = new List<Dictionary<string, object>>(strip.Frames) };
+			if (strip.Spacing.HasValue)
+				entry["spacing"] = Math.Round(strip.Spacing.Value, 3);
+			if (!strip.HasMoment)
+				entry["moment"] = false;
+			strips.Add(entry);
+		}
 		Vector2 gateway = _fight.Gateway.PlanePosition;
 		return new Dictionary<string, object>
 		{
