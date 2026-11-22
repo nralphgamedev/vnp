@@ -99,6 +99,8 @@ def main():
     parser.add_argument('--size', choices=['quick', 'standard', 'long'], default='standard',
                         help='how many seeds per combination, from batch_settings.tres (default: standard)')
     parser.add_argument('--seeds', type=int, help='seeds per combination, in place of the size')
+    parser.add_argument('--first-seed', type=int, default=1,
+                        help='the first seed (default 1); calibration confirms a result on a second, separate set')
     parser.add_argument('--pilots', default='average', help='skill levels, comma-separated (default: average)')
     parser.add_argument('--builds', default='greedy,random', help='builds, comma-separated (default: greedy,random)')
     parser.add_argument('--weapons', default='random',
@@ -142,7 +144,7 @@ def main():
         if v != 'base' and not os.path.exists(os.path.join(PROJECT, 'tools', 'variants', v + '.txt')):
             sys.exit(f'No tuning variant {v} in tools/variants/')
     combos = [(p, b, w, d, v) for v in variants for p in pilots for b in builds for w in weapons for d in drone_weapons]
-    fights = [(combo, seed) for combo in combos for seed in range(1, seeds + 1)]
+    fights = [(combo, seed) for combo in combos for seed in range(args.first_seed, args.first_seed + seeds)]
     if args.rendered:
         at_once = args.at_once or int(settings.get('RenderedAtOnce', 1)) or 1
     else:
