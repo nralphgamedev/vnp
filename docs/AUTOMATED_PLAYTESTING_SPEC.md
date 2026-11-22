@@ -62,7 +62,7 @@ The result screen shows the damage breakdown, drones lost and shots blocked, as 
 
 ## Pilots
 
-A pilot flies a VNP the way a player does: it chooses a direction to move each moment, and picks from each level-up offer. It sees what a player could see, the fight around the VNP within its awareness, and never reads hidden information such as the next wave's timing.
+A pilot flies a VNP the way a player does: it chooses a direction to move each moment, and picks from each level-up offer. It sees what a player could see, the fight around the VNP within its awareness, and never reads hidden information such as the next wave's timing. It can learn the timing as a player does, though: the designer judges how long they have before the next wave when deciding whether to stay and harvest or go to a cluster, so a pilot may estimate the next wave from the waves it has seen arrive this fight (their warnings are on screen). Until it has seen two, it doesn't know.
 
 - **Reuse:** pilots are game code, in their own feature folder, `pilots/`, not editor-only. The full game will have several VNPs flown by the computer, and the same pilot logic is meant to fly them:
   - rival VNPs, which the GDD says will behave much like the player;
@@ -85,7 +85,7 @@ A pilot flies a VNP the way a player does: it chooses a direction to move each m
   - Area: Shockwave, Mine Layer, and area of effect.
   - Tank: health, armor, Orbital Shards and blocking.
 - **Skill levels** are data too: how often it reconsiders where to move (its reaction time), how far it is aware of things, how well it notices and dodges shots, how cautious or greedy it is, and how much its movement wanders. Starting levels: novice, average, and expert.
-- **Calibration:** the average pilot is adjusted until its fight logs land near the designer's own on the same tuning (the same tuning fingerprint). The report compares win rate, level at 5:00, time to the kill target and drones lost, and calibration aims at the first two (see Not yet decided). The designer's fights that used free rerolls are left out, since pilots don't get them. The starting weapon choice is fine: the batch uses the same weapons.
+- **Calibration:** the expert pilot is adjusted until its fight logs land near the designer's own (at the designer's suggestion, the expert is worked on first and the other levels made from it afterwards; this was the average pilot until then) on the same tuning (the same tuning fingerprint). The report compares win rate, level at 5:00, time to the kill target and drones lost, and calibration aims at the first two (see Not yet decided). The designer's fights that used free rerolls are left out, since pilots don't get them. The starting weapon choice is fine: the batch uses the same weapons.
 
 ## Batches
 

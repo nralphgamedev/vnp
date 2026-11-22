@@ -68,6 +68,20 @@ public partial class ReviewSettings : Resource
 	[Export] public int BurstDrones = 6;
 	[Export] public float BurstSeconds = 3f;
 
+	/// <summary>Drones left fighting: at least LeftFightingDrones drones, an enemy within the drones' engage range
+	/// of the VNP but more than LeftFightingDistance from it, and the VNP moving away from it at LeftFightingSpeed
+	/// or more, for LeftFightingSeconds: the drones fight on while the VNP leaves them.</summary>
+	[ExportGroup("Drones left fighting")]
+	[Export] public int LeftFightingDrones = 4;
+	[Export] public float LeftFightingDistance = 10f;
+	[Export] public float LeftFightingSpeed = 0.4f;
+	[Export] public float LeftFightingSeconds = 1.5f;
+
+	/// <summary>Drones not rebuilt: NotRebuiltDrones or fewer for NotRebuiltSeconds, after the first minute.</summary>
+	[ExportGroup("Drones not rebuilt")]
+	[Export] public int NotRebuiltDrones = 2;
+	[Export] public float NotRebuiltSeconds = 20f;
+
 	/// <summary>How often the track records the VNP's position and what it was doing, in seconds.</summary>
 	[ExportGroup("Maps")]
 	[Export] public float TrackSeconds = 0.25f;

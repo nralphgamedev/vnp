@@ -53,6 +53,8 @@ public partial class Pilot : Node, IVnpController
 	private Vector2 _exploreHeading = Vector2.Up;
 	private float _orbitSign = 1f;
 	private bool _regrouping;
+	private bool _withdrawing;
+	private float _withdrawingFor;
 	private float _sinceDecision;
 	private float _heldPressure;
 	private float _lastTargetDanger;
@@ -162,8 +164,27 @@ public partial class Pilot : Node, IVnpController
 			_regrouping = true;
 		else if (_regrouping && droneReliance >= Skill.RegroupUntil)
 			_regrouping = false;
-		if (_regrouping)
-			backOff = nearestAnyThreat < Skill.ThreatRange ? 1f : backOff;
+		if (_regrouping && Skill.RegroupClearRange > 0f)
+			backOff = nearestAnyThreat < Skill.RegroupClearRange ? 1f : backOff;
+		// With drones that matter, all or nothing: stay with them, or withdraw far enough that they break off.
+		if (Skill.CommitOrWithdraw && !_regrouping && droneReliance >= Skill.RegroupBelow)
+		{
+			float dronesLetGo = Tuning.Drones.EngageRange * DroneSwarm.KeepTargetFactor + Skill.WithdrawMargin;
+			if (!_withdrawing && backOff >= 0.5f)
+			{
+				_withdrawing = true;
+				_withdrawingFor = 0f;
+			}
+			else if (_withdrawing)
+			{
+				_withdrawingFor += sinceLast;
+				if (nearestAnyThreat > dronesLetGo || _withdrawingFor > Skill.WithdrawMaxSeconds)
+					_withdrawing = false;
+			}
+			backOff = _withdrawing ? 1f : 0f;
+		}
+		else
+			_withdrawing = false;
 		float engage = _regrouping ? 0f : 1f - backOff;
 
 		Vector2 want = Vector2.Zero;
@@ -315,7 +336,7 @@ public partial class Pilot : Node, IVnpController
 			: "no material in sight";
 		string fight = fightTarget >= 0 ? $"fighting {enemies.TypeIdOf(fightTarget)} at {fightDistance:0.0}" : "not fighting";
 		return $"threat {threat:0.00} / affordable {Affordable():0.00} = pressure {pressure:0.00}, back off {backOff:0.00}" +
-			(_regrouping ? " | regrouping" : "") +
+			(_regrouping ? " | regrouping" : "") + (_withdrawing ? " | withdrawing" : "") +
 			$" | {fight} | {doing}" + (dodge != Vector2.Zero ? " | dodging" : "") +
 			$" | drones {_drones.Count} (reliance {droneReliance:0.00}) | drone eaters on screen {drainers}" +
 			(drainers > 0 ? $", nearest edge {nearestDrainer:0.0}" : "") +

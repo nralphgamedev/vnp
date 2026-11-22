@@ -85,6 +85,20 @@ public partial class PilotDefinition : Resource
 	/// 0 lets it fall at once.</summary>
 	[Export] public float PressureFall;
 
+	/// <summary>While regrouping, it backs off fully while any enemy is within this distance. 0 backs off only as
+	/// its pressure says, so it can harvest near a fight when the danger is low, as the designer does. The first
+	/// review found that at its threat range (38), late in a fight it was never clear, and spent 64% of its
+	/// decisions heading for material and 8% harvesting it, so its drones were never rebuilt.</summary>
+	[Export] public float RegroupClearRange;
+
+	/// <summary>With drones that matter, back off all or nothing: either stay in the fight with the drones, or
+	/// withdraw until no enemy is within the drones' reach plus WithdrawMargin, so they break off and follow. The
+	/// first review found pilots half-retreating, leaving their drones to fight packs alone.</summary>
+	[Export] public bool CommitOrWithdraw;
+	[Export] public float WithdrawMargin = 5f;
+	/// <summary>Stops withdrawing after this long even if not yet clear, so it can't flee forever.</summary>
+	[Export] public float WithdrawMaxSeconds = 8f;
+
 	/// <summary>From 0 to 1, of the drone cap: how many drones it rebuilds before it stops regrouping.</summary>
 	[Export(PropertyHint.Range, "0,1,0.01")] public float RegroupUntil;
 

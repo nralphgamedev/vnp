@@ -62,7 +62,9 @@ public partial class DroneSwarm : Node3D
 
 	// A drone already busy with a target keeps it a little past the range it would pick it up at,
 	// so it does not dither when a target sits right on the edge.
-	private const float KeepTargetFactor = 1.2f;
+	/// <summary>Drones keep a target until it is this many times their engage range from the VNP. Public so a
+	/// pilot can tell how far it must pull away for its drones to break off.</summary>
+	public const float KeepTargetFactor = 1.2f;
 
 	// Seconds a newly built drone takes to grow to full size.
 	private const float BuildTime = 0.35f;

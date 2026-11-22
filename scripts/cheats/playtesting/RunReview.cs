@@ -38,7 +38,8 @@ public class RunReview
 	private readonly ReviewSettings _settings;
 	private readonly int[] _enemies = new int[1024];
 	private readonly int[] _material = new int[256];
-	private readonly Detector _touchedGoo, _throughGroup, _closedIn, _indecision, _creeping, _noDrones, _idle, _burst;
+	private readonly Detector _touchedGoo, _throughGroup, _closedIn, _indecision, _creeping, _noDrones, _idle, _burst,
+		_leftFighting, _notRebuilt;
 
 	// Flew through a group: each enemy passed close, by id, and when.
 	private readonly Dictionary<int, double> _passed = new();
@@ -62,6 +63,8 @@ public class RunReview
 		_noDrones = Add("no_drones_fighting", "Fighting without drones");
 		_idle = Add("idle", "Idle");
 		_burst = Add("drones_lost_burst", "Drones lost in a burst");
+		_leftFighting = Add("drones_left_fighting", "Drones left fighting");
+		_notRebuilt = Add("drones_not_rebuilt", "Drones not rebuilt");
 	}
 
 	private Detector Add(string id, string name)
@@ -173,6 +176,35 @@ public class RunReview
 		// Idle: neither harvesting nor near a fight.
 		bool idle = !beaming && nearestEdge > s.IdleEnemyRange;
 		Check(_idle, now, idle, s.IdleSeconds, () => $"no harvesting and no enemy within {s.IdleEnemyRange:0}; {state}");
+
+		// Drones left fighting: an enemy within the drones' reach but away from the VNP, which is leaving it.
+		bool leftFighting = false;
+		int farEnemy = -1;
+		float farEdge = 0f;
+		if (_fight.Drones.Count >= s.LeftFightingDrones)
+		{
+			float dronesReach = Tuning.Drones.EngageRange;
+			for (int c = 0; c < count && !leftFighting; c++)
+			{
+				int e = _enemies[c];
+				Vector2 toEnemy = enemies.PositionOf(e) - me;
+				float distance = toEnemy.Length();
+				float edge = distance - enemies.RadiusOf(e);
+				if (distance <= dronesReach && edge > s.LeftFightingDistance && distance > 0.001f
+					&& velocity.Dot(-toEnemy / distance) / topSpeed >= s.LeftFightingSpeed)
+				{
+					leftFighting = true;
+					farEnemy = e;
+					farEdge = edge;
+				}
+			}
+		}
+		Check(_leftFighting, now, leftFighting, s.LeftFightingSeconds,
+			() => $"moving away from {enemies.TypeIdOf(farEnemy)} {farEdge:0} away, within the drones' reach; {state}");
+
+		// Drones not rebuilt: few or none for a long while.
+		Check(_notRebuilt, now, now > 60 && _fight.Drones.Count <= s.NotRebuiltDrones, s.NotRebuiltSeconds,
+			() => $"{_fight.Drones.Count} drones for {s.NotRebuiltSeconds:0}s; {state}");
 
 		// Drones lost in a burst.
 		int lost = _fight.Stats.DronesDestroyedTotal + _fight.Stats.DronesAbsorbedTotal;

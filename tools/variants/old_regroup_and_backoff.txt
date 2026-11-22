@@ -1,0 +1,8 @@
+# Pilots as before the first run review: regrouping backs off until no enemy is within the threat range,
+# and backing off is gradual, so drones can be left fighting while the VNP half-retreats.
+pilots/skill_levels/novice.tres:RegroupClearRange = 38
+pilots/skill_levels/novice.tres:CommitOrWithdraw = false
+pilots/skill_levels/average.tres:RegroupClearRange = 38
+pilots/skill_levels/average.tres:CommitOrWithdraw = false
+pilots/skill_levels/expert.tres:RegroupClearRange = 38
+pilots/skill_levels/expert.tres:CommitOrWithdraw = false

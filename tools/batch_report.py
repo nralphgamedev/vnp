@@ -106,9 +106,13 @@ def choose_maps(batch, logs):
     for log in logs.values():
         for strip in (log.get('maps') or {}).get('strips', []):
             detector_ids.add(strip['reason'])
+    # Fights in turn from each combination, so a detector's strips come from different combinations rather than
+    # all from the first. The first review's strips were all from novice fights.
+    queues = list(by_combo.values())
+    interleaved = [q[i] for i in range(max((len(q) for q in queues), default=0)) for q in queues if i < len(q)]
     for d in sorted(detector_ids):
         picked = 0
-        for fight in batch['fights']:
+        for fight in interleaved:
             log = logs.get(fight['name'])
             if not log or not log.get('maps'):
                 continue
@@ -434,9 +438,15 @@ def write_report(folder):
 
         def rates(log_list):
             minutes = sum(l['outcome']['time'] for l in log_list) / 60
-            # A log from before a detector existed, or before it was renamed, counts it as none.
-            return [num(sum(l['review']['detectors'].get(d, {}).get('count', 0) for l in log_list) / minutes, 2)
-                    if minutes else '-' for d in detector_ids]
+            # Only logs that had the detector count: one from before it existed, or before it was renamed, says
+            # nothing about it. With none, the rate is unknown, not zero.
+            out = []
+            for d in detector_ids:
+                having = [l for l in log_list if d in l['review']['detectors']]
+                minutes_with = sum(l['outcome']['time'] for l in having) / 60
+                out.append(num(sum(l['review']['detectors'][d]['count'] for l in having) / minutes_with, 2)
+                           if minutes_with else 'not recorded')
+            return out
         rows = []
         for label, group in by_combo.items():
             ls = [logs[f['name']] for f in group if f['name'] in logs and logs[f['name']].get('review')]
