@@ -26,7 +26,7 @@ This spec interrupts phase 3 (`docs/design/PROTOTYPE_3_SPEC.md`). Phase 3's dama
 
 ## Seeds
 
-- All gameplay randomness already comes from one generator (`Rng`, in `scripts/core/Rng.cs`). Each fight now seeds it at the start. A normal fight picks a seed at random; a batch sets it.
+- All gameplay randomness already comes from one generator (`Rng`, in `scripts/core/Rng.cs`). Each fight now seeds it at the start. A normal fight picks a seed at random; a batch sets it. One exception, added in phase 3: the fight's asteroid amount is picked from its own generator, seeded from the fight's seed, so adding it didn't change the fights that already existed; it still follows the seed.
 - The seed is shown on the result screen and in the debug line at the top of the screen, and saved in the fight log.
 - Effects and sound variation use their own randomness, so turning effects up or down never changes a fight.
 - A batch fight runs at a fixed time step, so the same seed, pilot and tuning give the same fight, and a surprising result can be run again in a window to watch it.
@@ -50,12 +50,12 @@ The result screen shows the damage breakdown, drones lost and shots blocked, as 
 ## Fight logs
 
 - In the editor, every fight writes a fight log. It holds:
-  - its settings: seed, pilot or player, build, starting weapons, tuning variant, tuning fingerprint, game version from git, and which playtest cheats were used (starting weapon choice, free rerolls). Once phase 3 adds asteroid amounts, the fight's amount too.
+  - its settings: seed, pilot or player, build, starting weapons, tuning variant, tuning fingerprint, game version from git, and which playtest cheats were used (starting weapon choice, free rerolls). And the fight's asteroid amount, since phase 3.
   - its statistics.
   - a timeline sampled every second: time, health, level, experience, drones, enemies alive by type, and kills.
   - frame times: the game logic's average, 95th percentile and worst, with the most enemies and drones alive at once.
 - The game keeps the statistics, as totals and events. Sampling the timeline, timing frames and writing the file are the editor-only log writer's job.
-- **The designer's playtests** in the editor write a fight log automatically, to `playtests/human/`, each fight in a folder of its own with its run review maps beside the log (see the run review spec). The result screen notes where it was saved. These logs are how pilots are calibrated (see Pilots). They also record the designer's movement input over time at a low rate, as the start of the data any future learning from human play would need. Pilot fights record their pilot's movement the same way, so the two can be compared.
+- **The designer's playtests** in the editor write a fight log automatically, to `playtests/human/`, each fight in a folder of its own, with its whole-fight recording beside the log; its maps are drawn on request with `tools\maps.cmd` (see the run review spec). The result screen notes where it was saved. These logs are how pilots are calibrated (see Pilots). They also record the designer's movement input over time at a low rate, as the start of the data any future learning from human play would need. Pilot fights record their pilot's movement the same way, so the two can be compared.
 - **Batch fights** write their logs into the batch's folder.
 - The format is JSON, one file per fight, readable by scripts.
 - Writing fight logs is a testing aid: it exists only in the editor, like the cheats. An exported game writes no logs.
@@ -124,7 +124,7 @@ A report covers:
 
 ## Keeping it out of builds
 
-- **Editor-only:** the batch runner, fight log writing, tuning variants, the reports, and any editor button. Code in the game project goes in `scripts/cheats/playtesting/`, behind `#if TOOLS`, under the same rule as the playtest cheats. Scripts that only read logs and write reports run outside Godot and need not be in the Godot project.
+- **Editor-only:** the batch runner, fight log writing, tuning variants, the reports, and any editor button. Code in the game project goes in `scripts/cheats/playtesting/`, behind `#if TOOLS`, under the same rule as the playtest cheats; the hooks recordings need on game classes outside it go inside `#if RECORDING` (see the run review spec). Scripts that only read logs and write reports run outside Godot and need not be in the Godot project.
 - **In the game:** fight statistics (the result screen uses them) and pilots (rival VNPs will). Neither does anything in a normal fight unless asked to: fight statistics only count, and no VNP has a pilot.
 
 ## Tuning values
@@ -135,13 +135,15 @@ As in the phase specs, this file names each value and where it lives rather than
 |---|---|
 | Each skill level's reaction time, awareness, dodging, caution, greed and wander | its pilot definition file in the pilots folder |
 | Each build's preferences and reroll rule | its build file in the pilots folder |
+| How a pilot plays each weapon: distance as a fraction of the weapon's reach (`RangeFraction`, or `PreferredDistance` for a weapon without one), the distance at low health (`LowHealthRangeFraction`, `LowHealthDistance`), keeping moving and leading chasers | the weapon's `pilot_profile.tres` |
+| Care at low health and seeing contact enemies coming (`LowHealthBelow`, `LowHealthTouchScale`, `TouchLookAhead`) | the pilot definition files |
 | How heavily a pilot weighs harvesting, fighting and backing off, and how it judges whether it can afford a fight | the pilot definition files |
 | Batch sizes, the endless cap, and how many fights run at once | the batch settings file in `scripts/cheats/playtesting/` |
 | How often the timeline is sampled, and how often the designer's input is recorded | the fight log settings in `scripts/cheats/playtesting/` |
 
-## Planned: weapon profiles for pilots
+## Weapon profiles for pilots
 
-Agreed with the designer during stage 2, to build in stage 4, measured with batches.
+Agreed with the designer during stage 2 and built in stage 4 (see Weapon profiles (stage 4), under Settled during the build), measured with batches. The plan as agreed:
 
 - **General behaviors, written once:** a pilot has a small fixed set: keep a distance, keep moving, circle its target, lead chasers across a spot (such as its own mines), and stay close to enemies.
 - **A profile per weapon, as data:** a pilot profile in each weapon's folder weights those behaviors for that weapon. Several behaviors per weapon is simply several entries. Mine Layer might weight keeping moving and leading chasers across its mines; Scatter Shot might weight a close distance.
@@ -159,7 +161,7 @@ Kept as an option after calibration by watching pilot fights reached diminishing
 The designer has not settled these. Use the behavior listed, say that you did, and keep it easy to change.
 
 - **Editor button:** batches run from the command line. A button in the editor is added only if the command turns out awkward.
-- **How close is close enough:** calibration aims for the average pilot's win rate within 10 percentage points of the designer's, and its average level at 5:00 within 10% of theirs. Adjust once there is data.
+- **How close is close enough:** calibration aimed at first for the average pilot's win rate within 10 percentage points of the designer's, and its average level at 5:00 within 10% of theirs. The aim moved to the expert, and automatic calibration measures closeness by its gap at the same fight times instead (see the run review spec); no threshold for "close enough" has been set, since three designer fights were too few to set one.
 - **The designer's input recording rate:** ten samples a second, enough to see how the designer moves without large files.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
@@ -231,7 +233,7 @@ The prototype now does the following; any of it can still change.
   - **Designer:** weighted by the designer's own picks in their first four logged fights: drone cap, debris reward, drone attack rate, harvest rate and drone damage high; health, armor, movement speed, new drones and Ram low; new weapons taken when a slot is free. Four fights is a small sample, so it follows the clear preferences rather than exact rates.
 
   Over 50 seeds each, with the average pilot: Area won 84%, Greedy 72%, Random and Designer 62%, Drone swarm and Weapon focus 48%, and Tank 30%. Designer reached the highest final level (14.4).
-- **Weapon profiles (stage 4):** built as planned (see Planned: weapon profiles for pilots).
+- **Weapon profiles (stage 4):** built as planned (see Weapon profiles for pilots).
   - **Profiles:** `WeaponPilotProfile`, in `pilots/`, has `PreferredDistance`, `KeepMoving` and `LeadChasers`. Each VNP Weapon's definition names its `pilot_profile.tres`. Preferred distances come from each weapon's reach: Orbital Shards 6, Scatter Shot 9, Shockwave 10, Mine Layer 12, Pulse Laser 15, Seeker Missiles 18. These are now a fraction of each weapon's reach as upgrades change it (see Weapon distances follow reach), with Mine Layer's still fixed. Only Mine Layer keeps moving and leads chasers so far.
   - **Blending:** each decision, the pilot blends the equipped weapons' profiles, weighted by investment (1 for having the weapon, plus 1 per upgrade taken for it), scaled by its skill level's `TacticSkill` (novice 0.3, average 0.7, expert 1.0).
   - **Keep moving:** the pilot circles the rock it is harvesting instead of holding still, at a fifth of top speed, just above the speed Mine Layer needs to drop mines. At up to 45% of top speed, circling lost the beam often enough to cost about a tenth of the fight experience by 2:00.
@@ -243,6 +245,7 @@ The prototype now does the following; any of it can still change.
   - **Mine Layer is strong to start with:** Greedy won all 100 of its fights starting with it.
 - **The page with charts (stage 5):** every batch writes `report.html` beside `report.md`, made by `tools/batches/batch_report_html.py` (run it on a batch folder to write it again). It has the same text and tables as the Markdown, with charts at the top of the sections they illustrate: how each fight ended (Outcomes), the share of fights still alive and the median level of those alive over fight time, with the 5:00 limit marked (Level curve), what destroyed the VNP by enemy type (Losses), and damage dealt by source (Matchups). Hovering a bar or line shows its numbers. It is one file with nothing to install, so it opens from the folder in a browser; Claude publishes it as a private page on request. The time charts show at most eight combinations, the palette's eight colours; the tables cover the rest.
 - **Calibrating the Designer build (stage 5):** `tools/calibration/calibrate_build.py` fits the Designer build's upgrade weights to the designer's choices in their fight logs, and writes them to `pilots/builds/designer.tres` (`--dry-run` only prints them). Each answered level-up offer is a choice among three. The fit finds a weight per upgrade, plus a bonus for upgrades to what is already owned and one for new weapons, that best explain the picks. Upgrades seldom offered are pulled toward their category's weight. The weights are scaled to the pilot's own randomness, so it picks with about the designer's spread. Logs from older versions count, since preferences change less than tuning. After the first fit, the pilot's take rate when offered was within about 10 points of the designer's for most upgrades.
+- **Batch options added later:** `--first-seed N` starts a batch's seeds at N instead of 1, so a result can be confirmed on a second, separate set of seeds, as automatic calibration does. `--pilots` defaults to the expert, the one pilot kept calibrated: the average and novice levels still have their older settings (see the run review spec's Iterating on the expert first). `--asteroids` came with phase 3.
 - **Batches start with random weapons (stage 5):** at the designer's request, `--weapons` and `--drone-weapons` now default to `random`: each fight starts with a VNP Weapon and a Drone Weapon picked from the starting weapon cheat's lists. The pick follows the seed alone, so a seed starts the same way in every batch, and for every pilot, build and variant within one, which keeps comparisons fair. The report adds a section, By starting weapons, with results for each starting weapon. `--weapons default --drone-weapons default` gives the game's own starting weapons. The designer's own fights still start on the starting weapon menu.
 - **First calibration fight (Orbital Shards with Beam drones):** with the designer's picks, the pilot did no better: it lost its drones by about 2:00, where the designer kept around 20 throughout, took damage from the first seconds, and harvested about a third less. Picks were not the gap; flying is. The designer pointed to the drones: fine against a few Goos, but against many they lock onto one and fly into others. Drones now avoid danger (see the phase 3 spec), which roughly doubled pilots' drones at 2:00.
 - **Second calibration fight (Seeker Missiles with Beam drones):** with drone avoidance and the refitted Designer build, pilots on the same start won 19 of 25 and kept level with the designer for the first minute and a half. After that the designer pulled ahead, with about twice the drones; much of that came from being offered Drone cap and Debris reward more often, which one fight can't separate from style. A variant valuing debris more (`debris_keen`) changed nothing.
@@ -280,7 +283,7 @@ Build one stage at a time, and stop after each so the designer can try it.
 1. **Seeds, fight statistics and fight logs.** Seeded fights, the statistics, the result screen's damage breakdown (phase 3 stage 2), and fight logs written for the designer's playtests.
 2. **A pilot.** The movement controller, one skill level (average) and the Random and Greedy builds. Shown flying in a window through the scenario harness, so the designer can watch it play.
 3. **Batches and the Markdown report.** The batch command, sizes, parallel headless fights, the rendered option, muting, the endless cap, and the report. The check-stage skill gains a quick batch as a smoke test: it passes when every fight finishes without errors and writes its log. Its balance numbers are shown, not judged.
-4. **Skill levels, builds, weapon profiles and tuning variants,** with comparison reports: the novice and expert levels, the remaining builds plus one based on the designer's own picks, weapon profiles starting with Mine Layer (see Planned: weapon profiles for pilots), and tuning variants.
+4. **Skill levels, builds, weapon profiles and tuning variants,** with comparison reports: the novice and expert levels, the remaining builds plus one based on the designer's own picks, weapon profiles starting with Mine Layer (see Weapon profiles for pilots), and tuning variants.
 5. **Charts and calibration.** The report page with charts, and calibrating the average pilot against the designer's fight logs.
 6. **Editor button,** only if the designer wants it after using the command.
 
@@ -299,5 +302,5 @@ Phase 3 resumes after stage 5, with its stages 3 and 4. Each stage here is finis
 - The same seed, pilot and tuning give the same fight, and any batch fight can be watched again in a window.
 - The result screen shows the damage breakdown, drones lost, and shots blocked.
 - The designer's playtests write fight logs automatically, and reports compare pilots with them.
-- The average pilot's results land near the designer's on the same tuning.
+- The average pilot's results land near the designer's on the same tuning. (The aim moved to the expert pilot, which was calibrated to a gap of 0.120 against the designer's three fights then; see the run review spec's Automatic calibration (stage 4). The average and novice levels haven't been made from it yet.)
 - None of the testing tools are in an exported game.

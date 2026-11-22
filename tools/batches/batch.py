@@ -3,7 +3,7 @@ Runs a batch of automated fights, headless and several at once, then writes a re
 
 Run it from PowerShell through tools/batch.cmd, or with python from the vnp folder:
 
-    tools\\batch.cmd                                   a standard batch: average pilot, Greedy and Random builds,
+    tools\\batch.cmd                                   a standard batch: expert pilot, Greedy and Random builds,
                                                       each fight starting with random weapons
     tools\\batch.cmd --size quick                      a few fights, as a smoke test
     tools\\batch.cmd --builds greedy --weapons all     Greedy with every starting VNP Weapon in turn
@@ -114,7 +114,8 @@ def main():
     parser.add_argument('--seeds', type=int, help='seeds per combination, in place of the size')
     parser.add_argument('--first-seed', type=int, default=1,
                         help='the first seed (default 1); calibration confirms a result on a second, separate set')
-    parser.add_argument('--pilots', default='average', help='skill levels, comma-separated (default: average)')
+    parser.add_argument('--pilots', default='expert', help='skill levels, comma-separated (default: expert, the one kept '
+                        'calibrated; average and novice have older settings)')
     parser.add_argument('--builds', default='greedy,random', help='builds, comma-separated (default: greedy,random)')
     parser.add_argument('--weapons', default='random',
                         help='starting VNP Weapons, comma-separated, "all", "default" for the game\'s own, or '
