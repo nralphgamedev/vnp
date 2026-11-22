@@ -3,6 +3,7 @@ using Godot;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 /// <summary>
@@ -100,6 +101,65 @@ public static class MapDrawer
 	/// <paramref name="prefix"/>, the log's name and an underscore unless given, such as "" for maps that sit in
 	/// the fight's own folder. Returns the files written.
 	/// </summary>
+	/// <summary>
+	/// Draws strips of any moments or stretches of a fight from its whole-fight recording (the designer's fights),
+	/// the way the scenario harness's strip= does for a replayed pilot fight. A moment T gets <paramref name="before"/>
+	/// pictures before it and <paramref name="after"/> after, a stretch FROM-TO pictures from start to end, at the
+	/// recording's spacing or a wider one asked for. Throws if the log has no recording. Returns the files written.
+	/// </summary>
+	public static List<string> DrawRecording(string logPath, string folder, IEnumerable<ReviewRecorder.StripRequest> requests,
+		int before, int after, string prefix = null)
+	{
+		var written = new List<string>();
+		using JsonDocument document = JsonDocument.Parse(File.ReadAllText(logPath));
+		JsonElement log = document.RootElement;
+		if (!log.TryGetProperty("maps", out JsonElement maps) || !maps.TryGetProperty("recording", out JsonElement recordingName))
+			throw new InvalidDataException("this fight has no whole-fight recording (only the designer's fights, from now on, are recorded)");
+		string recordingPath = Path.Combine(Path.GetDirectoryName(logPath), recordingName.GetString());
+		using FileStream file = File.OpenRead(recordingPath);
+		using var zip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress);
+		using JsonDocument recordingDocument = JsonDocument.Parse(zip);
+		JsonElement recording = recordingDocument.RootElement;
+		double recorded = recording.GetProperty("spacing").GetDouble();
+		JsonElement frames = recording.GetProperty("frames");
+		Directory.CreateDirectory(folder);
+		string name = prefix ?? Path.GetFileNameWithoutExtension(logPath) + "_";
+		var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+		foreach (ReviewRecorder.StripRequest r in requests)
+		{
+			double spacing = Math.Max(recorded, r.Spacing ?? recorded);
+			double from = r.End.HasValue ? Math.Min(r.Time, r.End.Value) : r.Time - before * spacing;
+			double to = r.End.HasValue ? Math.Max(r.Time, r.End.Value) : r.Time + after * spacing;
+			// The recorded pictures nearest each picture time, from start to end, at most 48.
+			var picked = new List<string>();
+			double next = from;
+			for (int f = 0; f < frames.GetArrayLength() && picked.Count < 48; f++)
+			{
+				double t = frames[f].GetProperty("time").GetDouble();
+				if (t > to + recorded / 2)
+					break;
+				if (t >= next - recorded / 2)
+				{
+					picked.Add(frames[f].GetRawText());
+					while (next <= t + recorded / 2)
+						next += spacing;
+				}
+			}
+			if (picked.Count == 0)
+				throw new InvalidDataException($"the recording has no pictures between {from:0.#}s and {to:0.#}s");
+			string json = "{\"reason\":\"requested\",\"time\":" + Math.Round(r.Time, 2).ToString(culture) +
+				",\"spacing\":" + spacing.ToString(culture) + ",\"moment\":" + (r.End.HasValue ? "false" : "true") +
+				",\"frames\":[" + string.Join(",", picked) + "]}";
+			using JsonDocument strip = JsonDocument.Parse(json);
+			string label = r.End.HasValue ? $"stretch_{from:0.#}-{to:0.#}s" : $"moment_{r.Time:0.#}s";
+			string path = Path.Combine(folder, $"{name}{label}.png");
+			DrawStrip(log, maps, strip.RootElement).SavePng(path);
+			written.Add(path);
+		}
+		return written;
+	}
+
 	public static List<string> DrawLog(string logPath, string folder, bool overview, ICollection<int> strips, string prefix = null)
 	{
 		var written = new List<string>();
@@ -325,9 +385,20 @@ public static class MapDrawer
 
 	private static Image DrawStrip(JsonElement log, JsonElement maps, JsonElement strip)
 	{
-		const int Panel = 320, Columns = 4, Header = 54, Gap = 6;
+		const int Panel = 320, Columns = 4, Header = 66, Gap = 6;
 		List<EnemyType> types = EnemyTypes(maps);
 		var detectors = Detectors(log);
+		var weaponColors = new List<Color>();
+		var weaponNames = new List<string>();
+		if (maps.TryGetProperty("weaponTypes", out JsonElement weaponTypes))
+		{
+			foreach (JsonElement w in weaponTypes.EnumerateArray())
+			{
+				JsonElement c = w.GetProperty("color");
+				weaponColors.Add(new Color((float)c[0].GetDouble(), (float)c[1].GetDouble(), (float)c[2].GetDouble()));
+				weaponNames.Add(w.GetProperty("name").GetString());
+			}
+		}
 		JsonElement frames = strip.GetProperty("frames");
 		int n = frames.GetArrayLength();
 		int rows = Math.Max(1, (n + Columns - 1) / Columns);
@@ -364,7 +435,10 @@ public static class MapDrawer
 		string reasonName = detectors.Find(d => d.Id == reason).Name ?? reason;
 		Text(image, Gap, 8, $"{reasonName} AT {Ui.Clock(moment)} (CLOCK {RunReview.OnScreenClock(moment)})  " +
 			$"{StripWho(log)}  VIEW {view:0} UNITS ACROSS, PICTURES {spacing:0.##}S APART", Ink, 2);
-		Text(image, Gap, 28, "VNP WHITE WITH ITS PATH AND HEADING, CYAN DRONES, GREY ASTEROID, BROWN DEBRIS, ORANGE ENEMY SHOTS. " +
+		// The key, on two lines so it fits the narrowest strip.
+		Text(image, Gap, 28, "VNP WHITE WITH ITS PATH AND HEADING, CYAN DRONES (REDDER AS THEY LOSE HEALTH, A FAINT LINE TO THEIR TARGET), " +
+			"GREY ASTEROID, BROWN DEBRIS, ORANGE ENEMY SHOTS.", Dim, 1);
+		Text(image, Gap, 40, "SHOTS, BEAMS, SHARDS, MINES, MISSILES AND RINGS OF YOUR WEAPONS IN THE COLOUR OF EACH. " +
 			"ENEMIES IN THEIR OWN COLOUR: STRIPED DAMAGES BY TOUCH, OUTER RING ABSORBS DRONES", Dim, 1);
 		// A key to the enemy types in this strip only.
 		var present = new SortedSet<int>();
@@ -376,8 +450,22 @@ public static class MapDrawer
 		{
 			if (t < 0 || t >= types.Count)
 				continue;
-			Enemy(image, new Vector2I(legendX + 5, 44), 4, types[t]);
-			legendX = Text(image, legendX + 14, 41, types[t].Name, Dim, 1) + 16;
+			Enemy(image, new Vector2I(legendX + 5, 56), 4, types[t]);
+			legendX = Text(image, legendX + 14, 53, types[t].Name, Dim, 1) + 16;
+		}
+		// The loadout at the end of the strip: each VNP Weapon with its mods, and the Drone Weapon.
+		if (n > 0 && frames[n - 1].TryGetProperty("loadout", out JsonElement loadout))
+		{
+			string WeaponName(double index) => index >= 0 && index < weaponNames.Count ? weaponNames[(int)index] : "?";
+			var parts = new List<string>();
+			foreach (JsonElement entry in loadout.EnumerateArray())
+			{
+				string mods = string.Join(", ", entry[1].EnumerateArray().Select(m => m.GetString().ToUpperInvariant()));
+				parts.Add(WeaponName(entry[0].GetDouble()).ToUpperInvariant() + (mods == "" ? "" : $" ({mods})"));
+			}
+			string drones = frames[n - 1].TryGetProperty("droneWeapon", out JsonElement d) && d.GetDouble() >= 0
+				? $"  -  DRONES {WeaponName(d.GetDouble()).ToUpperInvariant()}" : "";
+			Text(image, legendX + 24, 53, "LOADOUT: " + string.Join(",  ", parts) + drones, Dim, 1);
 		}
 
 		for (int f = 0; f < n; f++)
@@ -412,13 +500,57 @@ public static class MapDrawer
 				Enemy(image, at, radius, type >= 0 && type < types.Count ? types[type]
 					: new EnemyType("?", FallbackEnemyColors[0], false, false));
 			}
+			// Each drone's target, as a faint line, where the log recorded it: enemies' IDs are their 7th value.
+			var enemyAt = new Dictionary<int, Vector2>();
+			foreach (JsonElement e in frame.GetProperty("enemies").EnumerateArray())
+			{
+				if (e.GetArrayLength() > 6)
+					enemyAt[(int)e[6].GetDouble()] = new Vector2((float)e[0].GetDouble(), (float)e[1].GetDouble());
+			}
 			foreach (JsonElement d in frame.GetProperty("droneDots").EnumerateArray())
-				Disc(image, P(new Vector2((float)d[0].GetDouble(), (float)d[1].GetDouble())), 2, Drone);
+			{
+				Vector2 at = new((float)d[0].GetDouble(), (float)d[1].GetDouble());
+				if (d.GetArrayLength() > 3 && (int)d[3].GetDouble() is int target && target != 0 && enemyAt.TryGetValue(target, out Vector2 to))
+					Line(image, P(at), P(to), new Color(Drone, 0.3f), 1);
+			}
+			foreach (JsonElement d in frame.GetProperty("droneDots").EnumerateArray())
+			{
+				// Redder as it loses health, so a drone being drained or shot shows it.
+				float health = d.GetArrayLength() > 2 ? Mathf.Clamp((float)d[2].GetDouble(), 0f, 1f) : 1f;
+				Disc(image, P(new Vector2((float)d[0].GetDouble(), (float)d[1].GetDouble())), 2, Hit.Lerp(Drone, health));
+			}
+			// The VNP's weapons' objects: shards and missiles as small marks, mines with the ring of their blast.
+			if (frame.TryGetProperty("placed", out JsonElement placed))
+			{
+				foreach (JsonElement w in placed.EnumerateArray())
+				{
+					int kind = (int)w[3].GetDouble();
+					Color color = kind >= 0 && kind < weaponColors.Count ? weaponColors[kind] : Ink;
+					Vector2I at = P(new Vector2((float)w[0].GetDouble(), (float)w[1].GetDouble()));
+					int radius = (int)(w[2].GetDouble() * scale);
+					var shape = w.GetArrayLength() > 4 ? (PlacedShape)(int)w[4].GetDouble() : PlacedShape.Point;
+					if (shape == PlacedShape.Line)
+						Line(image, at, P(new Vector2((float)w[5].GetDouble(), (float)w[6].GetDouble())), new Color(color, 0.8f), 1);
+					else if (shape == PlacedShape.Ring)
+						Ring(image, at, Math.Max(2, radius), new Color(color, 0.7f), 1);
+					else
+					{
+						if (radius > 6)
+							Ring(image, at, radius, new Color(color, 0.5f), 1);
+						Disc(image, at, 3, color);
+					}
+				}
+			}
 			foreach (JsonElement s in frame.GetProperty("shots").EnumerateArray())
 			{
 				Vector2 at = new((float)s[0].GetDouble(), (float)s[1].GetDouble());
 				Vector2 v = new((float)s[2].GetDouble(), (float)s[3].GetDouble());
-				Line(image, P(at), P(at + v * 0.12f), Shot, 2);
+				// An enemy's shot is orange; the VNP's and drones' in their weapon's colour, thinner.
+				int kind = s.GetArrayLength() > 4 ? (int)s[4].GetDouble() : -1;
+				if (kind < 0)
+					Line(image, P(at), P(at + v * 0.12f), Shot, 2);
+				else
+					Line(image, P(at), P(at + v * 0.08f), kind < weaponColors.Count ? weaponColors[kind] : Ink, 1);
 			}
 			// The VNP's path over the last few seconds, from the track, then the VNP and where it is heading.
 			double t = frame.GetProperty("time").GetDouble();

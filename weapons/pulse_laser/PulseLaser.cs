@@ -64,8 +64,24 @@ public partial class PulseLaser : VnpWeapon
 		_cooldownLeft = Cooldown;
 	}
 
+#if RECORDING
+	// The beam last shown, while it is still visible, for CollectPlaced.
+	private Vector2 _beamFrom, _beamTo;
+
+	/// <summary>Its beam, while it shows after a shot.</summary>
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+		if (_beam != null && _beam.Visible)
+			placed.Add(PlacedObject.Line(_beamFrom, _beamTo));
+	}
+#endif
+
 	private void ShowBeam(Vector2 from, Vector2 to)
 	{
+#if RECORDING
+		_beamFrom = from;
+		_beamTo = to;
+#endif
 		Vector2 along = to - from;
 		float length = along.Length();
 		if (length < 0.01f)

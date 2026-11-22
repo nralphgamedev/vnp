@@ -329,8 +329,10 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Which enemy type an enemy is, by the type's ID.</summary>
 	public string TypeIdOf(int index) => _types[_enemies[index].Type].Definition.Id;
 
+#if RECORDING
 	/// <summary>An enemy's definition, for testing tools such as the run review's maps. Read it, don't change it.</summary>
 	public EnemyDefinition DefinitionOf(int index) => _types[_enemies[index].Type].Definition;
+#endif
 
 	/// <summary>How many living enemies there are of each type, in the order of Types.</summary>
 	public int[] CountByType()

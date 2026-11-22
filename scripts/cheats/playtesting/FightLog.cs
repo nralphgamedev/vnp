@@ -72,6 +72,10 @@ public partial class FightLog : Node
 	/// <summary>Draw the next fight's run review maps when its log is written, into a maps folder beside it.
 	/// The designer's fights always are. Set by the scenario harness's maps=yes option.</summary>
 	public static bool NextDrawMaps;
+
+	/// <summary>Record the next fight's whole picture, as the designer's fights are (see RecordPlayerFights).
+	/// Set by the scenario harness's record=yes option, for testing it.</summary>
+	public static bool NextRecord;
 	private bool _drawMaps;
 	private List<string> _startingWeapons;
 	private string _startingDroneWeapon;
@@ -128,8 +132,10 @@ public partial class FightLog : Node
 		if (NextStripTimes != null)
 			log._recorder.RequestStrips(NextStripTimes);
 		NextStripTimes = null;
-		log._drawMaps = NextDrawMaps || player == "designer";
+		log._drawMaps = NextDrawMaps || (player == "designer" && reviewSettings.DrawPlayerMaps);
 		NextDrawMaps = false;
+		log._recorder.RecordWholeFight = NextRecord || (player == "designer" && reviewSettings.RecordPlayerFights);
+		NextRecord = false;
 		log._review = new RunReview(fight, reviewSettings) { Recorder = log._recorder };
 		fight.AddChild(log);
 		return log;
@@ -287,6 +293,11 @@ public partial class FightLog : Node
 			// hundreds and scripts read them.
 			var watch = System.Diagnostics.Stopwatch.StartNew();
 			Dictionary<string, object> data = Build(result);
+			// The whole-fight recording goes in a compressed file of its own beside the log, which names it.
+			Dictionary<string, object> recording = _recorder?.Recording();
+			string recordingPath = recording == null ? null : Path.ChangeExtension(_path, null) + ".recording.json.gz";
+			if (recording != null && data.TryGetValue("maps", out object mapsData) && mapsData is Dictionary<string, object> mapsSection)
+				mapsSection["recording"] = Path.GetFileName(recordingPath);
 			bool indented = _player == "designer";
 			long gathered = watch.ElapsedMilliseconds;
 			string path = _path, maps = _ownFolder ? Path.GetDirectoryName(_path) : Path.Combine(folder, "maps");
@@ -302,6 +313,12 @@ public partial class FightLog : Node
 					{
 						var background = System.Diagnostics.Stopwatch.StartNew();
 						File.WriteAllText(path, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = indented }));
+						if (recording != null)
+						{
+							using FileStream file = File.Create(recordingPath);
+							using var zip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Optimal);
+							JsonSerializer.Serialize(zip, recording);
+						}
 						if (draw)
 							MapDrawer.DrawLog(path, maps, true, null, prefix);
 						GD.Print($"FIGHT LOG: {Path.GetFileName(path)}: {gathered} ms on the main thread, " +

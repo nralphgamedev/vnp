@@ -39,6 +39,8 @@ using System.Reflection;
 ///                      what it chose to do. For finding out why it did something odd.
 ///   maps=yes           draw the run review maps when the fight log is written: an overview of the fight and a
 ///                      strip map of each flagged moment, in a maps folder beside the log
+///   record=yes         record the whole fight's picture around the VNP, as the designer's fights do, into a
+///                      compressed file beside the log, so tools\maps.cmd can draw any moment (for testing it)
 ///   strip=T1,T2        also save strips around these fight times in seconds, such as a moment spotted on an
 ///                      overview map; with maps=yes they are drawn too. Each entry can be T (pictures around that
 ///                      exact time, one at it), T:S (S seconds apart, such as 362:0.25), FROM-TO (a stretch,
@@ -162,6 +164,7 @@ public partial class ScenarioRunner : Node
 		["close"] = "yes or no",
 		["maxtime"] = "a fight time in seconds",
 		["maps"] = "yes or no",
+		["record"] = "yes or no",
 		["strip"] = "comma-separated T, T:S, FROM-TO or FROM-TO:S, in seconds",
 		["logname"] = "a file name without .json",
 		["mute"] = "yes or no",
@@ -217,6 +220,7 @@ public partial class ScenarioRunner : Node
 					case "close": _close = YesNo(value); break;
 					case "maxtime": _maxTime = double.Parse(value, culture); break;
 					case "maps": FightLog.NextDrawMaps = YesNo(value); break;
+					case "record": FightLog.NextRecord = YesNo(value); break;
 					case "strip":
 						FightLog.NextStripTimes = value.Split(',').Select(ReviewRecorder.StripRequest.Parse).ToList();
 						break;

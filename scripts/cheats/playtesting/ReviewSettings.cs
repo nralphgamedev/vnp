@@ -68,6 +68,11 @@ public partial class ReviewSettings : Resource
 	[Export] public int BurstDrones = 6;
 	[Export] public float BurstSeconds = 3f;
 
+	/// <summary>A burst that keeps getting worse fires again, with a strip of its own, each time the drones lost
+	/// within BurstSeconds reach this multiple of the count that last fired it. So a long collapse that started
+	/// small still gets a strip of its worst part, rather than counting once at its start.</summary>
+	[Export] public float BurstWorsens = 2f;
+
 	/// <summary>Drones left fighting: at least LeftFightingDrones drones, an enemy within the drones' engage range
 	/// of the VNP but more than LeftFightingDistance from it, and the VNP moving away from it at LeftFightingSpeed
 	/// or more, for LeftFightingSeconds: the drones fight on while the VNP leaves them.</summary>
@@ -101,5 +106,17 @@ public partial class ReviewSettings : Resource
 	/// fight), and how many strips for each detector.</summary>
 	[Export] public int OverviewsPerCombination = 3;
 	[Export] public int StripsPerDetector = 3;
+
+	/// <summary>The designer's fights record the picture around the VNP (what a strip shows) all fight long,
+	/// every RecordSpacing seconds, into a compressed file beside the log, since they can't be replayed. Any
+	/// moment can then be drawn afterwards with tools\maps.cmd. Pilot fights replay exactly, so they don't.</summary>
+	[ExportGroup("Recording the designer's fights")]
+	[Export] public bool RecordPlayerFights = true;
+	[Export] public float RecordSpacing = 0.1f;
+
+	/// <summary>Draw the designer's maps (overview and flagged moments) when the log is written. Off, they are
+	/// drawn only when asked for, with tools\maps.cmd.</summary>
+	[Export] public bool DrawPlayerMaps;
 }
+
 #endif

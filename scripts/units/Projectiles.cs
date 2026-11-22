@@ -34,6 +34,11 @@ public partial class Projectiles : Node3D
 
 	/// <summary>Whether a shot was fired by an enemy.</summary>
 	public bool IsEnemyShot(int index) => _shots[index].FromEnemy;
+
+#if RECORDING
+	/// <summary>What fired a shot: a VNP Weapon, the Drone Weapon in use, or an enemy type. Read-only.</summary>
+	public DamageSource SourceOf(int index) => _shots[index].Source;
+#endif
 	private InstanceBatch _batch;
 
 	public override void _Ready()

@@ -44,6 +44,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - firing and impact effects (`scripts/effects/Effects.cs` has the building blocks);
    - sounds;
    - an icon at `placeholder/textures/icons/<id>.svg`: 64×64, white shapes on transparent, tinted in game. Copy an existing icon's style.
+7. **Recorded for the run review:** the designer's fights are recorded so any moment can be drawn later, and a weapon must show up in that recording. `CollectPlaced` is required in the editor's build (it fails without it), and goes inside `#if RECORDING`, as every weapon's does, so exports leave it out: add everything the weapon has out in the world as `PlacedObject.Point` (a shard, mine or missile, with the radius it acts over), `Ring` (an outline, such as Shockwave's ring) or `Line` (a beam). Shots fired through `Fight.Projectiles` are recorded already, so a weapon with nothing else writes an empty body with a comment saying so, as Scatter Shot does. Then check it on a strip: `tools\scenario.cmd pilot=expert weapon=<id> spawn=all:2 invulnerable frames=900 record=yes`, then `tools\maps.cmd <its log> strip=10`. The stage check's recording test plays every starting weapon and fails if one leaves nothing in the recording.
 
 ## A fight upgrade
 
@@ -57,7 +58,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 4. **New behavior, beyond a new file:**
    - **A new player stat:** add it at the end of `PlayerStat`, and handle it in both `ScaleStat` and `AddStat` in `Upgrades.cs`.
    - **A new weapon stat:** add it at the end of `WeaponStat`, handle it in `VnpWeapon.AddStat` and `ScaleStat`, and use it in the weapon.
-   - **A new weapon feature:** add it at the end of `WeaponFeature`, then in the weapon check `HasFeature(...)`, as Orbital Shards does for `Blocking`. Give the weapon a visible change once it's taken.
+   - **A new weapon feature:** add it at the end of `WeaponFeature`, then in the weapon check `HasFeature(...)`, as Orbital Shards does for `Blocking`. Give the weapon a visible change once it's taken. Features are mods on cards: one per weapon (`OneFeaturePerWeapon`), and recordings list each weapon's mods by themselves. If the mod puts something new in the world, add it to the weapon's `CollectPlaced`.
    - **A new effect:** check `CanOffer`, `Apply` and `TotalBonus` in `Upgrades.cs`, and the upgrade list's grouping in `scripts/ui/UpgradeList.cs`.
 5. **Pool:** add the upgrade with the helper.
 
@@ -74,6 +75,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - add the equip upgrade to the pool;
    - add the `.tres` to `StartingDroneWeaponChoices` in `in_game_cheats.tres`;
    - add an icon named after its ID.
+4. **Recorded for the run review:** a new `DroneAttack` must implement `CollectPlaced`, as VNP Weapons do (step 7 above): beams as lines, anything else it leaves as points; an empty body with a comment if its shots go through `Fight.Projectiles` or it is only the drones themselves, as Ram is. A Drone Weapon that never shows up in a recording must be listed, with why, in `NOTHING_OF_ITS_OWN` in the check-stage skill's `check_recording.py`.
 
 ## An enemy type
 
@@ -90,6 +92,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - add a scale to `Fight.cs`;
    - read it in the behavior's `Spawned`.
 5. **Look:** a silhouette that differs from every other enemy and from asteroids, not only its colour, plus its mesh, possibly a material, and death, attack and other sounds. Check it with a screenshot (check-stage step 2).
+6. **Recorded for the run review:** enemies are recorded and drawn from their traits (`AbsorbsDronesOf`, `DamagesByTouchOf`), name and colour, so a new type appears with no code of its own. If it has a new trait that matters for reviews, record it in `ReviewRecorder.Snapshot` and mark it in `MapDrawer`, as touch damage is striped. If it leaves things in the world (spikes, blobs), they must be recorded too.
 
 ## Finish
 

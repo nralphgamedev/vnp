@@ -5,6 +5,12 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+  <!-- RECORDING: the hooks the run review's recordings read on weapons and units (CollectPlaced and a few
+       read-only accessors). Defined only in the editor's Debug configuration, so exports leave them out. A
+       special build that records fights would define it too, and keep scripts/cheats/playtesting/. -->
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants>$(DefineConstants);RECORDING</DefineConstants>
+  </PropertyGroup>
   <!-- Playtest cheats: compiled only in the editor's Debug configuration, never in an export. -->
   <ItemGroup Condition=" '$(Configuration)' != 'Debug' ">
     <Compile Remove="scripts/cheats/**" />

@@ -106,4 +106,13 @@ public partial class Shockwave : VnpWeapon
 		}
 		_batch.Commit(_rings.Count);
 	}
+
+#if RECORDING
+	/// <summary>Each ring still spreading, as its centre and how far it has reached.</summary>
+	public override void CollectPlaced(List<PlacedObject> placed)
+	{
+		foreach (Ring ring in _rings)
+			placed.Add(PlacedObject.Ring(ring.Center, ring.Radius));
+	}
+#endif
 }

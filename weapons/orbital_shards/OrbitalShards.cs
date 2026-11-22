@@ -32,6 +32,16 @@ public partial class OrbitalShards : VnpWeapon
 	private readonly Dictionary<(int Shard, int Material), double> _nextHarvestAt = new();
 	private readonly int[] _material = new int[64];
 
+#if RECORDING
+	// Where each shard was this frame, for CollectPlaced.
+	private readonly List<Vector2> _shardPositions = new();
+
+	public override void CollectPlaced(List<PlacedObject> placed)
+	{
+		foreach (Vector2 position in _shardPositions)
+			placed.Add(PlacedObject.Point(position, Shards.HitRadius * Area));
+	}
+#endif
 	private InstanceBatch _batch;
 	private InstanceBatch _trailBatch;
 
@@ -62,6 +72,9 @@ public partial class OrbitalShards : VnpWeapon
 		EnemySwarm enemies = Fight.Enemies;
 
 		bool trails = Tuning.Feedback.ShardTrails && !Fight.Vnp.IsDestroyed;
+#if RECORDING
+		_shardPositions.Clear();
+#endif
 		_batch.Begin(count);
 		_trailBatch.Begin(trails ? count * TrailPieces : 0);
 		for (int s = 0; s < count; s++)
@@ -69,6 +82,9 @@ public partial class OrbitalShards : VnpWeapon
 			float angle = _angle + s * Mathf.Tau / count;
 			Vector2 around = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
 			Vector2 position = center + around * orbit;
+#if RECORDING
+			_shardPositions.Add(position);
+#endif
 
 			if (!Fight.Vnp.IsDestroyed)
 			{

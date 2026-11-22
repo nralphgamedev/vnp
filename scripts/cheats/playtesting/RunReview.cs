@@ -48,6 +48,7 @@ public class RunReview
 	private double _nextDirectionCheck;
 	private readonly Queue<double> _reversals = new();
 	// Drones lost in a burst: drones lost so far, and when each was lost.
+	private int _burstFiredAt;
 	private int _dronesLostSoFar;
 	private readonly Queue<double> _losses = new();
 
@@ -212,8 +213,17 @@ public class RunReview
 			_losses.Enqueue(now);
 		while (_losses.Count > 0 && now - _losses.Peek() > s.BurstSeconds)
 			_losses.Dequeue();
+		bool wasFired = _burst.Fired;
 		Check(_burst, now, _losses.Count >= s.BurstDrones, 0,
 			() => $"{_losses.Count} drones lost in {s.BurstSeconds:0}s; {state}");
+		if (_burst.Fired && !wasFired)
+			_burstFiredAt = _losses.Count;
+		else if (_burst.Fired && _losses.Count >= _burstFiredAt * Math.Max(1.1f, s.BurstWorsens))
+		{
+			// Still the same burst, but much worse than when it fired: flagged again, so its worst part gets a strip.
+			_burstFiredAt = _losses.Count;
+			Fire(_burst, now, $"{_losses.Count} drones lost in {s.BurstSeconds:0}s, worsening; {state}");
+		}
 	}
 
 	private float NearestMaterialEdge(Vector2 me)
@@ -238,10 +248,7 @@ public class RunReview
 			if (!detector.Fired && now - detector.HeldSince >= holdSeconds)
 			{
 				detector.Fired = true;
-				var moment = new Moment(Math.Round(now, 2), detail());
-				detector.Moments.Add(moment);
-				Recorder?.Flag(detector.Id, now);
-				GD.Print($"REVIEW: {detector.Name} at {Ui.Clock(now)} (clock {OnScreenClock(now)}): {moment.Detail}");
+				Fire(detector, now, detail());
 			}
 			return;
 		}
@@ -250,6 +257,15 @@ public class RunReview
 			detector.FalseSince = now;
 		if (detector.Fired && now - detector.FalseSince >= _settings.RearmSeconds)
 			detector.Fired = false;
+	}
+
+	/// <summary>Records a moment for a detector, asks the recorder for its strip, and prints it.</summary>
+	private void Fire(Detector detector, double now, string detail)
+	{
+		var moment = new Moment(Math.Round(now, 2), detail);
+		detector.Moments.Add(moment);
+		Recorder?.Flag(detector.Id, now);
+		GD.Print($"REVIEW: {detector.Name} at {Ui.Clock(now)} (clock {OnScreenClock(now)}): {moment.Detail}");
 	}
 
 	/// <summary>The HUD clock at a fight time: counting down to the time limit, then "+" and the time past it.</summary>

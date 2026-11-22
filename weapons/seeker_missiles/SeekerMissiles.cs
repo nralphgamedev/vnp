@@ -163,4 +163,13 @@ public partial class SeekerMissiles : VnpWeapon
 		}
 		_batch.Commit(_count);
 	}
+
+#if RECORDING
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+		for (int i = 0; i < _count; i++)
+			placed.Add(PlacedObject.Point(_missiles[i].Position, 0.5f));
+	}
+#endif
 }
+

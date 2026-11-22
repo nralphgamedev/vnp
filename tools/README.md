@@ -8,12 +8,17 @@ Editor-only testing tools: nothing here is part of the game. Godot doesn't impor
 |---|---|
 | `.\tools\scenario.cmd [-Window] ARGS` | Plays one fight through the scenario harness, headless unless `-Window`. Its arguments are listed in `scripts/cheats/ScenarioRunner.cs`; for example `pilot=expert build=designer seed=30 maxtime=420`, `maps=yes strip=363:0.25`, `explain=120-130`. |
 | `tools\batch.cmd ARGS` | Runs a batch of pilot fights in parallel and writes its report (`--help` lists the options). |
+| `tools\maps.cmd [FIGHT] ARGS` | Draws run review maps of a fight: its folder, its log, or `latest` (the default) for the designer's most recent. With nothing else, the overview and every flagged moment; `strip=356` or `strip=350-358` draws any moment or stretch from the fight's recording. Notes in `maps/maps.ps1`. |
 
-These two launchers stay at the top so the commands don't change. Everything else is grouped by job:
+These launchers stay at the top so the commands don't change. Everything else is grouped by job:
 
 ## `scenario/`
 
 - `scenario.ps1`: what `scenario.cmd` runs. It finds the Godot build and starts the harness scene.
+
+## `maps/`
+
+- `maps.ps1`: what `maps.cmd` runs. It finds the fight's log and starts the map drawer (`scripts/cheats/playtesting/draw_maps.tscn`).
 
 ## `batches/`
 

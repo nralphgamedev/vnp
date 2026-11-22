@@ -81,6 +81,12 @@ public class ReviewRecorder
 	private readonly List<Strip> _pending = new();
 	private readonly List<Strip> _strips = new();
 	private readonly List<Scheduled> _scheduled = new();
+
+	/// <summary>Record the picture around the VNP all fight, every RecordSpacing seconds, for a fight that can't be
+	/// replayed (the designer's), so any moment can be drawn afterwards. Set by the fight log.</summary>
+	public bool RecordWholeFight;
+	private readonly List<Dictionary<string, object>> _recording = new();
+	private double _nextRecord;
 	private bool _endTaken;
 
 	/// <summary>Most pictures in one asked-for strip, so a long stretch at a fine spacing can't make a huge image.</summary>
@@ -155,6 +161,12 @@ public class ReviewRecorder
 				r.Next += r.Spacing;
 		}
 
+		if (RecordWholeFight && now >= _nextRecord)
+		{
+			_nextRecord = now + Math.Max(0.1, _settings.RecordSpacing);
+			_recording.Add(Snapshot(now));
+		}
+
 		if (now >= _nextSnapshot)
 		{
 			_nextSnapshot = now + Math.Max(0.1, s.StripSpacing);
@@ -185,6 +197,8 @@ public class ReviewRecorder
 			return;
 		_endTaken = true;
 		Dictionary<string, object> last = Snapshot(now);
+		if (RecordWholeFight)
+			_recording.Add(last);
 		foreach (Strip strip in _pending)
 			AddLast(strip, last);
 		foreach (Scheduled r in _scheduled)
@@ -263,7 +277,10 @@ public class ReviewRecorder
 		{
 			int e = _enemies[c];
 			Vector2 p = enemies.PositionOf(e);
-			enemyList.Add(new[] { Round(p.X), Round(p.Y), Round(enemies.RadiusOf(e)), TypeIndex(enemies, e) });
+			Vector2 v = enemies.VelocityOf(e);
+			// Position, size, type, velocity, ID (for drones' targets) and how fast it drains a drone (0 for most).
+			enemyList.Add(new[] { Round(p.X), Round(p.Y), Round(enemies.RadiusOf(e)), TypeIndex(enemies, e),
+				Round(v.X), Round(v.Y), enemies.IdOf(e), Round(enemies.DroneDrainOf(e)) });
 		}
 
 		var droneList = new List<float[]>();
@@ -271,8 +288,9 @@ public class ReviewRecorder
 		for (int i = 0; i < drones.Count; i++)
 		{
 			Vector2 p = drones.PositionOf(i);
+			// Position, health as a fraction of a new drone's, and the ID of the enemy it is attacking (0 for none).
 			if (p.DistanceSquaredTo(me) <= reach * reach)
-				droneList.Add(new[] { Round(p.X), Round(p.Y) });
+				droneList.Add(new[] { Round(p.X), Round(p.Y), (float)Math.Round(drones.HealthFractionOf(i), 2), drones.TargetIdOf(i) });
 		}
 
 		var materialList = new List<float[]>();
@@ -285,17 +303,52 @@ public class ReviewRecorder
 			materialList.Add(new[] { Round(p.X), Round(p.Y), Round(harvestables.RadiusOf(m)), harvestables.IsAsteroidOf(m) ? 1f : 0f });
 		}
 
+		// Every shot in the fight's projectiles, enemies' and the VNP's and drones' alike: position, velocity, and
+		// what fired it as an index into the log's weapon types, or -1 for an enemy's. So any weapon that fires
+		// through the projectiles is recorded with no code of its own.
 		var shotList = new List<float[]>();
 		Projectiles projectiles = _fight.Projectiles;
 		for (int i = 0; i < projectiles.Count; i++)
 		{
-			if (!projectiles.IsEnemyShot(i))
-				continue;
 			Vector2 p = projectiles.PositionOf(i);
 			if (p.DistanceSquaredTo(me) > reach * reach)
 				continue;
 			Vector2 v = projectiles.VelocityOf(i);
-			shotList.Add(new[] { Round(p.X), Round(p.Y), Round(v.X), Round(v.Y) });
+			DamageSource source = projectiles.SourceOf(i);
+			float kind = projectiles.IsEnemyShot(i) || source == null ? -1f : WeaponIndex(source.Id, source.Name, source.Color);
+			shotList.Add(new[] { Round(p.X), Round(p.Y), Round(v.X), Round(v.Y), kind });
+		}
+
+		// What the weapons have out (VnpWeapon and DroneAttack CollectPlaced): position, the radius it acts over,
+		// its weapon, its shape (PlacedShape) and, for a line, where it ends. And the loadout: each VNP Weapon with
+		// the mods it has, and the Drone Weapon in use.
+		var placedList = new List<float[]>();
+		var loadout = new List<object>();
+		void AddPlaced(float kind)
+		{
+			foreach (PlacedObject placed in _placed)
+			{
+				if (placed.Position.DistanceSquaredTo(me) <= reach * reach || placed.End.DistanceSquaredTo(me) <= reach * reach)
+					placedList.Add(new[] { Round(placed.Position.X), Round(placed.Position.Y), Round(placed.Radius), kind,
+						(float)(int)placed.Shape, Round(placed.End.X), Round(placed.End.Y) });
+			}
+		}
+		foreach (VnpWeapon weapon in _fight.Weapons)
+		{
+			_placed.Clear();
+			weapon.CollectPlaced(_placed);
+			float kind = WeaponIndex(weapon.Definition.Id, weapon.Definition.Name, weapon.Definition.Color);
+			AddPlaced(kind);
+			loadout.Add(new object[] { kind, weapon.Features.Select(f => f.ToString()).ToArray() });
+		}
+		DroneWeaponDefinition droneWeapon = _fight.Drones.Weapon;
+		float droneKind = -1f;
+		if (droneWeapon != null)
+		{
+			droneKind = WeaponIndex(droneWeapon.Id, droneWeapon.Name, droneWeapon.Color);
+			_placed.Clear();
+			_fight.Drones.CollectPlaced(_placed);
+			AddPlaced(droneKind);
 		}
 
 		return new Dictionary<string, object>
@@ -309,6 +362,9 @@ public class ReviewRecorder
 			["droneDots"] = droneList,
 			["material"] = materialList,
 			["shots"] = shotList,
+			["placed"] = placedList,
+			["loadout"] = loadout,
+			["droneWeapon"] = droneKind,
 		};
 	}
 
@@ -338,6 +394,38 @@ public class ReviewRecorder
 
 	private static float Round(float value) => (float)Math.Round(value, 1);
 
+	private readonly List<PlacedObject> _placed = new();
+	private readonly List<string> _weaponIds = new();
+	private readonly List<Dictionary<string, object>> _weaponInfo = new();
+
+	/// <summary>A VNP Weapon or Drone Weapon as an index into the log's weapon types, adding it the first time
+	/// with its name and colour, so maps draw each weapon's objects and shots in its colour with no list of
+	/// weapons of their own.</summary>
+	private float WeaponIndex(string id, string name, Color color)
+	{
+		int i = _weaponIds.IndexOf(id);
+		if (i < 0)
+		{
+			_weaponIds.Add(id);
+			_weaponInfo.Add(new Dictionary<string, object>
+			{
+				["id"] = id, ["name"] = name ?? id, ["color"] = new[] { color.R, color.G, color.B },
+			});
+			i = _weaponIds.Count - 1;
+		}
+		return i;
+	}
+
+	/// <summary>The whole-fight recording, for its own file beside the log, or null if this fight isn't recorded.
+	/// A copy, since the log may be written in the background while the fight carries on.</summary>
+	public Dictionary<string, object> Recording() => RecordWholeFight
+		? new Dictionary<string, object>
+		{
+			["spacing"] = _settings.RecordSpacing,
+			["frames"] = new List<Dictionary<string, object>>(_recording),
+		}
+		: null;
+
 	/// <summary>The track, events and strips, for the fight log.</summary>
 	public Dictionary<string, object> ToLog()
 	{
@@ -365,6 +453,7 @@ public class ReviewRecorder
 			["events"] = new List<Dictionary<string, object>>(_events),
 			["gateway"] = new[] { Round(gateway.X), Round(gateway.Y) },
 			["enemyTypes"] = new List<Dictionary<string, object>>(_enemyTypeInfo),
+			["weaponTypes"] = new List<Dictionary<string, object>>(_weaponInfo),
 			["strips"] = strips,
 		};
 	}

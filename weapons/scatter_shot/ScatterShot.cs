@@ -62,4 +62,11 @@ public partial class ScatterShot : VnpWeapon
 		Fight.Effects.ScatterFlash(from, aim, Scatter.Color, coneRadians, Power);
 		Fight.Sounds.Play(Sound.ScatterShotFire);
 	}
+
+#if RECORDING
+	/// <summary>Nothing of its own: its pellets are shots in the fight's projectiles, recorded there.</summary>
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+	}
+#endif
 }

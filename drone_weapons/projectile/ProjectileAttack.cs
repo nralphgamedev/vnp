@@ -33,4 +33,11 @@ public sealed class ProjectileAttack : DroneAttack
 		drone.FireTimer = Swarm.WeaponCooldown * Rng.Range(0.9f, 1.1f);
 		return false;
 	}
+
+#if RECORDING
+	/// <summary>Nothing of its own: its shots are in the fight's projectiles, recorded there.</summary>
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+	}
+#endif
 }

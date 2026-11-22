@@ -16,8 +16,10 @@ public partial class VnpHarvester : Node3D
 
 	private int _targetId;
 
-	/// <summary>Whether the beam is on something this frame.</summary>
+#if RECORDING
+	/// <summary>Whether the beam is on something this frame. For the run review, which judges harvesting by it.</summary>
 	public bool Beaming => _targetId != 0;
+#endif
 	private readonly int[] _nearby = new int[256];
 	private MeshInstance3D _beam;
 

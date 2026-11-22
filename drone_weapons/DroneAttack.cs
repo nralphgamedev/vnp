@@ -37,6 +37,15 @@ public abstract class DroneAttack
 	/// </summary>
 	public abstract bool Attack(ref DroneSwarm.Drone drone, int enemy, ref Vector2 wantedVelocity, float dt);
 
+#if RECORDING
+	/// <summary>
+	/// Adds what this Drone Weapon has out in the world right now beyond the drones themselves, such as beams, as
+	/// VnpWeapon.CollectPlaced does for VNP Weapons. Required for the same reason: an attack with nothing of its
+	/// own writes an empty body with a comment saying why.
+	/// </summary>
+	public abstract void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed);
+#endif
+
 	/// <summary>Whether drones using this attack stay back from enemies that ask for it, such as the Goo.
 	/// Ram charges in regardless.</summary>
 	public virtual bool KeepsBack => true;

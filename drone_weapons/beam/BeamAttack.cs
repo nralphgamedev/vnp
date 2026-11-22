@@ -29,4 +29,9 @@ public sealed class BeamAttack : DroneAttack
 		}
 		return false;
 	}
+
+#if RECORDING
+	/// <summary>Every drone's attack beam this frame.</summary>
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed) => Swarm.CollectAttackBeams(placed);
+#endif
 }

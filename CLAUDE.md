@@ -27,6 +27,7 @@ It builds on the earlier specs:
 - Tuning values and content definitions (weapons, upgrades, enemy types) are data-only custom Resources. Modding may be supported later, so keep logic out of them.
   - Name the classes by kind: a `*Tuning` class holds one system's settings, with exactly one file, which code reaches by name (`Tuning.Asteroids`); a `*Definition` class is one of many content entries, each with an `Id`, such as weapons, upgrades, enemies, and sounds.
 - Playtest cheats go in `scripts/cheats/`, which `VNP.csproj` compiles only in the editor's Debug configuration. Wrap the cheat code and every line that uses it in `#if TOOLS`, so a cheat can never reach an exported game. This covers any testing aid that must not ship, not only cheats in the narrow sense. Cheat settings go in `scripts/cheats/in_game_cheats.tres`, not in the game's tuning files. A cheat that needs a node creates it from code under `#if TOOLS` rather than placing it in a scene, since a scene node whose script is left out of a build would break. When an export preset is made, exclude `scripts/cheats/` from its files.
+  - The run review's recordings need small hooks on game classes outside `scripts/cheats/`, such as each weapon's `CollectPlaced`. Wrap those in `#if RECORDING`, a symbol `VNP.csproj` defines only in the editor's Debug configuration, so exports leave them out. It is separate from `TOOLS` so that a special build that records fights could define it later.
 
 ## Editing files on Windows
 

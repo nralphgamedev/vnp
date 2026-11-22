@@ -148,6 +148,14 @@ public partial class DroneSwarm : Node3D
 
 	/// <summary>Where a drone is, for testing tools such as the run review's maps.</summary>
 	public Vector2 PositionOf(int index) => _drones[index].Position;
+
+#if RECORDING
+	/// <summary>A drone's health as a fraction of a new drone's. Read-only, for the run review's maps.</summary>
+	public float HealthFractionOf(int index) => _drones[index].Health / Mathf.Max(0.01f, Tuning.Drones.Health);
+
+	/// <summary>The ID of the enemy a drone is attacking (EnemySwarm.IdOf), or 0 for none.</summary>
+	public int TargetIdOf(int index) => _drones[index].TargetId;
+#endif
 	private int _lastId;
 	private Wreck[] _wrecks = new Wreck[16];
 	private int _wreckCount;
@@ -768,6 +776,21 @@ public partial class DroneSwarm : Node3D
 
 	/// <summary>Records an attack beam to draw this frame, ending just inside the edge of its target. For
 	/// Drone Weapon attacks that use a beam.</summary>
+#if RECORDING
+	/// <summary>What the Drone Weapon in use has out in the world, beyond the drones (see DroneAttack.CollectPlaced).</summary>
+	public void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed) => (_attack ??= DroneAttack.Create(this, Weapon)).CollectPlaced(placed);
+
+	/// <summary>Every attack beam this frame, as lines, for a beam Drone Weapon's CollectPlaced.</summary>
+	public void CollectAttackBeams(System.Collections.Generic.List<PlacedObject> placed)
+	{
+		for (int i = 0; i < _beamCount; i++)
+		{
+			if (_beamIsAttack[i])
+				placed.Add(PlacedObject.Line(_beamFrom[i], _beamTo[i]));
+		}
+	}
+#endif
+
 	public void AddAttackBeam(Vector2 from, Vector2 to, float targetRadius)
 	{
 		Vector2 along = to - from;

@@ -140,6 +140,14 @@ public partial class MineLayer : VnpWeapon, IPilotLure
 	}
 
 	/// <summary>Mines are where a pilot should lead the enemies chasing it.</summary>
+#if RECORDING
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+		for (int i = 0; i < _count; i++)
+			placed.Add(PlacedObject.Point(_mines[i].Position, Mines.BlastRadius * Area));
+	}
+#endif
+
 	public void CollectLureSpots(System.Collections.Generic.List<Vector2> spots)
 	{
 		for (int i = 0; i < _count; i++)

@@ -211,4 +211,11 @@ public sealed class RamAttack : DroneAttack
 			difference = Mathf.Abs(difference) * sideSign;
 		return heading.Rotated(Mathf.Clamp(difference, -maxStep, maxStep));
 	}
+
+#if RECORDING
+	/// <summary>Nothing of its own: ramming is the drones themselves, which are recorded with their targets.</summary>
+	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
+	{
+	}
+#endif
 }

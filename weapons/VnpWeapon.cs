@@ -34,6 +34,20 @@ public abstract partial class VnpWeapon : Node3D
 	/// as a fraction of it, as the designer does.</summary>
 	public virtual float Reach => 0f;
 
+#if RECORDING
+	/// <summary>
+	/// Adds what this weapon has out in the world right now, such as its shards, mines, missiles, rings or beams.
+	/// Read-only, for whatever needs to see them, such as the run review's recordings and maps. Every weapon must
+	/// say: one with nothing of its own out there writes an empty body with a comment saying why, such as shots
+	/// that go through the fight's projectiles, which are recorded there. Required so a new weapon can't be left
+	/// off the maps by accident. Only in builds with RECORDING (the editor's), like the recorder itself: every
+	/// weapon's version goes inside #if RECORDING too.
+	/// </summary>
+	public abstract void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed);
+
+	/// <summary>The features (mods) upgrades have switched on for this weapon, such as Orbital Shards harvesting.</summary>
+	public System.Collections.Generic.IEnumerable<WeaponFeature> Features => _features;
+#endif
 
 	private readonly System.Collections.Generic.HashSet<WeaponFeature> _features = new();
 

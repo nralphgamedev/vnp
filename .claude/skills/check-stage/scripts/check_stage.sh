@@ -181,6 +181,18 @@ else
 fi
 [ -n "$batch_dir" ] && rm -rf "$batch_dir"
 
+echo "== Recording covers every weapon"
+# One short recorded fight per starting VNP Weapon, each paired with a Drone Weapon in turn: every weapon must
+# show up in the whole-fight recording (a shot, or something from its CollectPlaced), so the designer's fights
+# can be drawn in full. See check_recording.py.
+record_out="$(python "$SKILL_DIR/check_recording.py" "$GODOT" 2>&1)"
+if [ $? -eq 0 ]; then
+	note "Recording: every weapon shows up ($(echo "$record_out" | grep -c '^PASS') checks)"
+else
+	echo "$record_out" | grep -E "FAIL|Traceback|Error"
+	fail "a weapon doesn't show up in the recording (see above)"
+fi
+
 echo "== Cheats kept out of export builds"
 # Top-level classes only: nested ones go with their parent, and their short names (such as Page)
 # turn up in other code too.
