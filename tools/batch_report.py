@@ -174,6 +174,29 @@ def write_report(folder):
     out.append(table(['Combination', 'Fights', 'Wins', 'Median time to win', 'Destroyed before winning',
                       'Median time destroyed', 'Average final level', 'Survived to cap'], rows))
 
+    # ───────────── By starting weapons ─────────────
+    randomised = [f for f in fights if f['weapon'] == 'random' or f['droneWeapon'] == 'random']
+    if randomised:
+        out.append('\n## By starting weapons\n')
+        out.append('Fights that started with random weapons, by what they started with. Each row adds together '
+                   'every pilot, build and variant in the batch, and with few fights per row, small differences '
+                   'can be chance.\n')
+        for key, title in (('startWeapon', 'VNP Weapon'), ('startDroneWeapon', 'Drone Weapon')):
+            groups = {}
+            for f in randomised:
+                if f['name'] in logs:
+                    groups.setdefault(f.get(key, '-'), []).append(logs[f['name']])
+            rows = []
+            for start, ls in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+                wins = [l for l in ls if l['outcome']['killTargetTime'] is not None]
+                alive5 = sum(1 for l in ls if (s := at(l, 300)) is not None and s['health'] > 0)
+                rows.append([start, len(ls), f'{len(wins)} ({pct(len(wins), len(ls))})',
+                             clock(median([l['outcome']['killTargetTime'] for l in wins])),
+                             num(mean([l['outcome']['level'] for l in ls])), f'{alive5} of {len(ls)}'])
+            out.append(table([f'Starting {title}', 'Fights', 'Wins', 'Median time to win', 'Average final level',
+                              'Alive at 5:00'], rows))
+            out.append('')
+
     # ───────────── Level curve ─────────────
     out.append('\n## Level curve\n')
     out.append('Average level reached by each minute of fight time, among fights still going then. The last '
@@ -286,10 +309,12 @@ def write_report(folder):
 
     def watch_command(fight):
         parts = ['tools\\scenario.cmd -Window', f'pilot={fight["pilot"]}', f'build={fight["build"]}', f'seed={fight["seed"]}']
-        if fight['weapon'] != 'default':
-            parts.append(f'weapon={fight["weapon"]}')
-        if fight['droneWeapon'] != 'default':
-            parts.append(f'drone_weapon={fight["droneWeapon"]}')
+        start_weapon = fight.get('startWeapon', fight['weapon'])
+        start_drone = fight.get('startDroneWeapon', fight['droneWeapon'])
+        if start_weapon != 'default':
+            parts.append(f'weapon={start_weapon}')
+        if start_drone != 'default':
+            parts.append(f'drone_weapon={start_drone}')
         if fight.get('variant', 'base') != 'base':
             parts.append(f'variant={fight["variant"]}')
         parts.append(f'maxtime={batch["cap"]:g}')
@@ -344,6 +369,9 @@ def write_report(folder):
     path = os.path.join(folder, 'report.md')
     with open(path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(out) + '\n')
+    # The same report as a page with charts, report.html, beside it.
+    import batch_report_html
+    batch_report_html.write_page(folder)
     return path
 
 

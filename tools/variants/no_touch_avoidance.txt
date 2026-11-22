@@ -1,0 +1,4 @@
+# Pilots don't steer clear of enemies that damage by touch, such as Goos, as before it was added.
+pilots/skill_levels/novice.tres:TouchAvoidWeight = 0
+pilots/skill_levels/average.tres:TouchAvoidWeight = 0
+pilots/skill_levels/expert.tres:TouchAvoidWeight = 0

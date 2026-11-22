@@ -78,6 +78,11 @@ public partial class EnemyDefinition : Resource
 	[ExportGroup("Drones attacking it")]
 	[Export] public float DroneKeepBack;
 
+	/// <summary>How far from this enemy's edge drones that aren't attacking it steer clear, so a drone fighting
+	/// one enemy doesn't drift into another. The push is gentle (AvoidStrength in drones.tres), so drones in a
+	/// crowd can still get caught. 0 for an enemy drones needn't avoid.</summary>
+	[Export] public float DroneAvoidDistance;
+
 	/// <summary>Enemies of the same type this close to each other count as flockmates.</summary>
 	[ExportGroup("Flocking")]
 	[Export] public float NeighborRadius;

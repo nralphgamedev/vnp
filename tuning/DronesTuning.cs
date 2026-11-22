@@ -49,6 +49,16 @@ public partial class DronesTuning : Resource
 	/// <summary>Strength of the push apart.</summary>
 	[Export] public float Separation;
 
+	/// <summary>How hard drones steer clear of enemies they aren't attacking, as a fraction of their speed, at
+	/// an enemy's edge. Each enemy's file sets how far out the push reaches (DroneAvoidDistance). Below 1, a
+	/// drone chasing its target past another enemy is slowed and turned rather than stopped, so avoiding is
+	/// imperfect. 0 turns it off.</summary>
+	[Export(PropertyHint.Range, "0,1,0.01")] public float AvoidStrength;
+
+	/// <summary>Drones don't go in to harvest material beside an enemy that absorbs drones, within that enemy's
+	/// DroneAvoidDistance of its edge, and leave material a drone eater comes up beside.</summary>
+	[Export] public bool AvoidHarvestNearDroneEaters;
+
 	/// <summary>Drones attack enemies that come this close to the VNP. An enemy that ends up farther
 	/// away than this, because it fled or the VNP moved off, is dropped and the drones return.
 	/// While any enemy is in this range, attacking comes before harvesting.</summary>

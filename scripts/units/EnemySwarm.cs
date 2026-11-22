@@ -81,6 +81,9 @@ public partial class EnemySwarm : Node3D
 	/// <summary>The radius of the largest enemy alive, as of the start of this frame's enemy update.</summary>
 	public float MaxRadius { get; private set; }
 
+	/// <summary>The largest DroneAvoidDistance of any enemy type, so drones know how far to look.</summary>
+	public float MaxDroneAvoid { get; private set; }
+
 	/// <summary>Every enemy type that can spawn, from the weights in enemy_spawning.tres.</summary>
 	public IReadOnlyList<EnemyBehavior> Types => _types;
 
@@ -292,6 +295,33 @@ public partial class EnemySwarm : Node3D
 		}
 		return -1;
 	}
+
+	/// <summary>How far from this enemy's edge drones that aren't attacking it steer clear.</summary>
+	public float DroneAvoidOf(int index) => _types[_enemies[index].Type].Definition.DroneAvoidDistance;
+
+	/// <summary>
+	/// Whether material at a point, of a given radius, lies where drones keep clear of an enemy that absorbs
+	/// drones: within that enemy's DroneAvoidDistance of its edge. Drones don't go in to harvest it.
+	/// </summary>
+	public bool NearDroneEater(Vector2 position, float radius)
+	{
+		int candidates = _grid.Query(position, radius + MaxRadius + MaxDroneAvoid + GridSlack, _hitCandidates);
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _hitCandidates[c];
+			ref Enemy enemy = ref _enemies[i];
+			EnemyBehavior type = _types[enemy.Type];
+			if (enemy.Health <= 0f || !type.AbsorbsDrones)
+				continue;
+			float reach = enemy.Radius + radius + type.Definition.DroneAvoidDistance;
+			if (enemy.Position.DistanceSquaredTo(position) <= reach * reach)
+				return true;
+		}
+		return false;
+	}
+
+	/// <summary>Whether an enemy damages the VNP by touching it, as the Goo does.</summary>
+	public bool DamagesByTouchOf(int index) => _types[_enemies[index].Type].DamagesByTouch;
 
 	/// <summary>Whether an enemy absorbs drones that touch it, as the Goo does.</summary>
 	public bool AbsorbsDronesOf(int index) => _types[_enemies[index].Type].AbsorbsDrones;
@@ -553,6 +583,10 @@ public partial class EnemySwarm : Node3D
 			maxRadius = Mathf.Max(maxRadius, _enemies[i].Radius);
 		}
 		MaxRadius = maxRadius;
+		float maxAvoid = 0f;
+		foreach (EnemyBehavior type in _types)
+			maxAvoid = Mathf.Max(maxAvoid, type.Definition.DroneAvoidDistance);
+		MaxDroneAvoid = maxAvoid;
 
 		DroneSwarm drones = Fight.Drones;
 		// Only the enemies alive at the start are updated: any added by a split wait until next frame.

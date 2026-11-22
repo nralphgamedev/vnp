@@ -1,0 +1,4 @@
+# Drones as before danger avoidance: they neither steer clear of enemies they aren't attacking,
+# nor skip material beside a Goo.
+drones.AvoidStrength = 0
+drones.AvoidHarvestNearDroneEaters = false

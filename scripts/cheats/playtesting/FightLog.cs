@@ -100,8 +100,9 @@ public partial class FightLog : Node
 		// Before everything else in the fight, and the log after everything, to time the fight's update.
 		fight.AddChild(new FrameStart { Name = "FightLogFrameStart", Log = log, ProcessPriority = int.MinValue });
 		log.ProcessPriority = int.MaxValue;
-		// Only a person's movement is worth recording: it is the data for making pilots play more like one.
-		log._recordInput = player == "designer";
+		// Movement is recorded for everyone: a person's is the data for making pilots play more like one, and a
+		// pilot's is compared with it.
+		log._recordInput = true;
 		fight.AddChild(log);
 		return log;
 	}
@@ -127,7 +128,9 @@ public partial class FightLog : Node
 		}
 		if (_recordInput && now >= _nextInput)
 		{
-			Vector2 move = Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.Vnp.StickDeadzone);
+			Vector2 move = _fight.Vnp.Controller != null
+				? _fight.Vnp.Controller.Move.LimitLength(1f)
+				: Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.Vnp.StickDeadzone);
 			_input.Add(new[] { (float)Math.Round(now, 2), (float)Math.Round(move.X, 2), (float)Math.Round(move.Y, 2) });
 			_nextInput = NextOnCadence(_nextInput, now, 1.0 / Math.Max(1f, Settings.InputSamplesPerSecond));
 		}

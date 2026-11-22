@@ -58,6 +58,20 @@ public partial class PilotDefinition : Resource
 	/// its drones: with drones at their cap, it counts this many times as much as another enemy.</summary>
 	[Export] public float DroneEaterThreat;
 
+	/// <summary>How far from the edge of an enemy that damages by touch, such as a Goo, it starts steering clear,
+	/// whatever else it wants. Added after the designer's logs showed them taking almost no damage from Goos,
+	/// while pilots took about a fifth of theirs from them.</summary>
+	[Export] public float TouchAvoidDistance;
+
+	/// <summary>Below this pressure (the threat it feels over what it can afford), it holds still in a fight,
+	/// leaving the drones and weapons to do the work, as the designer does when there isn't much danger. It
+	/// still closes in on an enemy out of its weapons' reach. From here to half as much again it blends back
+	/// into moving and circling. While harvesting, it keeps holding at its rock. 0 never holds still.</summary>
+	[Export] public float HoldStillPressure;
+
+	/// <summary>How hard it steers clear of enemies that damage by touch, at their edge.</summary>
+	[Export] public float TouchAvoidWeight;
+
 	/// <summary>How strongly it wants to harvest the best material it can afford to reach, while its drones are
 	/// below their cap.</summary>
 	[ExportGroup("What it wants")]

@@ -26,6 +26,7 @@ HoldDistance = 11.0
 HoldBlendDistance = 3.0
 TargetHoldSeconds = 1.0
 DroneKeepBack = 0.0
+DroneAvoidDistance = 1.5
 FireCooldown = 1.5
 ProjectileDamage = 4.0
 ProjectileSpeed = 32.0

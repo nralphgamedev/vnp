@@ -46,6 +46,9 @@ public abstract class EnemyBehavior
 	/// <summary>Whether a drone that touches this enemy is absorbed.</summary>
 	public virtual bool AbsorbsDrones => false;
 
+	/// <summary>Whether it damages the VNP by touching it, as the Goo does, so a pilot keeps clear of it.</summary>
+	public virtual bool DamagesByTouch => false;
+
 	/// <summary>Sets up a newly spawned enemy: its health, damage and size, at the difficulty of the moment.</summary>
 	public abstract void Spawned(ref EnemySwarm.Enemy enemy);
 

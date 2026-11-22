@@ -3,22 +3,27 @@ Runs a batch of automated fights, headless and several at once, then writes a re
 
 Run it from PowerShell through tools/batch.cmd, or with python from the vnp folder:
 
-    tools\\batch.cmd                                   a standard batch: average pilot, Greedy and Random builds
+    tools\\batch.cmd                                   a standard batch: average pilot, Greedy and Random builds,
+                                                      each fight starting with random weapons
     tools\\batch.cmd --size quick                      a few fights, as a smoke test
-    tools\\batch.cmd --builds greedy --weapons all     Greedy with every starting VNP Weapon
+    tools\\batch.cmd --builds greedy --weapons all     Greedy with every starting VNP Weapon in turn
+    tools\\batch.cmd --weapons default --drone-weapons default   the game's own starting weapons
     tools\\batch.cmd --drone-weapons all --seeds 10    every starting Drone Weapon, 10 seeds each
     tools\\batch.cmd --rendered --seeds 2              watch the fights in a window, one at a time, muted
     tools\\batch.cmd --variants base,gentle_levels     compare the tuning with a variant, on the same fights
 
 Every combination of pilot, build, starting VNP Weapon, starting Drone Weapon and tuning variant is played on
-seeds 1 to N, so two batches of the same size play the same fights. A tuning variant is a file in tools/variants/
+seeds 1 to N, so two batches of the same size play the same fights. By default each fight starts with a VNP Weapon
+and a Drone Weapon picked at random from the starting weapon cheat's lists. The pick follows the seed, so seed 7
+starts with the same weapons in every batch, and for every pilot, build and variant in one, which keeps
+comparisons fair. A tuning variant is a file in tools/variants/
 listing changed tuning values (see scripts/cheats/playtesting/TuningVariant.cs); "base" is the tuning as it is.
 With more than one variant, the report compares them side by side. A fight still going at the endless cap is stopped and counted
 as having survived to the cap. Sizes, the cap and how many fights run at once are in
 scripts/cheats/playtesting/batch_settings.tres.
 
 Each batch gets a folder in playtests/batches/, holding batch.json (what was run and how each fight went), the
-fight logs in logs/, each fight's console output in output/, and the report, report.md. The report can be written
+fight logs in logs/, each fight's console output in output/, and the report, report.md, with the same report as a page with charts, report.html. The report can be written
 again from the logs with tools/batch_report.py.
 
 Editor-only testing tool: nothing here is part of the game.
@@ -27,6 +32,7 @@ import argparse
 import concurrent.futures
 import datetime
 import json
+import random
 import os
 import re
 import subprocess
@@ -81,7 +87,8 @@ def starting_choices():
 
 
 def expand(value, choices, default):
-    """A comma-separated list, where 'all' means every choice and 'default' the game's own starting weapon."""
+    """A comma-separated list, where 'all' means every choice, 'default' the game's own starting weapon, and
+    'random' one picked for each fight by its seed."""
     if value == 'all':
         return choices
     return [v.strip() for v in value.split(',') if v.strip()] or [default]
@@ -94,10 +101,12 @@ def main():
     parser.add_argument('--seeds', type=int, help='seeds per combination, in place of the size')
     parser.add_argument('--pilots', default='average', help='skill levels, comma-separated (default: average)')
     parser.add_argument('--builds', default='greedy,random', help='builds, comma-separated (default: greedy,random)')
-    parser.add_argument('--weapons', default='default',
-                        help='starting VNP Weapons, comma-separated, "all", or "default" for the game\'s own')
-    parser.add_argument('--drone-weapons', default='default',
-                        help='starting Drone Weapons, comma-separated, "all", or "default" for the game\'s own')
+    parser.add_argument('--weapons', default='random',
+                        help='starting VNP Weapons, comma-separated, "all", "default" for the game\'s own, or '
+                             '"random" for one picked by each fight\'s seed (default: random)')
+    parser.add_argument('--drone-weapons', default='random',
+                        help='starting Drone Weapons, comma-separated, "all", "default" for the game\'s own, or '
+                             '"random" for one picked by each fight\'s seed (default: random)')
     parser.add_argument('--variants', default='base',
                         help='tuning variants from tools/variants/, comma-separated; "base" is the tuning as it is')
     parser.add_argument('--cap', type=float, help='endless cap in seconds of fight time, in place of the setting')
@@ -116,10 +125,10 @@ def main():
     weapons = expand(args.weapons, weapon_choices, 'default')
     drone_weapons = expand(args.drone_weapons, drone_choices, 'default')
     for w in weapons:
-        if w != 'default' and w not in weapon_choices:
+        if w not in ('default', 'random') and w not in weapon_choices:
             sys.exit(f'Unknown VNP Weapon {w}; choices: {", ".join(weapon_choices)}')
     for d in drone_weapons:
-        if d != 'default' and d not in drone_choices:
+        if d not in ('default', 'random') and d not in drone_choices:
             sys.exit(f'Unknown Drone Weapon {d}; choices: {", ".join(drone_choices)}')
     for p in pilots:
         if not os.path.exists(os.path.join(PROJECT, 'pilots', 'skill_levels', p + '.tres')):
@@ -159,6 +168,9 @@ def main():
 
     def run(fight):
         (pilot, build_id, weapon, drone, variant), seed = fight
+        # A random start is picked by the seed alone, so the same seed starts the same way in every combination.
+        start_weapon = random.Random(seed * 7919 + 1).choice(weapon_choices) if weapon == 'random' else weapon
+        start_drone = random.Random(seed * 7919 + 2).choice(drone_choices) if drone == 'random' else drone
         name = f'{variant}_{pilot}_{build_id}_{weapon}_{drone}_s{seed}'
         cmd = [GODOT] + ([] if args.rendered else ['--headless']) + [
             '--path', PROJECT, '--fixed-fps', '60', 'res://scripts/cheats/scenario.tscn', '--',
@@ -167,10 +179,10 @@ def main():
             # and pauses for level-up offers also count as frames.
             f'frames={int(cap * 60 * 3)}', 'report=1000000',
             f'log=res://playtests/batches/{batch_id}/logs', f'logname={name}', 'close=yes']
-        if weapon != 'default':
-            cmd.append(f'weapon={weapon}')
-        if drone != 'default':
-            cmd.append(f'drone_weapon={drone}')
+        if start_weapon != 'default':
+            cmd.append(f'weapon={start_weapon}')
+        if start_drone != 'default':
+            cmd.append(f'drone_weapon={start_drone}')
         if mute:
             cmd.append('mute=yes')
         if variant != 'base':
@@ -190,6 +202,7 @@ def main():
         status = 'ok' if code == 0 and logged and not problems else (
             'timed out' if code == 'timeout' else 'crashed' if code != 0 else 'no log' if not logged else 'errors')
         return {'name': name, 'variant': variant, 'pilot': pilot, 'build': build_id, 'weapon': weapon, 'droneWeapon': drone,
+                'startWeapon': start_weapon, 'startDroneWeapon': start_drone,
                 'seed': seed, 'status': status, 'exitCode': code, 'problems': problems[:5],
                 'seconds': round(time.time() - started, 1)}
 

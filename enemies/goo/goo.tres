@@ -23,6 +23,7 @@ LoseAggroRange = 40.0
 TargetsDronesFirst = true
 TargetHoldSeconds = 1.5
 DroneKeepBack = 1.5
+DroneAvoidDistance = 3.0
 NeighborRadius = 9.0
 SeparationRadius = 3.5
 Separation = 1.6

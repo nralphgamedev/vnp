@@ -1,0 +1,3 @@
+# The pilot values debris closer to asteroids, as the designer's logs suggest (most of their experience is debris).
+pilots/skill_levels/average.tres:DebrisClusterWeight = 0.4
+pilots/skill_levels/average.tres:DebrisRewardInfluence = 2.0

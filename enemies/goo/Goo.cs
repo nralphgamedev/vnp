@@ -30,6 +30,8 @@ public sealed class Goo : EnemyBehavior
 
 	public override bool AbsorbsDrones => true;
 
+	public override bool DamagesByTouch => true;
+
 	public override void Spawned(ref EnemySwarm.Enemy enemy)
 	{
 		// Goos spawned later in the fight are stronger, and keep that strength.

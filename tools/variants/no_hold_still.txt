@@ -1,0 +1,4 @@
+# Pilots keep moving and circling in every fight, as before holding still was added.
+pilots/skill_levels/novice.tres:HoldStillPressure = 0
+pilots/skill_levels/average.tres:HoldStillPressure = 0
+pilots/skill_levels/expert.tres:HoldStillPressure = 0

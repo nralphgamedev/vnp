@@ -16,7 +16,9 @@ using System;
 ///
 /// Distances to an enemy, for surrounding it and for weapon range, are measured from its edge, so drones
 /// surround a large enemy at its edge rather than inside it. Some enemies, such as the Goo, ask drones to
-/// stay farther back. An enemy that absorbs drones, such as the Goo, drains the health of any drone touching
+/// stay farther back. Drones also steer clear of the enemies they aren't attacking, gently, so a drone fighting
+/// one enemy doesn't drift into the next, and don't go in to harvest material beside a drone eater. An enemy
+/// that absorbs drones, such as the Goo, drains the health of any drone touching
 /// it; a drone drained to nothing is pulled into it and lost, while one that gets away keeps the damage.
 /// </summary>
 public partial class DroneSwarm : Node3D
@@ -152,6 +154,8 @@ public partial class DroneSwarm : Node3D
 	private readonly int[] _nearby = new int[32];
 	private readonly int[] _enemyTargets = new int[1024];
 	private readonly int[] _harvestTargets = new int[512];
+	private readonly bool[] _harvestUnsafe = new bool[512];
+	private readonly int[] _avoidNearby = new int[256];
 	private Vector2[] _beamFrom = new Vector2[64];
 	private Vector2[] _beamTo = new Vector2[64];
 	private bool[] _beamIsAttack = new bool[64];
@@ -345,6 +349,13 @@ public partial class DroneSwarm : Node3D
 		// Everything the drones could go after this frame: what is near enough to the VNP.
 		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.Drones.EngageRange * KeepTargetFactor, _enemyTargets);
 		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.Harvesting.DroneRange * KeepTargetFactor, _harvestTargets);
+		// Material beside a drone eater, such as a Goo, isn't worth a drone flying in for.
+		for (int c = 0; c < harvestCount; c++)
+		{
+			int m = _harvestTargets[c];
+			_harvestUnsafe[c] = Tuning.Drones.AvoidHarvestNearDroneEaters
+				&& enemies.NearDroneEater(harvestables.PositionOf(m), harvestables.RadiusOf(m));
+		}
 
 		// Up to two beams per drone: one attacking, one harvesting.
 		if (_beamFrom.Length < Count * 2)
@@ -433,6 +444,24 @@ public partial class DroneSwarm : Node3D
 				attackSteers = _attack.WithoutTarget(ref drone, ref wantedVelocity, dt);
 			}
 
+			// Steer clear of the enemies it isn't attacking. A drone whose attack steers it, such as a ramming
+			// drone, keeps its speed and is only turned, so a charge still carries through its own target.
+			Vector2 avoid = Avoid(drone.Position, drone.TargetId);
+			if (avoid != Vector2.Zero)
+			{
+				if (attackSteers)
+				{
+					float speed = wantedVelocity.Length();
+					Vector2 turned = wantedVelocity + avoid * (speed * Tuning.Drones.AvoidStrength);
+					if (turned.LengthSquared() > 0.0001f)
+						wantedVelocity = turned.Normalized() * speed;
+				}
+				else
+				{
+					wantedVelocity += avoid * (_speed * Tuning.Drones.AvoidStrength);
+				}
+			}
+
 			if (attackSteers)
 			{
 				// The attack steers the drone itself, such as Ram charging faster than a drone normally flies.
@@ -500,6 +529,36 @@ public partial class DroneSwarm : Node3D
 		// The drone itself is cleared away at the start of the next update.
 	}
 
+	/// <summary>
+	/// Away from the enemies near a drone that it isn't attacking: from each enemy within that enemy's
+	/// DroneAvoidDistance of its edge, harder the closer it is, fully once touching. At most length 1.
+	/// </summary>
+	private Vector2 Avoid(Vector2 position, int targetId)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+		if (Tuning.Drones.AvoidStrength <= 0f || enemies.MaxDroneAvoid <= 0f)
+			return Vector2.Zero;
+		int count = enemies.CollectTouching(position, enemies.MaxDroneAvoid, _avoidNearby);
+		Vector2 push = Vector2.Zero;
+		for (int c = 0; c < count; c++)
+		{
+			int e = _avoidNearby[c];
+			if (enemies.IdOf(e) == targetId)
+				continue;
+			float avoid = enemies.DroneAvoidOf(e);
+			if (avoid <= 0f)
+				continue;
+			Vector2 away = position - enemies.PositionOf(e);
+			float distance = away.Length();
+			float edge = distance - enemies.RadiusOf(e);
+			if (edge >= avoid)
+				continue;
+			Vector2 direction = distance > 0.001f ? away / distance : Vector2.Right;
+			push += direction * (1f - Mathf.Max(0f, edge) / avoid);
+		}
+		return push.LimitLength(1f);
+	}
+
 	/// <summary>Push away from drones that are too close.</summary>
 	private Vector2 Separation(int index)
 	{
@@ -535,7 +594,11 @@ public partial class DroneSwarm : Node3D
 			for (int c = 0; c < candidateCount; c++)
 			{
 				if (harvestables.IdOf(_harvestTargets[c]) == drone.HarvestId)
+				{
+					if (_harvestUnsafe[c])
+						break; // A drone eater has come up beside it: leave it.
 					return _harvestTargets[c];
+				}
 			}
 		}
 
@@ -544,7 +607,7 @@ public partial class DroneSwarm : Node3D
 		for (int c = 0; c < candidateCount; c++)
 		{
 			int i = _harvestTargets[c];
-			if (harvestables.EdgeDistance(i, vnpPosition) > Tuning.Harvesting.DroneRange)
+			if (_harvestUnsafe[c] || harvestables.EdgeDistance(i, vnpPosition) > Tuning.Harvesting.DroneRange)
 				continue;
 			float distanceSquared = harvestables.PositionOf(i).DistanceSquaredTo(drone.Position);
 			if (distanceSquared < bestSquared)

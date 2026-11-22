@@ -153,11 +153,20 @@ public partial class Pilot : Node, IVnpController
 
 		Vector2 dodge = Dodge(me, awareness);
 		want += dodge * Skill.DodgeWeight;
+		// Keep clear of enemies that damage by touch, such as Goos, whatever else it wants: even a fight it can
+		// afford is no reason to bump into one.
+		Vector2 keepClear = KeepClearOfTouch(me, enemyCount) * Skill.TouchAvoidWeight;
+		want += keepClear;
 
 		bool fighting = nearest >= 0 && engage > 0f;
 		float fightWeight = Skill.FightWeight * Mathf.Lerp(Skill.FightWithoutDrones, 1f, droneReliance);
+		// With little danger it holds still, as the designer does, rather than circling: fully below
+		// HoldStillPressure, blending back to circling by half as much again.
+		float still = Skill.HoldStillPressure > 0f
+			? Mathf.Clamp((Skill.HoldStillPressure * 1.5f - pressure) / (Skill.HoldStillPressure * 0.5f), 0f, 1f)
+			: 0f;
 		if (fighting)
-			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance, preferredDistance) * fightWeight * engage;
+			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance, preferredDistance, still) * fightWeight * engage;
 
 		// Weapons that leave spots behind, such as mines, want the enemies chasing it led across them.
 		if (leadChasers > 0.01f && away != Vector2.Zero && nearestDistance < Skill.ThreatRange)
@@ -186,7 +195,12 @@ public partial class Pilot : Node, IVnpController
 		bool committing = harvest != Vector2.Zero && backOff <= 0f
 			&& targetEdge <= _fight.Harvestables.BeamRange + Skill.HarvestCommitDistance;
 		if (committing)
-			want = harvest + dodge * Skill.DodgeWeight;
+			want = harvest + dodge * Skill.DodgeWeight + keepClear;
+
+		// Harvesting with little danger about: keep holding at the rock, leaving the fight to the drones and weapons.
+		// Weapons that need movement then circle the rock, below.
+		if (holding && still >= 1f)
+			want = dodge * Skill.DodgeWeight + keepClear;
 
 		// Weapons that only work while moving, such as Mine Layer, want it circling the rock it harvests rather
 		// than holding still beside it.
@@ -367,6 +381,32 @@ public partial class Pilot : Node, IVnpController
 		return Skill.AffordableThreat * health * strength * (1f - 0.5f * Skill.Caution);
 	}
 
+	/// <summary>
+	/// Away from the enemies it sees that damage by touch, such as Goos, from each within TouchAvoidDistance of
+	/// its edge, harder the closer it is, fully once touching. At most length 1.
+	/// </summary>
+	private Vector2 KeepClearOfTouch(Vector2 me, int enemyCount)
+	{
+		if (Skill.TouchAvoidDistance <= 0f || Skill.TouchAvoidWeight <= 0f)
+			return Vector2.Zero;
+		EnemySwarm enemies = _fight.Enemies;
+		Vector2 push = Vector2.Zero;
+		for (int c = 0; c < enemyCount; c++)
+		{
+			int e = _enemies[c];
+			if (!enemies.DamagesByTouchOf(e))
+				continue;
+			Vector2 away = me - enemies.PositionOf(e);
+			float distance = away.Length();
+			float edge = distance - enemies.RadiusOf(e);
+			if (edge >= Skill.TouchAvoidDistance)
+				continue;
+			Vector2 direction = distance > 0.001f ? away / distance : Vector2.Right;
+			push += direction * (1f - Mathf.Max(0f, edge) / Skill.TouchAvoidDistance);
+		}
+		return push.LimitLength(1f);
+	}
+
 	/// <summary>Sideways away from a shot it noticed that would hit it soon, or nothing.</summary>
 	private Vector2 Dodge(Vector2 me, float awareness)
 	{
@@ -394,13 +434,16 @@ public partial class Pilot : Node, IVnpController
 	}
 
 	/// <summary>Keep the preferred distance from an enemy: close in from farther, edge away from closer, circling it.</summary>
-	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance, float preferred)
+	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance, float preferred, float still)
 	{
 		Vector2 toEnemy = enemy - me;
 		Vector2 direction = toEnemy.LengthSquared() > 0.0001f ? toEnemy.Normalized() : Vector2.Up;
 		float radial = Mathf.Clamp((distance - preferred) / (preferred * 0.5f), -1f, 1f);
 		Vector2 circle = new Vector2(-direction.Y, direction.X) * _orbitSign * 0.6f;
-		return direction * radial + circle;
+		Vector2 moving = direction * radial + circle;
+		// Holding still: only close in on an enemy well beyond its preferred distance, so the weapons reach it.
+		Vector2 holdingStill = distance > preferred * 1.5f ? direction * radial : Vector2.Zero;
+		return moving.Lerp(holdingStill, still);
 	}
 
 	/// <summary>
