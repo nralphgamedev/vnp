@@ -63,6 +63,23 @@ public partial class PilotDefinition : Resource
 	/// while pilots took about a fifth of theirs from them.</summary>
 	[Export] public float TouchAvoidDistance;
 
+	/// <summary>Health, as a fraction of the most it can have, below which it starts being more careful: its
+	/// weapons' LowHealthDistance blends in, and it keeps farther clear of enemies that damage by touch, fully so
+	/// at no health. 0 turns it off. At the designer's description: at low health they give enemies a wider
+	/// berth, except with short-range weapons, which they keep in range.</summary>
+	[Export] public float LowHealthBelow;
+
+	/// <summary>How much farther it keeps clear of enemies that damage by touch at no health: TouchAvoidDistance
+	/// grows by this fraction of itself, in step with how far health is below LowHealthBelow. A touch that would
+	/// end the fight is worth a wider margin.</summary>
+	[Export] public float LowHealthTouchScale;
+
+	/// <summary>Seconds ahead it judges enemies that damage by touch, by where they and it are heading, so one
+	/// closing in head-on is avoided while there is still room. 0 judges them only where they are. Added after a
+	/// replay (seed 30) showed three Goos and the VNP closing at about 25 units a second: the 5-unit margin gave
+	/// a fifth of a second, one decision, and it was touched and destroyed.</summary>
+	[Export] public float TouchLookAhead;
+
 	/// <summary>From 0 to 1: how much it closes in on an enemy farther than its preferred distance. 1 goes after
 	/// enemies to fight them; near 0 keeps its distance and lets enemies come to it and its drones, as the
 	/// designer does, so a fight it can afford never pulls it away from harvesting.</summary>

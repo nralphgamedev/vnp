@@ -23,6 +23,8 @@ public partial class SeekerMissiles : VnpWeapon
 
 	private SeekerMissilesDefinition Seekers => (SeekerMissilesDefinition)Definition;
 
+	public override float Reach => Seekers.Range * Range;
+
 	/// <summary>Damage compared with the start of the fight, so damage upgrades show as bigger missiles and blasts.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Seekers.Damage));
 

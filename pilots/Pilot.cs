@@ -354,7 +354,7 @@ public partial class Pilot : Node, IVnpController
 	/// </summary>
 	private void BlendWeaponProfiles(out float preferredDistance, out float keepMoving, out float leadChasers)
 	{
-		float distanceSum = 0f, distanceWeight = 0f, keepSum = 0f, leadSum = 0f, total = 0f;
+		float distanceSum = 0f, lowDistanceSum = 0f, distanceWeight = 0f, keepSum = 0f, leadSum = 0f, total = 0f;
 		foreach (VnpWeapon weapon in _fight.Weapons)
 		{
 			WeaponPilotProfile profile = weapon.Definition.PilotProfile;
@@ -368,9 +368,16 @@ public partial class Pilot : Node, IVnpController
 			total += investment;
 			if (profile == null)
 				continue;
-			if (profile.PreferredDistance > 0f)
+			// Its distance follows the weapon's reach now, with upgrades, where the profile says so.
+			float reach = weapon.Reach;
+			bool byReach = reach > 0f && profile.RangeFraction > 0f;
+			float distance = byReach ? reach * profile.RangeFraction : profile.PreferredDistance;
+			if (distance > 0f)
 			{
-				distanceSum += profile.PreferredDistance * investment;
+				float low = byReach && profile.LowHealthRangeFraction > 0f ? reach * profile.LowHealthRangeFraction
+					: !byReach && profile.LowHealthDistance > 0f ? profile.LowHealthDistance : distance;
+				distanceSum += distance * investment;
+				lowDistanceSum += low * investment;
 				distanceWeight += investment;
 			}
 			keepSum += profile.KeepMoving * investment;
@@ -378,6 +385,9 @@ public partial class Pilot : Node, IVnpController
 		}
 		float tactic = Mathf.Clamp(Skill.TacticSkill, 0f, 1f);
 		float weaponsDistance = distanceWeight > 0f ? distanceSum / distanceWeight : Skill.PreferredEnemyDistance;
+		// At low health, the weapons' wider low-health distances blend in.
+		if (distanceWeight > 0f)
+			weaponsDistance = Mathf.Lerp(weaponsDistance, lowDistanceSum / distanceWeight, LowHealth());
 		preferredDistance = Mathf.Lerp(Skill.PreferredEnemyDistance, weaponsDistance, tactic);
 		keepMoving = total > 0f ? keepSum / total * tactic : 0f;
 		leadChasers = total > 0f ? leadSum / total * tactic : 0f;
@@ -463,14 +473,29 @@ public partial class Pilot : Node, IVnpController
 		return Skill.AffordableThreat * health * strength * (1f - 0.5f * Skill.Caution);
 	}
 
+	/// <summary>How low its health is, from 0 at LowHealthBelow of its most (or above) to 1 at none.</summary>
+	private float LowHealth()
+	{
+		if (Skill.LowHealthBelow <= 0f || _vnp.MaxHealth <= 0f)
+			return 0f;
+		float health = _vnp.Health / _vnp.MaxHealth;
+		return Mathf.Clamp((Skill.LowHealthBelow - health) / Skill.LowHealthBelow, 0f, 1f);
+	}
+
 	/// <summary>
-	/// Away from the enemies it sees that damage by touch, such as Goos, from each within TouchAvoidDistance of
-	/// its edge, harder the closer it is, fully once touching. At most length 1.
+	/// Away from the enemies it sees that damage by touch, such as Goos, from each within its keep-clear distance
+	/// of its edge, harder the closer it is, fully once touching. The distance is TouchAvoidDistance, wider at low
+	/// health (LowHealthTouchScale). Each is judged where it is and where it will be TouchLookAhead seconds on,
+	/// with the VNP where it is heading then too, by whichever is closer, so an enemy closing in head-on is
+	/// avoided in time. At most length 1.
 	/// </summary>
 	private Vector2 KeepClearOfTouch(Vector2 me, int enemyCount)
 	{
 		if (Skill.TouchAvoidDistance <= 0f || Skill.TouchAvoidWeight <= 0f)
 			return Vector2.Zero;
+		float keepClear = Skill.TouchAvoidDistance * (1f + Mathf.Max(0f, Skill.LowHealthTouchScale) * LowHealth());
+		float ahead = Mathf.Max(0f, Skill.TouchLookAhead);
+		Vector2 meAhead = me + _vnp.Velocity * ahead;
 		EnemySwarm enemies = _fight.Enemies;
 		Vector2 push = Vector2.Zero;
 		for (int c = 0; c < enemyCount; c++)
@@ -480,11 +505,20 @@ public partial class Pilot : Node, IVnpController
 				continue;
 			Vector2 away = me - enemies.PositionOf(e);
 			float distance = away.Length();
+			if (ahead > 0f)
+			{
+				Vector2 awayAhead = meAhead - (enemies.PositionOf(e) + enemies.VelocityOf(e) * ahead);
+				if (awayAhead.Length() < distance)
+				{
+					away = awayAhead;
+					distance = awayAhead.Length();
+				}
+			}
 			float edge = distance - enemies.RadiusOf(e);
-			if (edge >= Skill.TouchAvoidDistance)
+			if (edge >= keepClear)
 				continue;
 			Vector2 direction = distance > 0.001f ? away / distance : Vector2.Right;
-			push += direction * (1f - Mathf.Max(0f, edge) / Skill.TouchAvoidDistance);
+			push += direction * (1f - Mathf.Max(0f, edge) / keepClear);
 		}
 		return push.LimitLength(1f);
 	}

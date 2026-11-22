@@ -23,6 +23,8 @@ public partial class Shockwave : VnpWeapon
 
 	private ShockwaveDefinition Wave => (ShockwaveDefinition)Definition;
 
+	public override float Reach => Wave.Radius * Area;
+
 	/// <summary>Damage compared with the start of the fight, so damage upgrades show as a brighter ring.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Wave.Damage));
 

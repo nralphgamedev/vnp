@@ -1,0 +1,8 @@
+# Pilots aren't more careful at low health, and judge enemies that damage by touch only where they are: as
+# before the designer described giving enemies a wider berth at low health (seed 30's death).
+pilots/skill_levels/novice.tres:LowHealthBelow = 0.0
+pilots/skill_levels/average.tres:LowHealthBelow = 0.0
+pilots/skill_levels/expert.tres:LowHealthBelow = 0.0
+pilots/skill_levels/novice.tres:TouchLookAhead = 0.0
+pilots/skill_levels/average.tres:TouchLookAhead = 0.0
+pilots/skill_levels/expert.tres:TouchLookAhead = 0.0

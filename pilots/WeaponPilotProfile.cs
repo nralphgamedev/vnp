@@ -17,6 +17,19 @@ public partial class WeaponPilotProfile : Resource
 	/// 0 has no preference, leaving it to the other weapons and the pilot's own distance.</summary>
 	[Export] public float PreferredDistance;
 
+	/// <summary>The distance to keep as a fraction of the weapon's reach right now (VnpWeapon.Reach), so it
+	/// follows range and area of effect upgrades through the fight, as the designer does. Used instead of
+	/// PreferredDistance when above 0 and the weapon has a reach.</summary>
+	[Export] public float RangeFraction;
+
+	/// <summary>The fraction of its reach to keep once health is low (see the skill level's LowHealthBelow),
+	/// blending in as health falls. The designer gives enemies a wider berth at low health, but keeps short-range
+	/// weapons (Orbital Shards, Scatter Shot, Pulse Laser) in range, so those leave it at 0: no change.</summary>
+	[Export] public float LowHealthRangeFraction;
+
+	/// <summary>As LowHealthRangeFraction, as a distance, for a weapon with no reach (Mine Layer).</summary>
+	[Export] public float LowHealthDistance;
+
 	/// <summary>From 0 to 1: how much this weapon wants the VNP always moving, such as one that only works while
 	/// it moves. Instead of holding still beside a rock while harvesting, the pilot circles it.</summary>
 	[Export(PropertyHint.Range, "0,1,0.01")] public float KeepMoving;

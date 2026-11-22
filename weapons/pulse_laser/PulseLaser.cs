@@ -10,6 +10,8 @@ public partial class PulseLaser : VnpWeapon
 
 	private PulseLaserDefinition Laser => (PulseLaserDefinition)Definition;
 
+	public override float Reach => Laser.Range * Range;
+
 	/// <summary>How much damage upgrades show: the beam and its flashes grow with damage, gently.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Laser.Damage));
 

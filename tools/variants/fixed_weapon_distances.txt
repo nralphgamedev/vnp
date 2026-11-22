@@ -1,0 +1,8 @@
+# Weapon distances fixed at the profiles' PreferredDistance, as before they followed each weapon's reach and its upgrades.
+weapons/pulse_laser/pilot_profile.tres:RangeFraction = 0.0
+weapons/scatter_shot/pilot_profile.tres:RangeFraction = 0.0
+weapons/orbital_shards/pilot_profile.tres:RangeFraction = 0.0
+weapons/seeker_missiles/pilot_profile.tres:RangeFraction = 0.0
+weapons/shockwave/pilot_profile.tres:RangeFraction = 0.0
+weapons/seeker_missiles/pilot_profile.tres:LowHealthRangeFraction = 0.0
+weapons/shockwave/pilot_profile.tres:LowHealthRangeFraction = 0.0

@@ -29,6 +29,11 @@ public abstract partial class VnpWeapon : Node3D
 	/// <summary>Added to the definition's count: extra projectiles, missiles or shards from upgrades.</summary>
 	public int ExtraCount;
 
+	/// <summary>How far from the VNP this weapon reaches enemies right now, with its upgrades, in units; 0 for a
+	/// weapon with no single reach, such as Mine Layer. Read-only, for pilots, which keep a distance from enemies
+	/// as a fraction of it, as the designer does.</summary>
+	public virtual float Reach => 0f;
+
 	private readonly System.Collections.Generic.HashSet<WeaponFeature> _features = new();
 
 	/// <summary>Whether an upgrade has switched on this behaviour for this weapon.</summary>

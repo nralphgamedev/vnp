@@ -12,6 +12,8 @@ public partial class OrbitalShards : VnpWeapon
 
 	private OrbitalShardsDefinition Shards => (OrbitalShardsDefinition)Definition;
 
+	public override float Reach => (Shards.OrbitRadius + Shards.HitRadius) * Area;
+
 	/// <summary>The shards' colour: tinted once they can block enemy shots.</summary>
 	private Color ShardColor => HasFeature(WeaponFeature.Blocking) ? Shards.BlockingColor : Shards.Color;
 
