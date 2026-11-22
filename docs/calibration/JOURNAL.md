@@ -34,3 +34,12 @@ The designer played three fights on the current tuning: Seeker Missiles with Ram
 ### 2026-11-22: chunk 2, drones count for more in what it can afford (kept)
 
 Candidate: the expert's StrengthPerDrone 0.08 to 0.14, so its drones count for more in what it can afford and losing them makes it back off sooner. 25 fights each: base 0.154, candidate 0.139, within chance; so confirmed on 50 seeds each (100 fights, about 2.3 minutes, longer than a chunk's usual batch, to tell a small gain from chance): base 0.165, candidate 0.135. Kills and level at 5:00 now close to the designer's (252 against 253, level 21 against 22); drones at 3:00 still short (21 against 30). Kept: `pilots/skill_levels/expert.tres` StrengthPerDrone 0.14. No-improvement count reset: 0 of 6. Next: drones from 3:00, such as harvesting more at the drone cap (HarvestAtCap) or the regroup thresholds, and survival at 4:00. New baseline about 0.135.
+
+### 2026-11-22: chunks 3 and 4, more drone weight and earlier regrouping (both rejected)
+
+Both tested on 50 seeds each against the base, which replays exactly (GAP 0.135, as in chunk 2).
+
+- **Chunk 3, StrengthPerDrone 0.14 to 0.2:** GAP 0.125, a gain of 0.01, within chance, and fewer drones and kills at 5:00. Rejected; 0.14 stays.
+- **Chunk 4, regrouping earlier (RegroupBelow 0.2 to 0.35, RegroupUntil 0.4 to 0.55):** GAP 0.147, worse. Rejected.
+
+No improvement: 2 of 6. Drones at 3:00 remain the clearest gap (about 20 against 30). Next: what feeds drones rather than what protects them, such as harvesting more at the drone cap (HarvestAtCap) or a stronger pull toward concentrations (ConcentrationPull).
