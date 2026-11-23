@@ -1,0 +1,58 @@
+[gd_resource type="Resource" script_class="SpikerDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://enemies/grey_goo/spiker/SpikerDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "spiker"
+Name = "Spiker"
+GroupSize = 2
+Health = 90.0
+HitRadius = 1.6
+DebrisMassMin = 4.0
+DebrisMassMax = 6.0
+Speed = 5.5
+WanderSpeed = 2.0
+Acceleration = 10.0
+TurnSpeed = 120.0
+IdleTurnSpeed = 60.0
+IdleTurnDeadband = 10.0
+WanderRadius = 10.0
+AggroRange = 30.0
+LoseAggroRange = 45.0
+TargetsDronesFirst = false
+TargetHoldSeconds = 1.5
+DroneKeepBack = 1.5
+DroneAvoidDistance = 3.0
+NeighborRadius = 9.0
+SeparationRadius = 4.0
+Separation = 1.6
+Alignment = 0.6
+Cohesion = 0.4
+WanderWeight = 0.5
+Size = 1.5
+Color = Color(0.9, 0.8, 0.72, 1)
+ContactDamage = 6.0
+ContactCooldown = 1.0
+DroneDrainPerSecond = 0.0
+BulkPerDrone = 0.25
+DebrisMassPerDrone = 1.5
+Wobble = 0.06
+WobbleSpeed = 0.5
+AbsorbPulse = 0.3
+AbsorbPulseSeconds = 0.3
+Reach = 12.0
+FormSeconds = 0.6
+MinSpikes = 1
+MaxSpikes = 1
+AimLead = 0.85
+AimSpreadDegrees = 3.0
+TrackDegrees = 120.0
+Cooldown = 2.0
+SpikeSpeed = 40.0
+SpikeBeyond = 2.0
+PullSpeed = 7.0
+SpikeDamage = 6.0
+SpikeWidth = 0.15
+FormSwell = 0.2
+FormGlow = 0.5

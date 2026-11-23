@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioTuning" load_steps=75 format=3]
+[gd_resource type="Resource" script_class="AudioTuning" load_steps=77 format=3]
 
 [ext_resource type="Script" path="res://audio/AudioTuning.cs" id="1_script"]
 [ext_resource type="Script" path="res://audio/SoundDefinition.cs" id="2_sound"]
@@ -38,6 +38,7 @@
 [ext_resource type="AudioStream" path="res://placeholder/audio/lancer_form.wav" id="36_lancer_form"]
 [ext_resource type="AudioStream" path="res://placeholder/audio/lancer_launch.wav" id="37_lancer_launch"]
 [ext_resource type="AudioStream" path="res://placeholder/audio/quiller_volley.wav" id="38_quiller_volley"]
+[ext_resource type="AudioStream" path="res://placeholder/audio/spiker_thrust.wav" id="39_spiker_thrust"]
 
 [sub_resource type="Resource" id="Sound_pulse_laser_fire"]
 script = ExtResource("2_sound")
@@ -399,6 +400,16 @@ MaxCopies = 4
 VaryPitch = true
 Loop = false
 
+[sub_resource type="Resource" id="Sound_spiker_thrust"]
+script = ExtResource("2_sound")
+Id = "spiker_thrust"
+Stream = ExtResource("39_spiker_thrust")
+Category = 0
+Volume = 0.45
+MaxCopies = 4
+VaryPitch = true
+Loop = false
+
 [resource]
 script = ExtResource("1_script")
 MasterVolume = 0.8
@@ -416,4 +427,4 @@ DefaultMaxCopies = 4
 PitchVariation = 0.06
 MinRepeatSeconds = 0.04
 LoopFadeSeconds = 0.25
-Sounds = Array[ExtResource("2_sound")]([SubResource("Sound_pulse_laser_fire"), SubResource("Sound_shard_hit"), SubResource("Sound_drone_projectile_fire"), SubResource("Sound_drone_beam_tick"), SubResource("Sound_enemy_fire"), SubResource("Sound_hit"), SubResource("Sound_enemy_death"), SubResource("Sound_drone_death"), SubResource("Sound_vnp_damage"), SubResource("Sound_low_health"), SubResource("Sound_harvest_loop"), SubResource("Sound_material_pop"), SubResource("Sound_drone_built"), SubResource("Sound_wave_warning"), SubResource("Sound_time_limit"), SubResource("Sound_level_up"), SubResource("Sound_upgrade_choose"), SubResource("Sound_menu_move"), SubResource("Sound_menu_select"), SubResource("Sound_win"), SubResource("Sound_loss"), SubResource("Sound_retreat"), SubResource("Sound_scatter_shot_fire"), SubResource("Sound_seeker_launch"), SubResource("Sound_seeker_hit"), SubResource("Sound_shockwave_fire"), SubResource("Sound_mine_drop"), SubResource("Sound_mine_explode"), SubResource("Sound_ram_hit"), SubResource("Sound_shard_block"), SubResource("Sound_goo_absorb"), SubResource("Sound_goo_split"), SubResource("Sound_goo_death"), SubResource("Sound_lancer_form"), SubResource("Sound_lancer_launch"), SubResource("Sound_quiller_volley")])
+Sounds = Array[ExtResource("2_sound")]([SubResource("Sound_pulse_laser_fire"), SubResource("Sound_shard_hit"), SubResource("Sound_drone_projectile_fire"), SubResource("Sound_drone_beam_tick"), SubResource("Sound_enemy_fire"), SubResource("Sound_hit"), SubResource("Sound_enemy_death"), SubResource("Sound_drone_death"), SubResource("Sound_vnp_damage"), SubResource("Sound_low_health"), SubResource("Sound_harvest_loop"), SubResource("Sound_material_pop"), SubResource("Sound_drone_built"), SubResource("Sound_wave_warning"), SubResource("Sound_time_limit"), SubResource("Sound_level_up"), SubResource("Sound_upgrade_choose"), SubResource("Sound_menu_move"), SubResource("Sound_menu_select"), SubResource("Sound_win"), SubResource("Sound_loss"), SubResource("Sound_retreat"), SubResource("Sound_scatter_shot_fire"), SubResource("Sound_seeker_launch"), SubResource("Sound_seeker_hit"), SubResource("Sound_shockwave_fire"), SubResource("Sound_mine_drop"), SubResource("Sound_mine_explode"), SubResource("Sound_ram_hit"), SubResource("Sound_shard_block"), SubResource("Sound_goo_absorb"), SubResource("Sound_goo_split"), SubResource("Sound_goo_death"), SubResource("Sound_lancer_form"), SubResource("Sound_lancer_launch"), SubResource("Sound_quiller_volley"), SubResource("Sound_spiker_thrust")])

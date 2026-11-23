@@ -836,7 +836,10 @@ public partial class EnemySwarm : Node3D
 	{
 		Array.Clear(_drawCounts);
 		foreach (EnemyBehavior type in _types)
+		{
 			type.Batch.Begin(Count);
+			type.BeginDraw();
+		}
 
 		for (int i = 0; i < Count; i++)
 		{
@@ -850,6 +853,9 @@ public partial class EnemySwarm : Node3D
 		}
 
 		for (int t = 0; t < _types.Count; t++)
+		{
 			_types[t].Batch.Commit(_drawCounts[t]);
+			_types[t].EndDraw();
+		}
 	}
 }

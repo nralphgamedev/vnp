@@ -1,16 +1,15 @@
 using Godot;
 
 /// <summary>
-/// The Quiller, a Grey Goo type: it forms a volley of spikes, fires them in a spread shared out among the VNP and
-/// drones near it, and takes them back as they arc home; each one broken first costs it health. Everything else,
+/// The Quiller, a Grey Goo type: it forms a volley of spikes at the VNP, fired from every side to curl in on it,
+/// and takes them back as they arc home; each one broken first costs it health. Everything else,
 /// touch damage, debris and the wobbling look, is shared by the Grey Goo types (GreyGooDefinition). Quiller.cs
 /// runs it; its spikes fly as fragile shots (FragileShots.cs).
 /// </summary>
 [GlobalClass]
 public partial class QuillerDefinition : GreyGooDefinition
 {
-	/// <summary>It forms a volley once the VNP or a drone is this close and its cooldown is done, aiming at those
-	/// within this distance.</summary>
+	/// <summary>It forms a volley once the VNP is this close and its cooldown is done.</summary>
 	[ExportGroup("Volley")]
 	[Export] public float VolleyRange;
 
@@ -21,10 +20,7 @@ public partial class QuillerDefinition : GreyGooDefinition
 	/// <summary>Spikes in each volley.</summary>
 	[Export] public int SpikeCount;
 
-	/// <summary>The most targets a volley shares its spikes among: the VNP, if in range, then the nearest drones.</summary>
-	[Export] public int MaxTargets;
-
-	/// <summary>How far each spike's target point strays either side of its target, in degrees around the Quiller,
+	/// <summary>How far each spike's target point strays either side of the VNP, in degrees around the Quiller,
 	/// so a volley spreads rather than all meeting at one point.</summary>
 	[Export] public float SpreadDegrees;
 

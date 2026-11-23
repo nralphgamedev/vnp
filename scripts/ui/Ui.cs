@@ -18,6 +18,50 @@ public static class Ui
 	}
 
 	/// <summary>A rounded panel background with a border.</summary>
+	/// <summary>
+	/// A panel pinned to the left or right edge of <paramref name="owner"/>, centred top to bottom, holding lines
+	/// added to the returned column. It grows with its lines until it would come within <paramref name="margin"/>
+	/// of the top and bottom of the screen, or of <paramref name="bottomClear"/> above the bottom, then scrolls, by the mouse wheel or its scroll bar, so a long list,
+	/// such as a long fight's damage breakdown, stays readable. Used by the upgrade list and the damage breakdown.
+	/// </summary>
+	public static VBoxContainer SidePanel(Control owner, bool right, float width, float margin, float bottomClear,
+		out ScrollContainer scroll)
+	{
+		StyleBoxFlat style = Panel(new Color(0.07f, 0.09f, 0.15f, 0.85f), new Color(0.3f, 0.34f, 0.45f, 0.35f));
+		var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(width, 0f) };
+		panel.AddThemeStyleboxOverride("panel", style);
+		owner.AddChild(panel);
+		panel.AnchorLeft = right ? 1f : 0f;
+		panel.AnchorRight = right ? 1f : 0f;
+		panel.AnchorTop = 0.5f;
+		panel.AnchorBottom = 0.5f;
+		panel.OffsetLeft = right ? -margin - width : margin;
+		panel.OffsetRight = right ? -margin : margin + width;
+		// Centred in the space above what it must clear.
+		panel.OffsetTop = -bottomClear * 0.5f;
+		panel.OffsetBottom = -bottomClear * 0.5f;
+		panel.GrowVertical = Control.GrowDirection.Both;
+
+		var box = new ScrollContainer
+		{
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			MouseFilter = Control.MouseFilterEnum.Pass,
+		};
+		panel.AddChild(box);
+		var lines = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+		lines.AddThemeConstantOverride("separation", 4);
+		box.AddChild(lines);
+
+		// A scroll box takes no height from what it holds, so it is given the lines' height, up to what fits.
+		lines.MinimumSizeChanged += () =>
+		{
+			float fits = owner.GetViewportRect().Size.Y - 2f * margin - bottomClear - style.ContentMarginTop - style.ContentMarginBottom;
+			box.CustomMinimumSize = new Vector2(0f, Mathf.Min(lines.GetCombinedMinimumSize().Y, Mathf.Max(100f, fits)));
+		};
+		scroll = box;
+		return lines;
+	}
+
 	public static StyleBoxFlat Panel(Color background, Color border)
 	{
 		var style = new StyleBoxFlat

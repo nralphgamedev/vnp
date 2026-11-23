@@ -18,27 +18,14 @@ public partial class UpgradeList : Control
 	private const float Margin = 40f;
 
 	private VBoxContainer _lines;
+	private ScrollContainer _scroll;
 
 	public override void _Ready()
 	{
 		MouseFilter = MouseFilterEnum.Ignore;
 		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 
-		var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(Width, 0f) };
-		panel.AddThemeStyleboxOverride("panel", Ui.Panel(new Color(0.07f, 0.09f, 0.15f, 0.85f), new Color(0.3f, 0.34f, 0.45f, 0.35f)));
-		AddChild(panel);
-		// Pinned to the right edge, centred top to bottom, growing both ways as lines are added.
-		panel.AnchorLeft = 1f;
-		panel.AnchorRight = 1f;
-		panel.AnchorTop = 0.5f;
-		panel.AnchorBottom = 0.5f;
-		panel.OffsetLeft = -Margin - Width;
-		panel.OffsetRight = -Margin;
-		panel.GrowVertical = GrowDirection.Both;
-
-		_lines = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-		_lines.AddThemeConstantOverride("separation", 4);
-		panel.AddChild(_lines);
+		_lines = Ui.SidePanel(this, right: true, Width, Margin, 0f, out _scroll);
 	}
 
 	/// <summary>Fills the panel with the upgrades taken in this fight.</summary>
@@ -46,6 +33,7 @@ public partial class UpgradeList : Control
 	{
 		// Disposed straight away: a Godot array left for .NET to clean up later can be cleaned up after Godot has
 		// shut down, which crashes the game as it quits.
+		_scroll.ScrollVertical = 0;
 		var children = _lines.GetChildren();
 		using ((Godot.Collections.Array)children)
 		{

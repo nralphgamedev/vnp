@@ -110,6 +110,9 @@ public partial class PlaceholderBaker : Node
 		// The Quiller: a Grey Goo urchin, quills round its middle; and the spikes it fires.
 		Save(PlaceholderShapes.Urchin(41, 0.14f, 9, 0.55f), "meshes/quiller.tres");
 		Save(PlaceholderShapes.ExtrudedShape(QuillOutline, 0.22f), "meshes/quill.tres");
+		// The Spiker: a Grey Goo blob drawn out into four broad arms, like a caltrop, so it can't be mistaken for the
+		// Quiller's ring of thin quills.
+		Save(PlaceholderShapes.Star(53, 0.12f, 4, 0.9f, 0.55f), "meshes/spiker.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.

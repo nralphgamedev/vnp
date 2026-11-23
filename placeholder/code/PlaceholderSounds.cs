@@ -266,6 +266,12 @@ public static class PlaceholderSounds
 				Tone(b, i * 0.035f, 0.05f, 1400f - i * 90f, 600f, Wave.Square, 0.22f);
 			Noise(b, random, 0f, 0.3f, 4000f, 1500f, 0.3f);
 		}));
+		// The Spiker's thrust: a hard, wet stab: a burst of bright noise over a quick low thud that rises.
+		Save(folder, "spiker_thrust", Make(0.3f, b =>
+		{
+			Noise(b, random, 0f, 0.12f, 6000f, 2500f, 0.5f);
+			Tone(b, 0f, 0.15f, 120f, 260f, Wave.Triangle, 0.5f);
+		}));
 	}
 
 	/// <summary>

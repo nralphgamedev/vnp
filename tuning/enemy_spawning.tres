@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
 [ext_resource type="Resource" path="res://enemies/grey_goo/lancer/lancer.tres" id="5_lancer"]
 [ext_resource type="Resource" path="res://enemies/grey_goo/quiller/quiller.tres" id="6_quiller"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/spiker/spiker.tres" id="7_spiker"]
 
 [resource]
 script = ExtResource("1_script")
@@ -25,11 +26,13 @@ GroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
 ExtResource("2_enemy"): 0.0,
 ExtResource("3_goo"): 1.0,
 ExtResource("5_lancer"): 0.35,
-ExtResource("6_quiller"): 0.3
+ExtResource("6_quiller"): 0.3,
+ExtResource("7_spiker"): 0.3
 })
 WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
 ExtResource("2_enemy"): 0.0,
 ExtResource("3_goo"): 1.0,
 ExtResource("5_lancer"): 0.35,
-ExtResource("6_quiller"): 0.3
+ExtResource("6_quiller"): 0.3,
+ExtResource("7_spiker"): 0.3
 })

@@ -6,14 +6,13 @@ using System.Collections.Generic;
 /// The Quiller, a Grey Goo type. Everything shared by Grey Goo (GreyGoo.cs) applies, but it drains no drones and
 /// doesn't grow. Its own part is its volley:
 /// - drifting: an urchin-like blob drifting after the VNP;
-/// - forming: once the VNP or a drone is within its volley range and its cooldown is done, it stops, swells and
-///   glows paler, with each spike's target point set as it starts: shared out among the VNP, if in range, and the
-///   nearest drones, each straying a little;
+/// - forming: once the VNP is within its volley range and its cooldown is done, it stops, swells and glows
+///   paler, with each spike's target point set as it starts: where the VNP is, each straying a little;
 /// - firing: the spikes leave from every side as fragile shots (FragileShots.cs), curl in on their target points,
 ///   fly on a little past, turn back (or on a hit), and arc home, where it takes them back in. Each broken first
 ///   costs it health.
-/// It forms its next volley only once all of the last are back or broken. While forming it declares each spike's
-/// line to pilots, landing when the volley fires; the spikes in flight declare themselves.
+/// It forms its next volley only once all of the last are back or broken. Drones are hit only in passing. While
+/// forming it declares each spike's target point to pilots; the spikes in flight declare themselves.
 /// Its numbers are in quiller.tres.
 /// </summary>
 public sealed class Quiller : GreyGoo
@@ -23,7 +22,6 @@ public sealed class Quiller : GreyGoo
 	private readonly QuillerDefinition _type;
 	// Each forming Quiller's spikes, by its ID: the point each curls in on.
 	private readonly Dictionary<int, List<Vector2>> _aims = new();
-	private readonly int[] _drones = new int[64];
 
 	public Quiller(EnemySwarm swarm, QuillerDefinition definition) : base(swarm, definition)
 	{
@@ -69,29 +67,11 @@ public sealed class Quiller : GreyGoo
 		return false;
 	}
 
-	/// <summary>Picks its targets and sets each spike's aim, or does nothing if no target is in range.</summary>
+	/// <summary>Sets each spike's target point at the VNP, or does nothing if the VNP is out of range.</summary>
 	private void StartForming(ref EnemySwarm.Enemy enemy)
 	{
-		var targets = new List<Vector2>();
-		Vnp vnp = Fight.Vnp;
-		if (vnp.PlanePosition.DistanceTo(enemy.Position) <= _type.VolleyRange)
-			targets.Add(vnp.PlanePosition);
-		int found = Fight.Drones.CollectNear(enemy.Position, _type.VolleyRange, _drones);
-		// The nearest drones, after the VNP.
-		var drones = new List<(float Distance, Vector2 Position)>();
-		for (int c = 0; c < found; c++)
-		{
-			Vector2 p = Fight.Drones.PositionOf(_drones[c]);
-			drones.Add((p.DistanceTo(enemy.Position), p));
-		}
-		drones.Sort((a, b) => a.Distance.CompareTo(b.Distance));
-		foreach ((float _, Vector2 p) in drones)
-		{
-			if (targets.Count >= Mathf.Max(1, _type.MaxTargets))
-				break;
-			targets.Add(p);
-		}
-		if (targets.Count == 0)
+		Vector2 vnp = Fight.Vnp.PlanePosition;
+		if (vnp.DistanceTo(enemy.Position) > _type.VolleyRange)
 			return;
 
 		if (!_aims.TryGetValue(enemy.Id, out List<Vector2> aims))
@@ -100,8 +80,8 @@ public sealed class Quiller : GreyGoo
 		float spread = Mathf.DegToRad(_type.SpreadDegrees);
 		for (int s = 0; s < _type.SpikeCount; s++)
 		{
-			// Where its target is now, strayed a little round the Quiller.
-			Vector2 toTarget = targets[s % targets.Count] - enemy.Position;
+			// Where the VNP is now, strayed a little round the Quiller.
+			Vector2 toTarget = vnp - enemy.Position;
 			aims.Add(enemy.Position + toTarget.Rotated(Rng.Range(-spread, spread)));
 		}
 		enemy.AttackPhase = Forming;

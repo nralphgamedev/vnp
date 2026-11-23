@@ -17,6 +17,10 @@ public partial class WeaponSlots : Control
 	private const float AboveBottom = 100f;
 	private const int LabelSize = 16;
 
+	/// <summary>How far up from the bottom of the screen the boxes and their labels reach, so a panel beside them,
+	/// such as the damage breakdown, can stop above them.</summary>
+	public const float Clearance = AboveBottom + BoxSize + LabelSize + 16f;
+
 	private static readonly Color BoxColor = new(0.05f, 0.07f, 0.12f, 0.85f);
 	private static readonly Color EmptyBorder = new(1f, 1f, 1f, 0.18f);
 	private static readonly Color LabelColor = new(1f, 1f, 1f, 0.5f);

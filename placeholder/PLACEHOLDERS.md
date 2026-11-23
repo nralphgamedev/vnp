@@ -17,11 +17,12 @@ All made by `code/PlaceholderBaker.cs`.
 | `lancer.tres` | A Grey Goo teardrop: the lumpy blob with its front drawn out into a long point, about twice as long as it is wide, pointing forward (-z). Made by `PlaceholderShapes.Teardrop`. `Lancer.cs` turns its point toward the VNP, and stretches it into a spike while forming and launching. | The Lancer (`Lancer.cs`) |
 | `quiller.tres` | A Grey Goo urchin: the lumpy blob with nine short quills round its middle, tilted a little up. Made by `PlaceholderShapes.Urchin`. `Quiller.cs` swells it while forming a volley. | The Quiller (`Quiller.cs`) |
 | `quill.tres` | A long, thin, pointed spike, flat-topped, pointing forward (-y). Made by `PlaceholderShapes.ExtrudedShape` from `QuillOutline`. | A Quiller's spikes in flight (`FragileShots.cs`) |
+| `spiker.tres` | A Grey Goo blob drawn out into four broad, tapering arms, like a caltrop, so it can't be mistaken for the Quiller. Made by `PlaceholderShapes.Star`. (At first sixteen short spikes, `Urchin`, which the designer found too like the Quiller.) `Spiker.cs` swells it while forming a thrust. | The Spiker (`Spiker.cs`) |
 | `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
 | `projectile.tres` | 0.4 × 0.4 × 1.3 box | Drone, enemy and Scatter Shot projectiles (`Projectiles.cs`) |
-| `unit_box.tres` | 1 × 1 × 1 box, stretched into beams | Pulse Laser beam, VNP harvest beam, drone harvest and attack beams, and effect sparks |
+| `unit_box.tres` | 1 × 1 × 1 box, stretched into beams | Pulse Laser beam, VNP harvest beam, drone harvest and attack beams, effect sparks, and a Spiker's spikes (with `goo.tres` material) |
 | `fragment.tres` | Small jagged triangle slab | Pieces of destroyed enemies and used-up material (`Effects.cs`) |
 | `missile.tres` | Small dart with fins at the back | Seeker Missiles (`SeekerMissiles.cs`) |
 | `mine.tres` | Squat disc with eight short spikes | Mine Layer (`MineLayer.cs`) |
@@ -101,6 +102,7 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `lancer_form.wav` | A thin, rising whine that brightens, over a wet creak, about a second long | A Lancer starts forming its spike |
 | `lancer_launch.wav` | A sharp whoosh of rising noise over a quick falling tone | A Lancer launches |
 | `quiller_volley.wav` | A wet rattle of quick ticks over a short hiss | A Quiller fires its volley. A spike broken in flight plays `shard_block.wav` |
+| `spiker_thrust.wav` | A hard, wet stab: a burst of bright noise over a quick low thud that rises | A Spiker thrusts its spikes out. A drone impaled plays `hit.wav`, and one drawn in plays `goo_absorb.wav` |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

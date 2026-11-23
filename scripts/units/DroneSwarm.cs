@@ -40,6 +40,8 @@ public partial class DroneSwarm : Node3D
 		public int HarvestId;     // The asteroid or debris it is harvesting, or 0.
 		public int AttackState;   // For the Drone Weapon's attack to use, such as where it is in the Ram cycle. 0 to start.
 		public float AttackTime;  // For the Drone Weapon's attack to use, such as seconds in the current Ram state.
+		public int HeldBy;        // The enemy holding it, such as a Spiker that impaled it, by ID, or 0.
+		public float HeldFor;     // Seconds it stays held unless its holder holds it again: let go if the holder stops.
 	}
 
 	/// <summary>A destroyed drone, shown briefly while it disintegrates. It cannot be harvested.</summary>
@@ -151,6 +153,81 @@ public partial class DroneSwarm : Node3D
 
 	/// <summary>A drone's ID, which stays the same for its life.</summary>
 	public int IdOf(int index) => _drones[index].Id;
+
+	/// <summary>How a drone is moving. Game code: the Spiker leads drones with it.</summary>
+	public Vector2 VelocityOf(int index) => _drones[index].Velocity;
+
+	/// <summary>Where a living drone is in the list, by its ID, or -1.</summary>
+	public int IndexOfId(int id)
+	{
+		for (int i = 0; i < Count; i++)
+		{
+			if (_drones[i].Id == id)
+				return _drones[i].Health > 0f ? i : -1;
+		}
+		return -1;
+	}
+
+	/// <summary>Whether a drone is held by an enemy, such as impaled on a Spiker's spike.</summary>
+	public bool IsHeld(int index) => _drones[index].HeldBy != 0;
+
+	// How long a held drone stays held without its holder holding it again.
+	private const float HoldGrace = 0.2f;
+
+	/// <summary>
+	/// Holds a drone in place for an enemy, such as impaled on a Spiker's spike: it stops fighting, harvesting and
+	/// moving, and is put where the holder says. The holder calls this every frame it holds it; a drone not held
+	/// again soon is let go, so a holder that is gone can't keep it.
+	/// </summary>
+	public void Hold(int index, int enemyId, Vector2 position)
+	{
+		ref Drone drone = ref _drones[index];
+		drone.HeldBy = enemyId;
+		drone.HeldFor = HoldGrace;
+		drone.Position = position;
+		drone.Velocity = Vector2.Zero;
+		drone.TargetId = 0;
+		drone.HarvestId = 0;
+	}
+
+	/// <summary>Lets a held drone go, by its ID, such as when its Spiker is destroyed.</summary>
+	public void Release(int id)
+	{
+		int i = IndexOfId(id);
+		if (i >= 0)
+		{
+			_drones[i].HeldBy = 0;
+			Fight.Effects.DroneBuilt(_drones[i].Position, Tuning.Drones.Color);
+		}
+	}
+
+	/// <summary>A held drone is absorbed into the enemy holding it, as a drained one is into a basic goo.</summary>
+	public void AbsorbHeld(int index, int enemy) => AbsorbInto(ref _drones[index], enemy);
+
+	/// <summary>The first living drone not already held that a spike moving between two points, of
+	/// <paramref name="radius"/>, meets, or -1.</summary>
+	public int FindImpalable(Vector2 from, Vector2 to, float radius)
+	{
+		float reach = from.DistanceTo(to) * 0.5f + radius + Tuning.Drones.HitRadius + 1f;
+		int candidates = _grid.Query((from + to) * 0.5f, reach, _nearby);
+		int hit = -1;
+		float hitDistanceSquared = float.MaxValue;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _nearby[c];
+			if (i >= Count || _drones[i].Health <= 0f || _drones[i].HeldBy != 0)
+				continue;
+			if (PlaneMath.DistanceToSegment(_drones[i].Position, from, to) > radius + Tuning.Drones.HitRadius)
+				continue;
+			float distanceSquared = from.DistanceSquaredTo(_drones[i].Position);
+			if (distanceSquared < hitDistanceSquared)
+			{
+				hitDistanceSquared = distanceSquared;
+				hit = i;
+			}
+		}
+		return hit;
+	}
 
 	/// <summary>Fills <paramref name="results"/> with the living drones within a distance of a point, in no
 	/// particular order, and returns how many. Stops when it is full. Game code: the Quiller picks targets with it.</summary>
@@ -435,6 +512,18 @@ public partial class DroneSwarm : Node3D
 			drone.FireTimer = Mathf.Max(0f, drone.FireTimer - dt);
 			drone.Flash = Mathf.Max(0f, drone.Flash - dt);
 			drone.Age += dt;
+
+			// Held by an enemy, such as impaled on a Spiker's spike: it does nothing, and the holder moves it.
+			if (drone.HeldBy != 0)
+			{
+				drone.HeldFor -= dt;
+				if (drone.HeldFor > 0f)
+				{
+					reach = Mathf.Max(reach, drone.Position.DistanceTo(vnpPosition));
+					continue;
+				}
+				drone.HeldBy = 0;
+			}
 
 			Vector2 separation = Separation(i);
 			Vector2 wantedVelocity;

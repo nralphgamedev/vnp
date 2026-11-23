@@ -169,6 +169,27 @@ public static class PlaceholderShapes
 		return v * (1f + length * t * t);
 	});
 
+	/// <summary>
+	/// A blob drawn out into a few broad, tapering arms round its middle, like a star or a caltrop: a lumpy blob
+	/// with <paramref name="arms"/> arms, each reaching <paramref name="length"/> of its radius beyond it, wider
+	/// the lower <paramref name="width"/> (the closeness to an arm's line, from 0 to 1, where an arm starts).
+	/// </summary>
+	public static ArrayMesh Star(int seed, float lumpiness, int arms, float length, float width) => ShapedBlob(seed, lumpiness, v =>
+	{
+		Vector3 direction = v.Normalized();
+		float best = -1f;
+		for (int a = 0; a < arms; a++)
+		{
+			float angle = Mathf.Tau * a / arms;
+			var arm = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+			best = Mathf.Max(best, direction.Dot(arm));
+		}
+		if (best <= width)
+			return v;
+		float t = (best - width) / (1f - width);
+		return v * (1f + length * t * t);
+	});
+
 	/// <summary>The blob, with <paramref name="shape"/> moving each corner after its lumps, or none.</summary>
 	private static ArrayMesh ShapedBlob(int seed, float lumpiness, System.Func<Vector3, Vector3> shape)
 	{

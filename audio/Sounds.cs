@@ -41,6 +41,7 @@ public static class Sound
 	public const string LancerForm = "lancer_form";
 	public const string LancerLaunch = "lancer_launch";
 	public const string QuillerVolley = "quiller_volley";
+	public const string SpikerThrust = "spiker_thrust";
 }
 
 /// <summary>

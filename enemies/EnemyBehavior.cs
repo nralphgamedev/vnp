@@ -35,6 +35,7 @@ public abstract class EnemyBehavior
 	{
 		LancerDefinition lancer => new Lancer(swarm, lancer),
 		QuillerDefinition quiller => new Quiller(swarm, quiller),
+		SpikerDefinition spiker => new Spiker(swarm, spiker),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,
@@ -111,4 +112,14 @@ public abstract class EnemyBehavior
 
 	/// <summary>Draws one enemy as copy <paramref name="slot"/> of this type's batch.</summary>
 	public abstract void Draw(int slot, in EnemySwarm.Enemy enemy, Color color);
+
+	/// <summary>Before and after each frame's Draw calls, for a type that draws parts of its own beside its body,
+	/// such as the Spiker's spikes.</summary>
+	public virtual void BeginDraw()
+	{
+	}
+
+	public virtual void EndDraw()
+	{
+	}
 }
