@@ -123,7 +123,7 @@ A pilot trained by reinforcement learning, which only tries to win, may later he
 
 ## A generic library
 
-At the designer's request, the general parts are a library that isn't tied to pilots or to VNP. It should be able to drive other kinds of behavior in this game, and agents in other games. It is not machine learning: it chooses by scoring terms written by hand, and training means fitting their weights.
+At the designer's request, the general parts are a library that isn't tied to pilots or to VNP, called **Arbiter**: it weighs options and picks one, which is what every user of it does. (It was PilotKit while planned; the designer asked for a name that doesn't say pilot.) It should be able to drive other kinds of behavior in this game, and agents in other games. It is not machine learning: it chooses by scoring terms written by hand, and training means fitting their weights.
 
 | Part | What it is | Who could use it |
 |---|---|---|
@@ -201,7 +201,6 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **The guards for staying general:** settled with the designer once the library has its second user (see Staying general).
 - **The ceiling pilot's upgrade picks:** the Greedy build for now. A build learned from batch results (which upgrades win most, given what is already owned) may come later.
 - **How many designer fights the fit needs:** fit on what exists, and report how well it predicts the designer's choices in fights left out, so it is clear when there is too little.
-- **The library's name:** PilotKit, as a working name. It may want a name that doesn't say pilot, since it is meant for more than pilots.
 - **Wave timing:** deferred in the run review spec. It fits in the goal decision when wanted.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
@@ -211,7 +210,7 @@ For design questions this file does not answer, ask the designer rather than inv
 Build one stage at a time, and stop after each so the designer can try it.
 
 1. **The library and perception:**
-   - the decision core and motion planning, in their own project;
+   - Arbiter, the decision core and motion planning, in its own project;
    - threat declarations and danger shapes;
    - the enemy hook for the basic enemy and the basic goo;
    - enemy shots;
@@ -242,6 +241,6 @@ Build one stage at a time, and stop after each so the designer can try it.
 - A new enemy type's attacks are handled by pilots through its declaration alone.
 - The new pilot matches or beats the old one in batches, and has replaced it.
 - The decision core has two users in VNP, movement and upgrade picks, and its guards for staying general are in place.
-- The library builds on its own, without VNP's code or Godot's.
+- Arbiter builds on its own, without VNP's code or Godot's.
 - The designer-like pilot's weights are fitted to the designer's recordings, and the ceiling pilot's results are reported beside it.
 - A pilot fight repeats from its seed, and several pilots stay within the performance budget.

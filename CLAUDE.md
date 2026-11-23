@@ -12,7 +12,7 @@ It builds on the earlier specs:
 - Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
 - Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
 - Performance: the requirement below, how it is measured, its tests and what is open: @docs/dev/PERFORMANCE_SPEC.md
-- Pilots that plan: threats enemies declare, path scoring, two training targets, and a generic decision library meant to serve other behavior and other games (planned): @docs/dev/PILOT_SPEC.md
+- Pilots that plan: threats enemies declare, path scoring, two training targets, and Arbiter, a generic decision library meant to serve other behavior and other games (planned): @docs/dev/PILOT_SPEC.md
 
 Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also written into the current design spec.
 

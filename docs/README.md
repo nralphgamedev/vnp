@@ -18,7 +18,7 @@ Development only: the testing tools and how the game is checked, which design do
 - `AUTOMATED_PLAYTESTING_SPEC.md`: pilots, batches, fight logs and reports.
 - `RUN_REVIEW_SPEC.md`: detectors, recordings, maps and calibration.
 - `PERFORMANCE_SPEC.md`: the performance requirement, how it is measured, its tests and what they found.
-- `PILOT_SPEC.md`: pilots rebuilt to read the threats enemies declare and plan short paths, trained two ways (like the designer, and as strong as possible), with the general parts as a decision library meant to serve other behavior and other games.
+- `PILOT_SPEC.md`: pilots rebuilt to read the threats enemies declare and plan short paths, trained two ways (like the designer, and as strong as possible), with the general parts as Arbiter, a decision library meant to serve other behavior and other games.
 - `calibration/JOURNAL.md`: the record of unattended calibration runs.
 
 ## Where a new doc goes
