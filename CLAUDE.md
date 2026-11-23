@@ -6,7 +6,7 @@ The current spec is the source for what to build: @docs/design/PROTOTYPE_3_SPEC.
 
 It builds on the earlier specs:
 
-- Phase 1, one complete fight: @docs/design/PROTOTYPE_SPEC.md
+- Phase 1, one complete fight: @docs/design/PROTOTYPE_1_SPEC.md
 - Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md
 - Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
 - Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md

@@ -1,6 +1,6 @@
 # VNP Combat Prototype, Phase 2: Feedback and Content
 
-Phase 1 (`docs/design/PROTOTYPE_SPEC.md`) built one complete fight. It works and is almost fun, but two things hold it back: hits, kills, harvesting, and level ups give little feedback, and there aren't enough weapons and upgrades for builds to differ from fight to fight. Phase 2 adds both.
+Phase 1 (`docs/design/PROTOTYPE_1_SPEC.md`) built one complete fight. It works and is almost fun, but two things hold it back: hits, kills, harvesting, and level ups give little feedback, and there aren't enough weapons and upgrades for builds to differ from fight to fight. Phase 2 adds both.
 
 Everything in the phase 1 spec still applies unless this file changes it. Where the two disagree, this file wins.
 

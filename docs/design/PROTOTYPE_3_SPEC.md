@@ -1,6 +1,6 @@
 # VNP Combat Prototype, Phase 3: Adaptation
 
-Phase 1 (`docs/design/PROTOTYPE_SPEC.md`) built one complete fight. Phase 2 (`docs/design/PROTOTYPE_2_SPEC.md`) added feedback and more weapons and upgrades. VNP's core idea is that the player constantly adapts to the enemy, and with only one enemy type nothing has tested that yet. Phase 3 adds a second enemy type that calls for a different build, mixed into the same fight as the first, along with ways to see what worked.
+Phase 1 (`docs/design/PROTOTYPE_1_SPEC.md`) built one complete fight. Phase 2 (`docs/design/PROTOTYPE_2_SPEC.md`) added feedback and more weapons and upgrades. VNP's core idea is that the player constantly adapts to the enemy, and with only one enemy type nothing has tested that yet. Phase 3 adds a second enemy type that calls for a different build, mixed into the same fight as the first, along with ways to see what worked.
 
 Everything in the phase 1 and phase 2 specs still applies unless this file changes it. Where they disagree, the newest file wins.
 
@@ -100,13 +100,7 @@ As in the phase 2 spec, this file names each value and where it lives rather tha
 
 ## Not yet decided
 
-The designer has not settled these. Use the behavior listed, say that you did, and keep it easy to change.
-
-- **Splitting:** a Goo splits after absorbing a set number of drones, into two Goos that share its size and health.
-- **The Goo's targets:** the nearest drone first, and the VNP only when no drone is in range.
-- **Mixing:** each spawned group is one type, picked by weight. Waves have both.
-- **Kill target:** every kill counts as one, whichever type it is.
-- **Overkill:** left out of the damage breakdown.
+Nothing is open. The items that were open here were settled by the designer when the phase closed (see Settled during the build).
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 
@@ -114,15 +108,20 @@ For design questions this file does not answer, ask the designer rather than inv
 
 These were open when this file was written, or came up during the build. The prototype now does the following; any of them can still change.
 
+- **Settled when the phase closed:** the designer kept every default that was listed as not yet decided:
+  - **Splitting:** a Goo splits after absorbing a set number of drones, into two Goos that share its size and health.
+  - **The Goo's targets:** the nearest drone first, and the VNP only when no drone is in range.
+  - **Mixing:** each spawned group is one type, picked by weight. Waves have both.
+  - **Kill target:** every kill counts as one, whichever type it is. Goos made by splitting count as separate kills when destroyed; the split itself is not a kill.
+  - **Overkill:** left out of the damage breakdown.
 - **One Drone Weapon choice per fight:** at the designer's request, once a Drone Weapon (Projectile, Beam or Ram) is chosen at a level up, no Drone Weapon is offered again for the rest of the fight. The Drone Weapon the fight starts with doesn't count, including one picked with the starting weapon cheat, so switches are offered until one is taken. `OneDroneWeaponChoicePerFight` in `levels.tres` turns the rule off. This changes phase 2's upgrade pool, where drones could switch whenever another Drone Weapon was offered; its table is updated. In 20 automated fights with the Random build, none took more than one Drone Weapon, or was offered one after choosing.
 
 - **Drones avoiding danger:** added at the designer's request after their playtests found drones did fine against a few Goos but, against many, locked onto one and flew into the others. The designer chose basic, imperfect avoidance, of all enemies, Ram included. Over 720 automated fights, 240 with each of Projectile, Beam and Ram drones, half of them the same fights without it (variant `no_drone_avoidance`): drones absorbed per minute fell from 11.2 to 7.9, about twice as many drones were alive at 2:00, and the pilot won 10 to 18 points more often. Drones destroyed by basic enemies rose, because drones lived longer. It cost no measurable frame time.
 - **Asteroid amounts (stage 3):** `AsteroidAmountDefinition`, in `tuning/`, with Sparse, Normal and Rich in `tuning/asteroid_amounts/`, listed in `Amounts` in `asteroids.tres`.
   - **What an amount sets:** it scales the numbers in `asteroids.tres` rather than replacing them: `FieldScale` multiplies how many fields there are and `LoneScale` how many lone asteroids, both around the gateway and in the cells filled in as the VNP explores, so the arena stays as sparse or as rich however far it goes. Normal scales by 1, Sparse well below and Rich well above (their files hold the numbers). Field sizes and asteroid masses are unchanged. Fields keep their spacing, so a very rich amount can ask for more fields than fit; at Rich nearly all are placed.
-  - **The pick:** each fight picks one by `Weight`, all equal for now (the spec left the weights open; equal weights give each amount the same exposure while its effect is measured). The pick uses its own generator seeded from the fight's seed, not the fight's random numbers, so a fight with the Normal amount plays exactly as it did before amounts existed (checked: seed 5 matched to the kill), and older batch fights still replay.
-  - **Shown:** the result screen has an Asteroids line above the seed. The fight log records `asteroidAmount`, and whether the cheat chose it (`asteroidAmountChosen` under `cheats`).
+  - **The pick:** each fight picks one by `Weight`, all equal for now (the spec left the weights open; equal weights give each amount the same exposure while its effect is measured). Adding amounts left a fight with the Normal amount playing exactly as before.
+  - **Shown:** the result screen has an Asteroids line above the seed.
   - **The cheat page:** the starting choice menu ends with CHOOSE THE ASTEROID AMOUNT: Random first, keeping the fight's own pick, then each amount. Choosing one places the asteroids again for it, before the fight starts. `ChooseAsteroidAmount` in `scripts/cheats/in_game_cheats.tres` turns the page on and off, separately from `ChooseStartingWeapon`.
-  - **Testing tools:** the scenario harness takes `asteroids=ID`, and batches `--asteroids` (a list, `all`, or `random`, the default, for each fight's own pick). The batch report has a section, By asteroid amount, with every fight's results by its amount.
   - **First measurement,** with Sparse at half and Rich at about one and a half times Normal: 50 expert fights on each amount (Designer build, random starting weapons, the same seeds):
 
     | Amount | Wins | Level at 3:00 | Final level | Asteroid experience | Drones built | Alive at 5:00 |
@@ -138,7 +137,7 @@ These were open when this file was written, or came up during the build. The pro
   - **Where the rate lives:** the spec put the conversion rate in the upgrade's file; it is in the weapon's file instead (`HarvestPerDamage` in `orbital_shards.tres`), beside the shards' damage it converts, since an unlock upgrade carries no numbers of its own. Its starting value gives each rock in the shards' path about a quarter of the VNP's own beam rate at starting damage; it is a guess to tune by playing.
   - **Feedback:** each pass that harvests throws a small burst in the fight experience colour at the shard, and the material glows with the usual harvest tint. In a screenshot the burst is small beside the VNP's own beam on the same rock, so the clearest sign is rocks inside the orbit glowing; no new sound.
   - **One feature per weapon:** at the designer's request, a weapon's features are a choice: once Orbital Shards blocking or harvesting is taken, the other is no longer offered for the rest of the fight. This applies to every weapon's features, so future ones work the same way. `OneFeaturePerWeapon` in `levels.tres` turns it off. The card says so: under its description, in its category's colour, "Other Orbital Shards mods will not be offered this fight" (shown when the weapon has other features in the pool; cards call weapon features mods). At the same time, Drone Weapon cards got the same kind of note for the one-Drone-Weapon rule: "Other drone weapons will not be offered this fight." Each note shows only while its rule is on. A mod's card is also tagged VNP WEAPON MOD rather than VNP WEAPON at the top, in the same colour. This changes phase 2's blocking, which could be taken alongside anything. In 15 expert fights starting with Orbital Shards, none was offered a second feature after taking one.
-  - **Testing:** the scenario harness's new `take=ID,ID` takes upgrades from the pool as the fight starts, so any upgrade can be tried at once. In one expert fight starting with Orbital Shards (seed 3, two minutes), taking it at the start gave about half again as much asteroid experience, twice the drones built, and three levels more than the same seed without it. One fight is only a sign; the upgrade is offered at level-ups like any other, so batches will show how often pilots take it and what it does.
+  - **First sign of its strength:** in one automated expert fight starting with Orbital Shards, taking it at the start gave about half again as much asteroid experience, twice the drones built, and three levels more than the same fight without it. One fight is only a sign.
 - **Absorbing:** a Goo drains a touching drone's health, and absorbs it when its health runs out (see The Goo). The first build absorbed drones instantly on touch, which felt bad in playtesting. A short contact time before absorbing was also considered; draining was chosen because it shows the drone being eaten, and a drone that escapes stays damaged.
 
 ## Suggested build order
@@ -179,6 +178,14 @@ Three fights in a row, with Level Up Rewards between them, is planned as the nex
 - Every new placeholder asset is in `res://placeholder/` and listed in `PLACEHOLDERS.md`.
 
 **The designer's verdict, after playing every stage:** the phase is done.
+
+**What the phase found,** against its questions:
+
+- **Does the second enemy type call for different upgrade picks?** Somewhat. Ram drones aren't always a good pick against Goos, though still fairly effective. One Goo type is too few to tell: the designer wants the rest of the GDD's Goo types (such as the asteroid mimic, spiker, burster, devourer, lancer and quiller) fleshed out to get a real feel for the faction.
+- **With both types in one fight, does the player balance the build rather than specialize?** Not settled, for the same reason.
+- **Does the damage breakdown show clear differences?** Yes: it is a good addition and serves its purpose.
+- **How much does the amount of asteroids change a fight's difficulty?** A lot: from Sparse to Rich, the VNP grows about three levels faster by 3:00 at each step, and builds about twice the drones (see Asteroid amounts, under Settled during the build).
+- **Does performance hold with the new enemy in large numbers?** Yes: in a stress test with twelve groups of Goos absorbing and splitting on 80 extra drones, alongside basic enemies, game logic averaged under 1 ms a frame, with the worst frame within one frame's time.
 
 - **The Goo against drones:** it plays differently. The Goos themselves don't feel threatening to the VNP at all, as the GDD intends, but approaching a larger group of them takes special care, since that is what gets the drones killed.
 - **Orbital Shards harvesting:** it feels fine at its current conversion rate, for now.
