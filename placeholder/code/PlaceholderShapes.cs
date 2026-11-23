@@ -190,6 +190,39 @@ public static class PlaceholderShapes
 		return v * (1f + length * t * t);
 	});
 
+	/// <summary>
+	/// A swollen blob covered in <paramref name="bubbles"/> round bubbles of different sizes, each rising up to
+	/// <paramref name="height"/> of its radius above it, like a boiling pot: for the Burster.
+	/// </summary>
+	public static ArrayMesh Bubbly(int seed, float lumpiness, int bubbles, float height)
+	{
+		var random = new System.Random(seed);
+		var spots = new List<(Vector3 Direction, float Size)>();
+		for (int b = 0; b < bubbles; b++)
+		{
+			// Spread over the top and sides, which is what shows from above.
+			var direction = new Vector3((float)random.NextDouble() * 2f - 1f, (float)random.NextDouble() * 0.9f + 0.1f,
+				(float)random.NextDouble() * 2f - 1f).Normalized();
+			spots.Add((direction, 0.88f + 0.08f * (float)random.NextDouble()));
+		}
+		return ShapedBlob(seed, lumpiness, v =>
+		{
+			Vector3 direction = v.Normalized();
+			float rise = 0f;
+			foreach ((Vector3 spot, float size) in spots)
+			{
+				float closeness = direction.Dot(spot);
+				if (closeness > size)
+				{
+					// A round dome: highest at its centre.
+					float t = (closeness - size) / (1f - size);
+					rise = Mathf.Max(rise, Mathf.Sqrt(t));
+				}
+			}
+			return v * (1f + height * rise);
+		});
+	}
+
 	/// <summary>The blob, with <paramref name="shape"/> moving each corner after its lumps, or none.</summary>
 	private static ArrayMesh ShapedBlob(int seed, float lumpiness, System.Func<Vector3, Vector3> shape)
 	{

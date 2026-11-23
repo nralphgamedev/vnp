@@ -22,7 +22,7 @@ The phase 3 Goo becomes the **basic goo**, the most common type. Phase 4 adds si
 
 **Shared traits.** Unless its section says otherwise, every Grey Goo type:
 
-- looks like Grey Goo: the pale, glossy grey with a soft light at its edges that phase 3 settled on, but with a silhouette of its own, so each type can be told apart from the others and from asteroids;
+- looks like Grey Goo: one glossy grey shared by every type, darker than the asteroids, with a soft light at its edges, and a silhouette of its own, so each type can be told apart from the others and from asteroids;
 - grows stronger over the fight and with each escalation step, as the basic goo does;
 - leaves debris when destroyed;
 - counts as one kill toward the kill target;
@@ -137,6 +137,8 @@ As in the earlier specs, this file names each value and where it lives rather th
 | The Spiker's aim at drones: how far it leads them (`AimLead`), how much it strays (`AimSpreadDegrees`), and how fast a spike swings toward its drone as it extends (`TrackDegrees`) | `spiker.tres` |
 | The Spiker's spikes: how fast they shoot out, how far past the target's point they reach (`SpikeBeyond`), how fast an impaled drone is drawn in (`PullSpeed`), damage to the VNP, width | `spiker.tres` |
 | The Spiker's growth per drone it absorbs, and debris per drone (`BulkPerDrone`, `DebrisMassPerDrone`), and its look while forming | `spiker.tres` |
+| The Burster's speed, and its burst: how many blobs, their speed, turn rate toward the VNP, life, damage and size | `enemies/grey_goo/burster/burster.tres` |
+| The Burster's throb: how much it swells, how fast, and how much faster when nearly destroyed (`HurtThrobFactor`) | `burster.tres` |
 | How much faster newly spawned enemies are at each escalation step, every type (`EscalationEnemySpeedPerStep`) | `tuning/difficulty.tres` |
 
 ## Not yet decided
@@ -144,7 +146,7 @@ As in the earlier specs, this file names each value and where it lives rather th
 The designer has not settled these. Use the behavior listed, say that you did, and keep it easy to change.
 
 - **Drones and growth for every type:** whether drones a Grey Goo type destroys without absorbing them, such as with a Lancer hit or a Quiller spike, should add to its mass and health, and whether every type, not only the basic goo, should split once it reaches a threshold. For now, drones destroyed without being absorbed add nothing, and only the basic goo splits. This also decides how much each goo's debris is worth, since a goo's mass sets the value of its debris: the more a goo's mass can grow, the more destroying it gives back.
-- **The Burster's tiny blobs:** they head for the VNP and pop on whatever they hit first, the VNP or a drone. They leave no debris and don't count as kills.
+- **The Burster's tiny blobs:** they head for the VNP and pop on whatever they hit first, the VNP or a drone. They leave no debris and don't count as kills. (Built this way in stage 6.)
 - **The Devourer and drones:** it drains and absorbs drones that touch it, like the basic goo, and grows from them as well as from what it consumes.
 - **The Devourer's targets:** it heads for the nearest harvestable material and ignores the player unless drones or the VNP come close.
 
@@ -207,7 +209,7 @@ The prototype now does the following; any of it can still change.
   - **Recorded:** spikes are recorded as enemy shots, and their hazards with the rest.
 - **The Spiker (stage 5):** `enemies/grey_goo/spiker/`, `Spiker` on the shared Grey Goo code. It drains no drones by touch, but grows larger and tougher with each drone its spikes draw in, and never splits.
   - **Its thrust:**
-    - **Drifting:** a warm cream blob drawn out into four broad arms, like a caltrop, drifting after its target.
+    - **Drifting:** a blob drawn out into four broad arms, like a caltrop, drifting after its target.
     - **Forming:** once a drone or the VNP is within its reach of its edge and its cooldown is done, it stops, swells and glows paler, and picks its target: the nearest drone in reach that no other spike is after, or the VNP if in reach and no drone is. (`MinSpikes` and `MaxSpikes` set how many spikes a thrust has, picked at random between them; both are 1 at the designer's choice.) A spike at the VNP has its line set now, so moving off it dodges.
     - **Thrusting:** with a stab, the spikes shoot out, a little past each target. A spike at a drone is aimed again as it goes, ahead of where the drone is heading (`AimLead`), and swings toward it as it extends (`TrackDegrees`), so it rarely misses; if its drone is gone or already caught, it goes for another. The first drone a spike's tip meets is impaled: it stops fighting and harvesting, and is drawn in at `PullSpeed`, then absorbed, counted as absorbed in the damage breakdown. A spike that crosses the VNP damages it once and carries on, since the VNP can't be impaled. An empty spike comes straight back.
     - It forms again once every spike is back in, and its cooldown is done.
@@ -218,6 +220,17 @@ The prototype now does the following; any of it can still change.
   - **Seen by pilots:** while forming, it declares each spike's line, landing as the thrust starts (toward where a drone is then, since it is aimed again as it goes); while thrusting, what is left of each spike's way out. Both endanger the VNP and drones. Against four groups of Spikers for a minute, they drew in about 20 drones; with the first version, the planning pilot took no damage from them, the first pilot 6.
   - **Cost:** about 2.7 µs an enemy for 1,000 Spikers, like the other types.
   - **Spawning:** in groups and waves, by its weight in `enemy_spawning.tres`, less often than the basic goo.
+- **The Burster (stage 6):** `enemies/grey_goo/burster/`, `Burster` on the shared Grey Goo code. It drains no drones and doesn't grow.
+  - **Alive:** a swollen blob covered in bubbles, the fastest Grey Goo type (`Speed` in `burster.tres`). It throbs, swelling and shrinking, faster the more it is hurt, up to `HurtThrobFactor` times as fast when nearly destroyed: the tell that it is about to burst. Otherwise it only damages the VNP by touch, as every Grey Goo type does.
+  - **Bursting:** when destroyed, with a wet pop, it throws `BlobCount` tiny blobs out evenly all round it, which curl in on the VNP at their turn rate. A blob pops on the first thing it hits, the VNP or a drone, or fizzles out after `BlobLife`. Only a Burster killed bursts; one left far behind and cleared away doesn't.
+  - **Breaking blobs:** blobs fly as fragile shots, so everything that breaks a Quiller's spikes breaks them too. Breaking one costs no one health, since its Burster is gone.
+  - **Faster than the VNP:** at first the blobs were slower than the VNP, and the planning pilot outran every one: in a minute against four groups, 31 of its 90 blobs fizzled out chasing it, and it took no damage from Bursters. Now they are faster, so they are dodged by sidestepping, which their turn rate allows, rather than by flying away.
+  - **Seen by pilots:** blobs declare themselves as they fly, harmful until they fizzle. The burst itself gives no warning before the Burster dies, but the player causes it. Against four groups of Bursters for a minute, the planning pilot took 18 to 36 damage from them, the first pilot 70 to 75. Blobs hit drones often, but rarely destroy one.
+  - **Fragile shots, shared code:** `FragileShots.FireHoming` fires a shot that homes on the VNP and pops on its first hit, drawn as a little blob rather than a quill.
+  - **Cost:** about 2.6 µs an enemy for 1,000 Bursters, and under 0.2 ms for their blobs while Shockwave killed them quickly.
+  - **Spawning:** in groups and waves, by its weight in `enemy_spawning.tres`, less often than the basic goo.
+- **One grey for every type:** at the designer's request, every Grey Goo type is the same glossy grey (`Color` in each type's file, all alike), noticeably darker than the asteroids, so the types are told apart by silhouette alone. Until then each type had a pale tint of its own (blue for the Quiller, cream for the Lancer and Spiker, green for the Burster), all paler than the asteroids, following phase 3's pale grey, chosen because a dull grey Goo was easy to mistake for an asteroid; the glossy rim light still sets them apart from rock. Since enemy types are coloured by their `Color` in the damage breakdown and on review maps, Grey Goo types now share a colour there too, and are told apart by name, and on maps by their markings and key.
+- **A smaller Spiker:** at the designer's request, it is drawn a third smaller (`Size` in `spiker.tres`); how far it reaches and how big a target it is are unchanged.
 - **Result panels scroll:** at the designer's request, after a long fight's damage breakdown ran off the bottom of the screen, the damage breakdown and the upgrade list (on the result screen and the pause menu) grow with their lines only until they would leave the screen, then scroll, by the mouse wheel or their scroll bar. The damage breakdown also stops above the weapon icons at the bottom left, which it used to run behind. Scrolling with a controller or the keyboard isn't built yet.
 - **Sounds pause with the fight:** at the designer's request, while a menu pauses the fight (a level-up offer, the pause menu, the result screen, the starting weapon menu), the fight's own sounds pause too and carry on where they left off once it closes. Menu and result sounds still play. Before, every sound played on through a pause, so a Lancer's wind-up could finish while an offer was open. This changes phase 2's "Sounds while paused".
 - **Escalation speeds enemies up:** at the designer's request, each escalation step past the time limit also makes newly spawned enemies faster, in steps like their health, damage and accuracy (`EscalationEnemySpeedPerStep` in `difficulty.tres`).

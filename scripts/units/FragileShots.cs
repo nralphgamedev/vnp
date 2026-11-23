@@ -6,7 +6,10 @@ using System.Collections.Generic;
 /// Enemy shots that the player's weapons can destroy in flight, such as a Quiller's spikes: unlike ordinary shots
 /// (Projectiles.cs), any damage that touches one breaks it, though no weapon aims at them.
 ///
-/// Each flies out, either along its line for its reach, or (with a target point) steering toward that point at its
+/// A homing one, such as a Burster's blob, instead turns toward the VNP the whole time, at its own turn rate, and
+/// pops on the first thing it hits, the VNP or a drone, or fizzles out at the end of its life. It never returns.
+///
+/// Any other flies out, either along its line for its reach, or (with a target point) steering toward that point at its
 /// own turn rate and on past it by a set distance, such as a Quiller's spikes, which leave from every side and curl
 /// in on their targets. It turns back as soon as it hits the VNP or a drone, or once its flight out is done. Then it arcs back to the enemy that fired it, turning at a limited rate, and is taken back in when it
 /// arrives; on the way back it can hit again. One that is broken before it gets back costs the enemy that fired
@@ -31,6 +34,7 @@ public partial class FragileShots : Node3D
 		public bool Gone;               // Broken, taken back or fizzled: cleared away at the next update.
 		public float OutLeft;           // Seconds left flying out (once past its target point, if it has one).
 		public bool Steering;           // Still steering toward its target point.
+		public bool Homing;             // Turns toward the VNP the whole time, and pops on its first hit; drawn as a blob.
 		public Vector2 TargetPoint;
 		public float OutTurnRate;       // Radians a second it can turn while steering toward its target point.
 		public float Beyond;            // How far it flies on past its target point.
@@ -58,11 +62,13 @@ public partial class FragileShots : Node3D
 	private readonly Dictionary<int, int> _outByOwner = new();
 	private readonly Dictionary<int, Vector2> _homes = new();
 	private InstanceBatch _batch;
+	private InstanceBatch _blobBatch;
 
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Projectiles;
 		_batch = new InstanceBatch(this, "FragileShotShapes", Placeholders.Mesh("quill"), Placeholders.Material("goo"));
+		_blobBatch = new InstanceBatch(this, "FragileBlobShapes", Placeholders.Mesh("goo"), Placeholders.Material("goo"));
 	}
 
 	/// <summary>
@@ -110,6 +116,21 @@ public partial class FragileShots : Node3D
 		shot.TargetPoint = target;
 		shot.OutTurnRate = Mathf.DegToRad(outTurnDegrees);
 		shot.Beyond = beyond;
+	}
+
+	/// <summary>
+	/// Fires one from an enemy that homes on the VNP, such as a Burster's blob: it leaves along
+	/// <paramref name="direction"/>, turns toward the VNP at up to <paramref name="turnDegrees"/> a second, pops on
+	/// the first thing it hits, and fizzles out after <paramref name="life"/> seconds. Breaking it costs no one health.
+	/// </summary>
+	public void FireHoming(int owner, Vector2 from, Vector2 direction, float speed, float turnDegrees, float life,
+		float damage, float radius, DamageSource source, Color color)
+	{
+		Fire(owner, from, direction, speed, speed * life, speed, turnDegrees, damage, radius, 0f, source, color);
+		ref Shot shot = ref _shots[Count - 1];
+		shot.Homing = true;
+		shot.OutLeft = float.MaxValue;
+		shot.Life = life;
 	}
 
 	/// <summary>How many of an enemy's shots are still out.</summary>
@@ -168,7 +189,17 @@ public partial class FragileShots : Node3D
 				continue;
 			}
 
-			if (!shot.Returning)
+			if (shot.Homing)
+			{
+				// Turn toward the VNP the whole way, at its own speed.
+				if (!vnp.IsDestroyed)
+				{
+					Vector2 toVnp = vnp.PlanePosition - shot.Position;
+					float heading = Mathf.RotateToward(shot.Velocity.Angle(), toVnp.Angle(), shot.TurnRate * dt);
+					shot.Velocity = Vector2.FromAngle(heading) * shot.ReturnSpeed;
+				}
+			}
+			else if (!shot.Returning)
 			{
 				if (shot.Steering)
 				{
@@ -214,6 +245,8 @@ public partial class FragileShots : Node3D
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.6f);
 				shot.LastHit = -1;
 				shot.Returning = true;
+				if (shot.Homing)
+					Finish(ref shot); // A blob pops.
 				continue;
 			}
 			int drone = Fight.Drones.FindHit(before, shot.Position);
@@ -223,6 +256,8 @@ public partial class FragileShots : Node3D
 				Fight.Drones.Damage(drone, shot.Damage, shot.Source);
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.5f);
 				shot.Returning = true;
+				if (shot.Homing)
+					Finish(ref shot);
 			}
 		}
 
@@ -239,15 +274,22 @@ public partial class FragileShots : Node3D
 		if (_nearby.Length < Count)
 			_nearby = new int[Count * 2];
 
+		// Spikes are drawn as quills, blobs as little goo blobs.
 		_batch.Begin(drawn);
-		int slot = 0;
+		_blobBatch.Begin(drawn);
+		int slot = 0, blobs = 0;
 		for (int i = 0; i < Count; i++)
 		{
 			ref Shot shot = ref _shots[i];
-			if (!shot.Gone)
+			if (shot.Gone)
+				continue;
+			if (shot.Homing)
+				_blobBatch.Set(blobs++, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity), shot.Radius * 1.1f, shot.Color);
+			else
 				_batch.Set(slot++, shot.Position, 0f, PlaneMath.YawFacing(shot.Velocity), shot.Radius * 2.5f, shot.Color);
 		}
-		_batch.Commit(drawn);
+		_batch.Commit(slot);
+		_blobBatch.Commit(blobs);
 	}
 
 	/// <summary>The ones the grid files near a circle, living ones only, into _nearby; returns how many.</summary>
@@ -350,7 +392,7 @@ public partial class FragileShots : Node3D
 			ref Shot shot = ref _shots[_nearby[c]];
 			if (shot.Position.DistanceSquaredTo(center) > radiusSquared || (visible != null && !visible(shot.Position)))
 				continue;
-			float lasts = shot.Returning
+			float lasts = shot.Homing ? shot.Life : shot.Returning
 				? (_homes.TryGetValue(shot.Owner, out Vector2 home) ? home.DistanceTo(shot.Position) / Mathf.Max(0.01f, shot.ReturnSpeed) : 0f)
 				: shot.OutLeft;
 			var path = Arbiter.Area.Circle(shot.Position.ToArbiter(), shot.Radius, shot.Velocity.ToArbiter());

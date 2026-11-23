@@ -36,6 +36,7 @@ public abstract class EnemyBehavior
 		LancerDefinition lancer => new Lancer(swarm, lancer),
 		QuillerDefinition quiller => new Quiller(swarm, quiller),
 		SpikerDefinition spiker => new Spiker(swarm, spiker),
+		BursterDefinition burster => new Burster(swarm, burster),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,

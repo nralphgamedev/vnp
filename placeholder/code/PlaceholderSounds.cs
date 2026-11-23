@@ -272,6 +272,14 @@ public static class PlaceholderSounds
 			Noise(b, random, 0f, 0.12f, 6000f, 2500f, 0.5f);
 			Tone(b, 0f, 0.15f, 120f, 260f, Wave.Triangle, 0.5f);
 		}));
+		// The Burster bursting: a wet, heavy pop: a low tone that drops fast, under a spray of noise.
+		Save(folder, "burster_burst", Make(0.45f, b =>
+		{
+			Tone(b, 0f, 0.25f, 220f, 60f, Wave.Sine, 0.7f);
+			Noise(b, random, 0f, 0.35f, 3000f, 800f, 0.45f);
+			for (int i = 0; i < 4; i++)
+				Tone(b, 0.06f + i * 0.05f, 0.04f, 900f - i * 120f, 500f, Wave.Sine, 0.18f);
+		}));
 	}
 
 	/// <summary>

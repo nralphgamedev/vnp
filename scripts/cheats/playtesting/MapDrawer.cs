@@ -28,8 +28,24 @@ public static class MapDrawer
 		new(0.95f, 0.63f, 0.25f),  // fighting
 		new(0.76f, 0.50f, 0.95f),  // moving away
 	};
-	// Only for logs from before enemy types carried their own colour.
-	private static readonly Color[] FallbackEnemyColors = { new(0.90f, 0.28f, 0.30f), new(0.70f, 0.50f, 0.95f), new(0.95f, 0.80f, 0.30f) };
+	// Each enemy type's colour on maps, by its place in the log's list, whatever its colour in the game: types can
+	// share a colour in the game (every Grey Goo type is the same grey), and a dark one is hard to see on a map. Bright
+	// and distinct, avoiding colours maps already use: the hazards' yellow and pink, enemy shots' orange, the drones'
+	// cyan, the VNP's white, asteroids' grey and debris' brown. Past the end, the list repeats lighter.
+	private static readonly Color[] EnemyPalette =
+	{
+		new(0.90f, 0.28f, 0.30f), // red
+		new(0.55f, 0.90f, 0.35f), // green
+		new(0.70f, 0.50f, 0.95f), // violet
+		new(0.35f, 0.45f, 1.00f), // deep blue
+		new(0.70f, 0.70f, 0.20f), // olive
+		new(0.70f, 0.20f, 0.38f), // maroon
+		new(0.80f, 0.95f, 0.55f), // lime
+		new(0.50f, 0.60f, 0.72f), // steel
+	};
+
+	private static Color EnemyColor(int index) =>
+		EnemyPalette[index % EnemyPalette.Length].Lightened(0.35f * (index / EnemyPalette.Length));
 
 	/// <summary>An enemy type as the log describes it: its name, colour, and the traits maps mark by shape, so any
 	/// number of types can be read by what they do rather than by memorising colours.</summary>
@@ -42,14 +58,10 @@ public static class MapDrawer
 		foreach (JsonElement t in maps.GetProperty("enemyTypes").EnumerateArray())
 		{
 			if (t.ValueKind == JsonValueKind.String)
-				types.Add(new EnemyType(t.GetString(), FallbackEnemyColors[i % FallbackEnemyColors.Length], false, false));
+				types.Add(new EnemyType(t.GetString(), EnemyColor(i), false, false));
 			else
-			{
-				JsonElement c = t.GetProperty("color");
-				types.Add(new EnemyType(t.GetProperty("name").GetString(),
-					new Color((float)c[0].GetDouble(), (float)c[1].GetDouble(), (float)c[2].GetDouble()),
+				types.Add(new EnemyType(t.GetProperty("name").GetString(), EnemyColor(i),
 					t.GetProperty("absorbsDrones").GetBoolean(), t.GetProperty("damagesByTouch").GetBoolean()));
-			}
 			i++;
 		}
 		return types;
@@ -559,7 +571,7 @@ public static class MapDrawer
 				int type = (int)e[3].GetDouble();
 				int radius = Math.Max(3, (int)(e[2].GetDouble() * scale));
 				Enemy(image, at, radius, type >= 0 && type < types.Count ? types[type]
-					: new EnemyType("?", FallbackEnemyColors[0], false, false));
+					: new EnemyType("?", EnemyColor(0), false, false));
 			}
 			// Each drone's target, as a faint line, where the log recorded it: enemies' IDs are their 7th value.
 			var enemyAt = new Dictionary<int, Vector2>();

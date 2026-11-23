@@ -18,7 +18,8 @@ All made by `code/PlaceholderBaker.cs`.
 | `quiller.tres` | A Grey Goo urchin: the lumpy blob with nine short quills round its middle, tilted a little up. Made by `PlaceholderShapes.Urchin`. `Quiller.cs` swells it while forming a volley. | The Quiller (`Quiller.cs`) |
 | `quill.tres` | A long, thin, pointed spike, flat-topped, pointing forward (-y). Made by `PlaceholderShapes.ExtrudedShape` from `QuillOutline`. | A Quiller's spikes in flight (`FragileShots.cs`) |
 | `spiker.tres` | A Grey Goo blob drawn out into four broad, tapering arms, like a caltrop, so it can't be mistaken for the Quiller. Made by `PlaceholderShapes.Star`. (At first sixteen short spikes, `Urchin`, which the designer found too like the Quiller.) `Spiker.cs` swells it while forming a thrust. | The Spiker (`Spiker.cs`) |
-| `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`) |
+| `burster.tres` | A swollen Grey Goo blob covered in round bubbles, like a boiling pot. Made by `PlaceholderShapes.Bubbly`. `Burster.cs` makes it throb, faster as it is hurt. | The Burster (`Burster.cs`) |
+| `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`), and a Burster's tiny blobs in flight (`FragileShots.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
 | `projectile.tres` | 0.4 × 0.4 × 1.3 box | Drone, enemy and Scatter Shot projectiles (`Projectiles.cs`) |
@@ -103,6 +104,7 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `lancer_launch.wav` | A sharp whoosh of rising noise over a quick falling tone | A Lancer launches |
 | `quiller_volley.wav` | A wet rattle of quick ticks over a short hiss | A Quiller fires its volley. A spike broken in flight plays `shard_block.wav` |
 | `spiker_thrust.wav` | A hard, wet stab: a burst of bright noise over a quick low thud that rises | A Spiker thrusts its spikes out. A drone impaled plays `hit.wav`, and one drawn in plays `goo_absorb.wav` |
+| `burster_burst.wav` | A wet, heavy pop: a low tone that drops fast under a spray of noise, with a few small bubbling ticks | A Burster bursts. A blob that hits plays nothing of its own; one broken in flight plays `shard_block.wav` |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |
