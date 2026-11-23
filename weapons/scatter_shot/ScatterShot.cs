@@ -11,6 +11,9 @@ public partial class ScatterShot : VnpWeapon
 
 	public override float Reach => Scatter.Range * Range;
 
+	/// <summary>It hits what comes within its reach around the VNP.</summary>
+	public override void DeclareZones(Arbiter.Situation situation, int source) => DeclareReach(situation, source);
+
 	/// <summary>Damage compared with the start of the fight, so damage upgrades show as bigger, brighter shots.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Scatter.Damage));
 

@@ -11,6 +11,12 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DefineConstants>$(DefineConstants);RECORDING</DefineConstants>
   </PropertyGroup>
+  <!-- Arbiter, the decision library the pilots are built on (arbiter/README.md): its own project, so it can't use
+       the game's code. Its folder is left out of the game's own compile. -->
+  <ItemGroup>
+    <Compile Remove="arbiter/**" />
+    <ProjectReference Include="arbiter/Arbiter.csproj" />
+  </ItemGroup>
   <!-- Playtest cheats: compiled only in the editor's Debug configuration, never in an export. -->
   <ItemGroup Condition=" '$(Configuration)' != 'Debug' ">
     <Compile Remove="scripts/cheats/**" />

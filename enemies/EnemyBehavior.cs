@@ -1,3 +1,4 @@
+using Arbiter;
 using Godot;
 
 /// <summary>
@@ -78,6 +79,30 @@ public abstract class EnemyBehavior
 
 	/// <summary>The largest debris this type normally leaves, so harvesting knows how big to search.</summary>
 	public virtual float LargestDebrisMass => Definition.DebrisMassMax;
+
+	/// <summary>
+	/// Declares what one enemy is and how it can hurt, for pilots (Arbiter, docs/dev/PILOT_SPEC.md) and the run
+	/// review's maps: its body, tagged with what it does (DeclareBody), and a hazard for each way it can hurt the
+	/// VNP or drones, declared from the moment a player could see it coming and no sooner. Required, so a new
+	/// enemy type can't be invisible to pilots. Game code, since rival and escort VNPs will need it in exported
+	/// games. Read-only: it must not change the enemy or draw random numbers.
+	/// </summary>
+	public abstract void DeclareThreats(in EnemySwarm.Enemy enemy, Situation situation);
+
+	/// <summary>Adds the enemy's body, tagged with what its type does (ThreatTags), plus any tags of its own.</summary>
+	protected void DeclareBody(in EnemySwarm.Enemy enemy, Situation situation, ulong extraTags = 0)
+	{
+		ulong tags = extraTags | (DamagesByTouch ? ThreatTags.HarmsByTouch : 0) | (AbsorbsDrones ? ThreatTags.DrainsDrones : 0);
+		situation.Add(new Body
+		{
+			Position = enemy.Position.ToArbiter(),
+			Velocity = enemy.Velocity.ToArbiter(),
+			Radius = enemy.Radius,
+			Id = enemy.Id,
+			Kind = enemy.Type,
+			Tags = tags,
+		});
+	}
 
 	/// <summary>The effect and sound of an enemy being destroyed.</summary>
 	public abstract void Died(in EnemySwarm.Enemy enemy);

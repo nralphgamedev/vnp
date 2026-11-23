@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Checks of Arbiter on its own, with no game: its geometry and perception. The stage check runs it
+       (dotnet run), which also proves the library builds without VNP's code or Godot's. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Arbiter.csproj" />
+  </ItemGroup>
+</Project>

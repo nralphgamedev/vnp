@@ -95,6 +95,8 @@ public static class MapDrawer
 	private static readonly Color Asteroid = new(0.55f, 0.57f, 0.62f);
 	private static readonly Color Debris = new(0.65f, 0.48f, 0.30f);
 	private static readonly Color Shot = new(1f, 0.6f, 0.2f);
+	private static readonly Color DangerToVnp = new(1f, 0.85f, 0.15f);
+	private static readonly Color DangerToDrones = new(1f, 0.45f, 0.85f);
 	private static readonly Color Gateway = new(0.95f, 0.85f, 0.30f);
 
 	/// <summary>
@@ -442,7 +444,7 @@ public static class MapDrawer
 
 	private static Image DrawStrip(JsonElement log, JsonElement maps, JsonElement strip)
 	{
-		const int Panel = 320, Columns = 4, Header = 66, Gap = 6;
+		const int Panel = 320, Columns = 4, Header = 78, Gap = 6;
 		List<EnemyType> types = EnemyTypes(maps);
 		var detectors = Detectors(log);
 		var weaponColors = new List<Color>();
@@ -497,6 +499,8 @@ public static class MapDrawer
 			"GREY ASTEROID, BROWN DEBRIS, ORANGE ENEMY SHOTS.", Dim, 1);
 		Text(image, Gap, 40, "SHOTS, BEAMS, SHARDS, MINES, MISSILES AND RINGS OF YOUR WEAPONS IN THE COLOUR OF EACH. " +
 			"ENEMIES IN THEIR OWN COLOUR: STRIPED DAMAGES BY TOUCH, OUTER RING ABSORBS DRONES", Dim, 1);
+		Text(image, Gap, 52, "WHAT A PILOT PERCEIVES: YELLOW OUTLINES HURT THE VNP, PINK ONES DRONES, DIM ONES NOT YET LANDED, " +
+			"EACH WITH WHERE IT MOVES IN THE NEXT SECOND. FAINT RINGS: THE REACH OF YOUR WEAPONS", Dim, 1);
 		// A key to the enemy types in this strip only.
 		var present = new SortedSet<int>();
 		for (int f = 0; f < n; f++)
@@ -507,8 +511,8 @@ public static class MapDrawer
 		{
 			if (t < 0 || t >= types.Count)
 				continue;
-			Enemy(image, new Vector2I(legendX + 5, 56), 4, types[t]);
-			legendX = Text(image, legendX + 14, 53, types[t].Name, Dim, 1) + 16;
+			Enemy(image, new Vector2I(legendX + 5, 68), 4, types[t]);
+			legendX = Text(image, legendX + 14, 65, types[t].Name, Dim, 1) + 16;
 		}
 		// The loadout at the end of the strip: each VNP Weapon with its mods, and the Drone Weapon.
 		if (n > 0 && frames[n - 1].TryGetProperty("loadout", out JsonElement loadout))
@@ -522,7 +526,7 @@ public static class MapDrawer
 			}
 			string drones = frames[n - 1].TryGetProperty("droneWeapon", out JsonElement d) && d.GetDouble() >= 0
 				? $"  -  DRONES {WeaponName(d.GetDouble()).ToUpperInvariant()}" : "";
-			Text(image, legendX + 24, 53, "LOADOUT: " + string.Join(",  ", parts) + drones, Dim, 1);
+			Text(image, legendX + 24, 65, "LOADOUT: " + string.Join(",  ", parts) + drones, Dim, 1);
 		}
 
 		for (int f = 0; f < n; f++)
@@ -598,6 +602,28 @@ public static class MapDrawer
 					}
 				}
 			}
+			// What a pilot perceives: weapons' reach, then hazards (see ReviewRecorder.Snapshot for the values).
+			if (frame.TryGetProperty("zones", out JsonElement zones))
+			{
+				foreach (JsonElement z in zones.EnumerateArray())
+				{
+					if ((int)z[0].GetDouble() != 0)
+						continue; // Traps, such as mines, are already drawn as the weapon's objects.
+					Vector2 at = new((float)z[2].GetDouble(), (float)z[3].GetDouble());
+					if (z[6].GetDouble() > 0.5)
+						at += me;
+					int kind = (int)z[7].GetDouble();
+					Color color = new(kind >= 0 && kind < weaponColors.Count ? weaponColors[kind] : Ink, 0.25f);
+					Ring(image, P(at), Math.Max(2, (int)(z[4].GetDouble() * scale)), color, 1);
+					if ((int)z[1].GetDouble() == 3 && z[5].GetDouble() > 0)
+						Ring(image, P(at), Math.Max(2, (int)(z[5].GetDouble() * scale)), color, 1);
+				}
+			}
+			if (frame.TryGetProperty("hazards", out JsonElement hazards))
+			{
+				foreach (JsonElement h in hazards.EnumerateArray())
+					Hazard(image, h, P, scale);
+			}
 			foreach (JsonElement s in frame.GetProperty("shots").EnumerateArray())
 			{
 				Vector2 at = new((float)s[0].GetDouble(), (float)s[1].GetDouble());
@@ -650,6 +676,58 @@ public static class MapDrawer
 			}
 		}
 		return image;
+	}
+
+	/// <summary>
+	/// One hazard a pilot perceives, as recorded: its outline now, yellow if it hurts the VNP and pink if only drones,
+	/// dimmer if it hasn't landed yet, and a line to where it will be in a second (or when it ends, if sooner).
+	/// Every shape Arbiter has is drawn, so a new attack shows with no code here.
+	/// </summary>
+	private static void Hazard(Image image, JsonElement h, Func<Vector2, Vector2I> P, float scale)
+	{
+		int shape = (int)h[0].GetDouble();
+		Vector2 at = new((float)h[1].GetDouble(), (float)h[2].GetDouble());
+		Vector2 velocity = new((float)h[3].GetDouble(), (float)h[4].GetDouble());
+		Vector2 extent = new((float)h[5].GetDouble(), (float)h[6].GetDouble());
+		float radius = (float)h[7].GetDouble(), inner = (float)h[8].GetDouble();
+		float landsIn = (float)h[9].GetDouble(), lasts = (float)h[10].GetDouble();
+		int flags = (int)h[12].GetDouble();
+		Color color = (flags & 1) != 0 ? DangerToVnp : DangerToDrones;
+		color = new Color(color, landsIn > 0f ? 0.4f : 0.85f);
+		int r = Math.Max(1, (int)(radius * scale));
+		switch (shape)
+		{
+			case 0: // Circle. A body's own outline sits just outside the enemy, and drones' just outside that.
+				if (radius > 0f)
+					Ring(image, P(at), r + ((flags & 1) != 0 ? 1 : 3), color, 1);
+				break;
+			case 1: // Capsule: its two sides and its ends.
+			{
+				Vector2 side = extent.LengthSquared() > 1e-6f ? new Vector2(-extent.Y, extent.X).Normalized() * radius : Vector2.Zero;
+				Line(image, P(at + side), P(at + extent + side), color, 1);
+				Line(image, P(at - side), P(at + extent - side), color, 1);
+				Ring(image, P(at), r, color, 1);
+				Ring(image, P(at + extent), r, color, 1);
+				break;
+			}
+			case 2: // Cone: its two edges and its far edge.
+			{
+				Vector2 left = extent.Rotated(inner), right = extent.Rotated(-inner);
+				Line(image, P(at), P(at + left), color, 1);
+				Line(image, P(at), P(at + right), color, 1);
+				Line(image, P(at + left), P(at + extent), color, 1);
+				Line(image, P(at + extent), P(at + right), color, 1);
+				break;
+			}
+			case 3: // Ring: both edges.
+				Ring(image, P(at), r, color, 1);
+				if (inner > 0f)
+					Ring(image, P(at), Math.Max(1, (int)(inner * scale)), color, 1);
+				break;
+		}
+		float ahead = lasts >= 0f ? Math.Min(1f, landsIn + lasts) : 1f;
+		if (velocity.LengthSquared() > 0.01f && ahead > 0f)
+			Line(image, P(at), P(at + velocity * ahead), new Color(color, color.A * 0.6f), 1);
 	}
 
 	private static string StripWho(JsonElement log)

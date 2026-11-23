@@ -218,6 +218,24 @@ public partial class EnemySwarm : Node3D
 	}
 
 	/// <summary>
+	/// Has every living enemy within <paramref name="radius"/> of a point declare its body and hazards
+	/// (EnemyBehavior.DeclareThreats) to a situation, for pilots and the run review. Read-only.
+	/// </summary>
+	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius)
+	{
+		if (_declareNear.Length < Count)
+			_declareNear = new int[Count * 2];
+		int count = CollectNear(center, radius + MaxRadius, _declareNear);
+		for (int c = 0; c < count; c++)
+		{
+			ref Enemy enemy = ref _enemies[_declareNear[c]];
+			_types[enemy.Type].DeclareThreats(enemy, situation);
+		}
+	}
+
+	private int[] _declareNear = new int[256];
+
+	/// <summary>
 	/// Fills <paramref name="results"/> with the living enemies whose centers are within a distance of a
 	/// point and returns how many there are. Stops when <paramref name="results"/> is full.
 	/// </summary>

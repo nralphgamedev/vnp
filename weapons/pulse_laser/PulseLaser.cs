@@ -12,6 +12,9 @@ public partial class PulseLaser : VnpWeapon
 
 	public override float Reach => Laser.Range * Range;
 
+	/// <summary>It hits what comes within its reach around the VNP.</summary>
+	public override void DeclareZones(Arbiter.Situation situation, int source) => DeclareReach(situation, source);
+
 	/// <summary>How much damage upgrades show: the beam and its flashes grow with damage, gently.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Laser.Damage));
 

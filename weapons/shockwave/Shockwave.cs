@@ -25,6 +25,9 @@ public partial class Shockwave : VnpWeapon
 
 	public override float Reach => Wave.Radius * Area;
 
+	/// <summary>It hits what comes within its reach around the VNP.</summary>
+	public override void DeclareZones(Arbiter.Situation situation, int source) => DeclareReach(situation, source);
+
 	/// <summary>Damage compared with the start of the fight, so damage upgrades show as a brighter ring.</summary>
 	private float Power => Mathf.Sqrt(Mathf.Max(0.01f, Damage / Wave.Damage));
 

@@ -1,3 +1,4 @@
+using Arbiter;
 using Godot;
 
 /// <summary>
@@ -14,6 +15,11 @@ public sealed class BasicEnemy : EnemyBehavior
 	}
 
 	public override Mesh Mesh => Placeholders.Mesh("enemy");
+
+	/// <summary>Its body, tagged as one that shoots. It gives no warning before it fires, so it declares no hazard
+	/// of its own: its shots are declared by the projectiles as they fly (Projectiles.DeclareThreats).</summary>
+	public override void DeclareThreats(in EnemySwarm.Enemy enemy, Situation situation) =>
+		DeclareBody(enemy, situation, ThreatTags.Shoots);
 
 	public override void Spawned(ref EnemySwarm.Enemy enemy)
 	{

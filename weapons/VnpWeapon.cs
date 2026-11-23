@@ -34,6 +34,21 @@ public abstract partial class VnpWeapon : Node3D
 	/// as a fraction of it, as the designer does.</summary>
 	public virtual float Reach => 0f;
 
+	/// <summary>
+	/// Declares where this weapon works right now, for pilots (Arbiter, docs/dev/PILOT_SPEC.md) and the run review's
+	/// maps: its reach around the VNP (DeclareReach), or traps it has left, such as mines. <paramref name="source"/>
+	/// is the caller's ID for this weapon, carried on each zone. Required, so a pilot always knows what a new weapon
+	/// does. Game code, since rival and escort VNPs will need it. Read-only.
+	/// </summary>
+	public abstract void DeclareZones(Arbiter.Situation situation, int source);
+
+	/// <summary>Declares a circle of <see cref="Reach"/> around the VNP, for a weapon that hits what comes within it.</summary>
+	protected void DeclareReach(Arbiter.Situation situation, int source)
+	{
+		if (Reach > 0f)
+			situation.Add(Arbiter.Zone.ReachAround(Reach, source));
+	}
+
 #if RECORDING
 	/// <summary>
 	/// Adds what this weapon has out in the world right now, such as its shards, mines, missiles, rings or beams.

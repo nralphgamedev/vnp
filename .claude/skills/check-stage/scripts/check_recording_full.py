@@ -108,14 +108,26 @@ def verify(folder, f):
     check(times[0] < spacing * 2 and abs(times[-1] - o['time']) < spacing * 1.5,
           f'from the start ({times[0]} s) to the end ({times[-1]} s against {o["time"]} s)')
 
-    keys = {'time', 'vnp', 'health', 'drones', 'level', 'enemies', 'droneDots', 'material', 'shots', 'placed', 'loadout', 'droneWeapon'}
+    keys = {'time', 'vnp', 'health', 'drones', 'level', 'enemies', 'droneDots', 'material', 'shots', 'placed', 'loadout', 'droneWeapon',
+            'hazards', 'zones'}
     check(all(keys <= set(x) for x in frames), 'every picture has every part')
     check(all(len(e) == 8 for x in frames for e in x['enemies']), 'enemies: position, size, type, velocity, ID, drain')
     check(all(len(d) == 4 for x in frames for d in x['droneDots']), 'drones: position, health, target')
     check(all(len(e) == 5 for x in frames for e in x['shots']), 'shots: position, velocity, what fired it')
     check(all(len(e) == 7 for x in frames for e in x['placed']), 'placed objects: position, radius, weapon, shape, end')
 
+    # What a pilot perceives (Arbiter): hazards declared by enemies and the projectiles, zones by the VNP's weapons.
+    hazards = [h for x in frames for h in x['hazards']]
+    check(all(len(h) == 13 for h in hazards), 'hazards: shape, position, velocity, extent, radius, inner, timing, harm, flags')
+    check(all(len(z) == 8 for x in frames for z in x['zones']), 'zones: kind, shape, position, radius, inner, follows, weapon')
+    check(any(int(h[12]) & 1 and h[10] < 0 for h in hazards), 'hazards: bodies that hurt the VNP by touch, for as long as they exist')
+    check(any(int(h[12]) & 2 and int(h[12]) & 4 for h in hazards), 'hazards: bodies that drain drones each second')
+    check(any(h[10] >= 0 and (h[3] or h[4]) for h in hazards), 'hazards: enemy shots, moving, until they fizzle')
+    zoned = {int(z[7]) for x in frames for z in x['zones']}
+
     names = [w['id'] for w in maps.get('weaponTypes', [])]
+    for w in dict.fromkeys(s['startingWeapons'] + o['weaponsAtEnd']):
+        check(w in names and names.index(w) in zoned, f'{w}: declares where it works (zones)')
     shown = {names[int(e[3])] for x in frames for e in x['placed']} | {names[int(e[4])] for x in frames for e in x['shots'] if e[4] >= 0}
     targets = any(d[3] for x in frames for d in x['droneDots'])
     for w in dict.fromkeys(s['startingWeapons'] + o['weaponsAtEnd'] + [s['startingDroneWeapon'], o['droneWeaponAtEnd']]):

@@ -185,6 +185,37 @@ Every change to the library has to keep it usable outside pilots and outside VNP
 - Git history keeps all of it.
 - The automated playtesting spec keeps its notes on the old pilot, as the record of what was learned. Most of that, such as how the designer plays and what failed, feeds the scoring terms.
 
+## Settled during the build
+
+The prototype now does the following; any of it can still change.
+
+- **Arbiter (stage 1):**
+  - **Where it lives:** `arbiter/`, with `Arbiter.csproj`, a README saying what belongs in it, and a `.gdignore`.
+  - **How it builds:** `VNP.csproj` references it and leaves its folder out of its own compile, and it is in `VNP.sln`, so all three of the game's builds build it.
+  - **Checked on its own:** `arbiter/checks/` is a small program, with no game, that checks its geometry and perception. The stage check runs it, which also proves the library builds without VNP or Godot.
+  - **The decision core and motion planning** moved to stage 2, to be built with the goals and terms that use them rather than ahead of them.
+- **Perception (stage 1):** Arbiter describes what an agent perceives as a `Situation`, which the game clears and fills before each decision:
+  - **Bodies:** position, velocity, size, the game's ID and kind, and tags whose meaning the game decides (VNP's are in `ThreatTags`: hurts by touch, drains drones, shoots).
+  - **Hazards:** an area (a circle, capsule, cone or ring, moving at a velocity), when it lands, how long it lasts, how much it hurts, whether per second, and whom: the agent, its allies, or both.
+  - **Zones:** where the agent's own effects work: a reach around it, a band such as an orbit, or a trap left in place.
+
+  Areas give a distance that is negative inside, so a planner can ask both whether a path is hit and how close it comes.
+- **The hooks (stage 1):** two hooks, both required by the build (a type or weapon without one doesn't compile), plus one on the projectiles:
+  - **Enemies:** `EnemyBehavior.DeclareThreats`.
+    - **Grey Goo:** declares its body, tagged as hurting by touch, with a hazard to the VNP that lasts as long as it does. A type that drains drones adds the same area draining drones each second. Its touch cooldown isn't declared, since a player can't see it.
+    - **The basic enemy:** declares only its body, tagged as one that shoots. It gives no warning before firing, so its shots are declared as they fly.
+  - **Shots:** `Projectiles.DeclareThreats` declares every enemy shot as a moving point, harmful until it fizzles, to the VNP or a drone.
+  - **Weapons:** `VnpWeapon.DeclareZones`.
+    - the Pulse Laser, Scatter Shot, Seeker Missiles and Shockwave declare their reach;
+    - Orbital Shards declare the band their shards sweep;
+    - Mine Layer declares each mine as a trap the width of its blast.
+
+  The current pilot still reads mines through `IPilotLure` until it is replaced.
+- **Recorded and drawn (stage 1):** every picture of a recording holds the hazards and zones, as a pilot would perceive them around the VNP.
+  - **On strips:** hazards are drawn yellow if they hurt the VNP and pink if they hurt drones, dimmer if not yet landed, each with a line to where it moves in the next second. Weapons' reach shows as faint rings.
+  - **Size:** this added about half to a recording in a dense fight, about 830 KB for a 5-minute fight instead of 560 KB.
+  - **Checked:** the full recording check fails if bodies that hurt by touch, drains, enemy shots, or any weapon's zones go missing.
+
 ## Tuning values
 
 | Value | Where |
@@ -210,13 +241,14 @@ For design questions this file does not answer, ask the designer rather than inv
 Build one stage at a time, and stop after each so the designer can try it.
 
 1. **The library and perception:**
-   - Arbiter, the decision core and motion planning, in its own project;
+   - Arbiter, in its own project, with its perception types;
    - threat declarations and danger shapes;
    - the enemy hook for the basic enemy and the basic goo;
    - enemy shots;
    - weapons' effective areas;
    - danger shapes drawn on strips.
 2. **Goals and path scoring (phase 4's stage 2):**
+   - the decision core and motion planning in Arbiter, built with the goals and terms that use them;
    - the current wants rebuilt as goals and scoring terms, with `explain`;
    - built beside the current pilot, chosen by a setting, and compared in batches on the same seeds;
    - it replaces the current pilot only once it matches or beats it on results and on the calibration gap.

@@ -2,6 +2,12 @@
 .godot/
 /android/
 
+# Arbiter's own build output (the game's goes in .godot/)
+arbiter/bin/
+arbiter/obj/
+arbiter/checks/bin/
+arbiter/checks/obj/
+
 # Python bytecode from the skill scripts
 __pycache__/
 

@@ -87,6 +87,24 @@ public partial class Projectiles : Node3D
 	}
 
 	/// <summary>
+	/// Declares every enemy shot within <paramref name="radius"/> of a point as a hazard, for pilots and the run
+	/// review: a point moving at the shot's velocity, harmful until it fizzles, to the VNP or a drone, whichever it
+	/// meets first. Read-only.
+	/// </summary>
+	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius)
+	{
+		float radiusSquared = radius * radius;
+		for (int i = 0; i < Count; i++)
+		{
+			ref Shot shot = ref _shots[i];
+			if (!shot.FromEnemy || shot.Position.DistanceSquaredTo(center) > radiusSquared)
+				continue;
+			var path = Arbiter.Area.Circle(shot.Position.ToArbiter(), 0f, shot.Velocity.ToArbiter());
+			situation.Add(Arbiter.Hazard.Timed(path, 0f, shot.Life, shot.Damage, Arbiter.Endangers.Both));
+		}
+	}
+
+	/// <summary>
 	/// Destroys every enemy shot within <paramref name="radius"/> of a point, each with a small pop.
 	/// Returns how many it destroyed. Used by Orbital Shards blocking.
 	/// </summary>

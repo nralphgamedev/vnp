@@ -139,7 +139,6 @@ public partial class MineLayer : VnpWeapon, IPilotLure
 		_batch.Commit(_count);
 	}
 
-	/// <summary>Mines are where a pilot should lead the enemies chasing it.</summary>
 #if RECORDING
 	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
 	{
@@ -148,6 +147,15 @@ public partial class MineLayer : VnpWeapon, IPilotLure
 	}
 #endif
 
+	/// <summary>Each mine is a trap the width of its blast: a pilot leads chasing enemies across it.</summary>
+	public override void DeclareZones(Arbiter.Situation situation, int source)
+	{
+		for (int i = 0; i < _count; i++)
+			situation.Add(Arbiter.Zone.Trap(Arbiter.Area.Circle(_mines[i].Position.ToArbiter(), Mines.BlastRadius * Area), source));
+	}
+
+	/// <summary>Mines are where a pilot should lead the enemies chasing it. The first pilot's way of seeing them,
+	/// kept until it is replaced (docs/dev/PILOT_SPEC.md); DeclareZones is the new one.</summary>
 	public void CollectLureSpots(System.Collections.Generic.List<Vector2> spots)
 	{
 		for (int i = 0; i < _count; i++)

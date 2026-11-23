@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Arbiter: a decision library that knows nothing of VNP or Godot (see README.md). VNP.csproj references it
+       and leaves this folder out of its own compile, so the build keeps the boundary: nothing here can use the
+       game's code. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Arbiter</RootNamespace>
+    <AssemblyName>Arbiter</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <!-- The checks are a program of their own (checks/ArbiterChecks.csproj), not part of the library. -->
+  <ItemGroup>
+    <Compile Remove="checks/**" />
+  </ItemGroup>
+  <!-- The game builds in Debug, ExportDebug and ExportRelease; the release one is optimised here too. -->
+  <PropertyGroup Condition=" '$(Configuration)' == 'ExportRelease' Or '$(Configuration)' == 'Release' ">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+</Project>

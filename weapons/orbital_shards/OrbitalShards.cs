@@ -15,6 +15,13 @@ public partial class OrbitalShards : VnpWeapon
 
 	public override float Reach => (Shards.OrbitRadius + Shards.HitRadius) * Area;
 
+	/// <summary>The shards hit what is in the band they sweep around the VNP, from inside their orbit to just beyond it.</summary>
+	public override void DeclareZones(Arbiter.Situation situation, int source)
+	{
+		float orbit = Shards.OrbitRadius * Area, hit = Shards.HitRadius * Area;
+		situation.Add(Arbiter.Zone.ReachBand(Mathf.Max(0f, orbit - hit), orbit + hit, source));
+	}
+
 	/// <summary>The shards' colour: tinted once they can block enemy shots.</summary>
 	private Color ShardColor => HasFeature(WeaponFeature.Blocking) ? Shards.BlockingColor : Shards.Color;
 

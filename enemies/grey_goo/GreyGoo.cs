@@ -1,3 +1,4 @@
+using Arbiter;
 using Godot;
 
 /// <summary>
@@ -81,6 +82,17 @@ public abstract class GreyGoo : EnemyBehavior
 	}
 
 	public override float DroneDrain(in EnemySwarm.Enemy enemy) => enemy.Drain;
+
+	/// <summary>Its body, which hurts the VNP by touch, and for a type that drains drones, the same area draining
+	/// drones each second. Both move with it. Its touch cooldown isn't declared, since a player can't see it.</summary>
+	public override void DeclareThreats(in EnemySwarm.Enemy enemy, Situation situation)
+	{
+		DeclareBody(enemy, situation);
+		Area body = Area.Circle(enemy.Position.ToArbiter(), enemy.Radius, enemy.Velocity.ToArbiter());
+		situation.Add(Hazard.Lasting(body, enemy.Damage, Endangers.Agent, enemy.Id));
+		if (AbsorbsDrones)
+			situation.Add(Hazard.Lasting(body, enemy.Drain, Endangers.Allies, enemy.Id, perSecond: true));
+	}
 
 	public override void Absorb(ref EnemySwarm.Enemy enemy)
 	{

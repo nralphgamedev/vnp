@@ -384,6 +384,32 @@ public class ReviewRecorder
 			AddPlaced(droneKind);
 		}
 
+		// What a pilot perceives (Arbiter, docs/dev/PILOT_SPEC.md), as the enemies, the projectiles and the VNP's
+		// weapons declare it, so maps show exactly what a pilot reads. Hazards: shape (Arbiter.AreaShape), position,
+		// velocity, extent, radius, inner, when it lands, how long it lasts (-1 for as long as it exists), harm, and
+		// flags (1 hurts the VNP, 2 drones, 4 harm is per second). Zones: kind (Arbiter.ZoneKind), shape, position,
+		// radius, inner, 1 if it follows the VNP (its position then relative to the VNP), and its weapon.
+		_situation.Clear();
+		_fight.Enemies.DeclareThreats(_situation, me, reach);
+		_fight.Projectiles.DeclareThreats(_situation, me, reach);
+		foreach (VnpWeapon weapon in _fight.Weapons)
+			weapon.DeclareZones(_situation, (int)WeaponIndex(weapon.Definition.Id, weapon.Definition.Name, weapon.Definition.Color));
+		var hazardList = new List<float[]>();
+		foreach (Arbiter.Hazard h in _situation.Hazards)
+		{
+			Arbiter.Area a = h.Area;
+			float flags = ((h.Endangers & Arbiter.Endangers.Agent) != 0 ? 1 : 0) + ((h.Endangers & Arbiter.Endangers.Allies) != 0 ? 2 : 0) + (h.PerSecond ? 4 : 0);
+			hazardList.Add(new[] { (float)(int)a.Shape, Round(a.Position.X), Round(a.Position.Y), Round(a.Velocity.X), Round(a.Velocity.Y),
+				Round(a.Extent.X), Round(a.Extent.Y), Round(a.Radius), Round(a.Inner), Round(h.LandsIn),
+				float.IsPositiveInfinity(h.Lasts) ? -1f : Round(h.Lasts), Round(h.Harm), flags });
+		}
+		var zoneList = new List<float[]>();
+		foreach (Arbiter.Zone z in _situation.Zones)
+		{
+			zoneList.Add(new[] { (float)(int)z.Kind, (float)(int)z.Area.Shape, Round(z.Area.Position.X), Round(z.Area.Position.Y),
+				Round(z.Area.Radius), Round(z.Area.Inner), z.FollowsAgent ? 1f : 0f, z.Source });
+		}
+
 		return new Dictionary<string, object>
 		{
 			["time"] = Math.Round(now, 2),
@@ -396,6 +422,8 @@ public class ReviewRecorder
 			["material"] = materialList,
 			["shots"] = shotList,
 			["placed"] = placedList,
+			["hazards"] = hazardList,
+			["zones"] = zoneList,
 			["loadout"] = loadout,
 			["droneWeapon"] = droneKind,
 		};
@@ -428,6 +456,7 @@ public class ReviewRecorder
 	private static float Round(float value) => (float)Math.Round(value, 1);
 
 	private readonly List<PlacedObject> _placed = new();
+	private readonly Arbiter.Situation _situation = new();
 	private readonly List<string> _weaponIds = new();
 	private readonly List<Dictionary<string, object>> _weaponInfo = new();
 

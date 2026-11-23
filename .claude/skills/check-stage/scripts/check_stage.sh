@@ -76,6 +76,17 @@ for config in ExportDebug ExportRelease Debug; do
 	[ "$warnings" -gt 0 ] && echo "$output" | grep -E ": warning " | sort -u | head -10
 done
 
+echo "== Arbiter on its own"
+# The pilots' decision library builds and passes its own checks with no game (arbiter/checks/), which also
+# proves it doesn't depend on VNP's code or Godot's.
+arbiter_out="$(dotnet run --project arbiter/checks/ArbiterChecks.csproj -nologo 2>&1)"
+if [ $? -eq 0 ]; then
+	note "Arbiter on its own: $(echo "$arbiter_out" | grep -c '^PASS') checks passed"
+else
+	echo "$arbiter_out" | grep -E "FAIL|error" | head -20
+	fail "Arbiter's own checks failed (arbiter/checks/)"
+fi
+
 echo "== Editor rescan (makes .uid files for new scripts)"
 timeout 300 "$GODOT" --headless --path . --editor --quit > /dev/null 2>&1
 new_uids="$(git status --porcelain -uall | grep -E '^\?\? .*\.uid$' | sed 's/^?? //')"

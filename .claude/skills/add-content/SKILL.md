@@ -45,6 +45,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - sounds;
    - an icon at `placeholder/textures/icons/<id>.svg`: 64×64, white shapes on transparent, tinted in game. Copy an existing icon's style.
 7. **Recorded for the run review:** the designer's fights are recorded so any moment can be drawn later, and a weapon must show up in that recording. `CollectPlaced` is required in the editor's build (it fails without it), and goes inside `#if RECORDING`, as every weapon's does, so exports leave it out: add everything the weapon has out in the world as `PlacedObject.Point` (a shard, mine or missile, with the radius it acts over), `Ring` (an outline, such as Shockwave's ring) or `Line` (a beam). Shots fired through `Fight.Projectiles` are recorded already, so a weapon with nothing else writes an empty body with a comment saying so, as Scatter Shot does. Then check it on a strip: `tools\scenario.cmd pilot=expert weapon=<id> spawn=all:2 invulnerable frames=900 record=yes`, then `tools\maps.cmd <its log> strip=10`. The stage check's recording test plays every starting weapon and fails if one leaves nothing in the recording.
+8. **Seen by pilots:** implement `DeclareZones` (required by the build, game code, not inside `#if`): where the weapon works, for pilots (Arbiter, `docs/dev/PILOT_SPEC.md`). `DeclareReach` covers a weapon that hits what comes within its `Reach`; a weapon with a band, such as Orbital Shards, declares `Zone.ReachBand`; one that leaves things that hurt enemies in place, such as mines, declares each as a `Zone.Trap`.
 
 ## A fight upgrade
 
@@ -93,6 +94,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
    - read it in the behavior's `Spawned`.
 5. **Look:** a silhouette that differs from every other enemy and from asteroids, not only its colour, plus its mesh, possibly a material, and death, attack and other sounds. Check it with a screenshot (check-stage step 2).
 6. **Recorded for the run review:** enemies are recorded and drawn from their traits (`AbsorbsDronesOf`, `DamagesByTouchOf`), name and colour, so a new type appears with no code of its own. If it has a new trait that matters for reviews, record it in `ReviewRecorder.Snapshot` and mark it in `MapDrawer`, as touch damage is striped. If it leaves things in the world (spikes, blobs), they must be recorded too.
+7. **Seen by pilots:** implement `DeclareThreats` (required by the build, game code, not inside `#if`): call `DeclareBody`, then add a `Hazard` for each way it hurts, from the moment a player could see it coming and no sooner: a body that hurts by touch as a lasting circle that moves with it, an attack being readied as a timed shape (a Lancer's line as a capsule, a volley as a cone, a wave as a ring) landing when the attack does. Shots through `Fight.Projectiles` are declared there already. A sleeping or hidden enemy declares nothing. Hazards are recorded and drawn on strips with no code of their own, and the full recording check fails if bodies, drains or shots go missing. A new tag for what it does goes in `ThreatTags` (`pilots/ArbiterBridge.cs`).
 
 ## Finish
 
