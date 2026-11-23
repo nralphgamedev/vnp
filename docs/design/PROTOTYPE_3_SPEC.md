@@ -166,7 +166,7 @@ Add these only after this phase feels good and the designer asks for them.
 - A third enemy type, such as a Berserker-style enemy that is large, slow, and powerful, to test single-target weapons.
 - An upgrade that counters the Goo directly, if playtesting shows the existing pool doesn't offer a good answer to it.
 
-Three fights in a row, with Level Up Rewards between them, is planned as the next phase.
+Three fights in a row, with Level Up Rewards between them, was planned as the next phase. Phase 4 became the rest of the Grey Goo types instead (`docs/design/PROTOTYPE_4_SPEC.md`), since one Goo type was too few to answer this phase's main question.
 
 ## Done when
 

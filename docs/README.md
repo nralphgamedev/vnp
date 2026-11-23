@@ -9,6 +9,7 @@ The game itself: the phase specs, taken from the game design document (GDD), des
 - `PROTOTYPE_1_SPEC.md`: phase 1, one complete fight.
 - `PROTOTYPE_2_SPEC.md`: phase 2, feedback and more weapons and upgrades.
 - `PROTOTYPE_3_SPEC.md`: phase 3, a second enemy type and ways to see what worked.
+- `PROTOTYPE_4_SPEC.md`: phase 4, the rest of the Grey Goo types, in fights of Grey Goo only.
 
 ## `dev/`
 

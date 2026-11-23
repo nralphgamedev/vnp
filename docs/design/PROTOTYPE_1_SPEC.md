@@ -208,7 +208,7 @@ Build one stage at a time, and stop after each so the designer can play it.
 
 Do not build any of these. They belong to the full game.
 
-The galactic map, turns, the Zone Conquer sequence, empire experience, permanent Level Up Rewards, weapon storage, planets, empire resources, factions, the codex, meta progression, tutorials, saving, the upgrade for harvesting drone wreckage, and final art and audio.
+The galactic map, turns, the Sector Conquer sequence, empire experience, permanent Level Up Rewards, weapon storage, planets, empire resources, factions, the codex, meta progression, tutorials, saving, the upgrade for harvesting drone wreckage, and final art and audio.
 
 ## Stretch goals
 

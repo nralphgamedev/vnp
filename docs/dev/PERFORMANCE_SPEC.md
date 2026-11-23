@@ -89,4 +89,5 @@ Every measuring tool is in `scripts/cheats/`, inside `#if TOOLS`, under CLAUDE.m
 
 - **A new phase:** its spec's Performance section names what to measure. If the stress test or late fight doesn't cover it, add a test here and to the stage check.
 - **A new system with per-frame cost:** give it its own update priority in `UpdateOrder` and an entry in the harness's profile parts, so `profile=yes` shows it.
+- **A compile symbol of its own:** none yet, since every measuring tool is inside `scripts/cheats/` and nothing outside it calls into them. Add a `PERF` symbol, separate from `TOOLS` and `RECORDING`, the first time measuring needs a hook on a game class (such as a counter inside the enemy update), or for a build sent to testers to measure on typical machines (see Typical players' machines, under Not yet decided). That build would also need the measuring code moved out of `scripts/cheats/`, which exports leave out, and a way to show or save results without the harness.
 - **A slow frame:** start with `perf=detail` to see whether it is logic, render CPU or GPU, then `profile=yes` for logic, and `perfstart=` to reach the moment quickly.
