@@ -34,6 +34,7 @@ public abstract class EnemyBehavior
 	public static EnemyBehavior Create(EnemySwarm swarm, EnemyDefinition definition) => definition switch
 	{
 		LancerDefinition lancer => new Lancer(swarm, lancer),
+		QuillerDefinition quiller => new Quiller(swarm, quiller),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,

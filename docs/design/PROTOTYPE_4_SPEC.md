@@ -130,6 +130,9 @@ As in the earlier specs, this file names each value and where it lives rather th
 | The Lancer's launch: the range it starts forming at, how long it forms, its speed, how far it carries on past the point it aimed at (`LaunchBeyond`), its damage, how long it recovers, its cooldown between launches | `enemies/grey_goo/lancer/lancer.tres` |
 | The Lancer's aim: how rare accurate ones are, how far ahead it leads, and how much it strays, from least to most accurate | `lancer.tres`; the difficulty ramp's accuracy in `difficulty.tres` raises it, as for the basic enemy |
 | The Lancer's look while forming: how far it stretches and how much paler it glows | `lancer.tres` |
+| The Quiller's volley: the range it fires within, how long it forms, spikes per volley, the most targets it shares them among, how far each strays, its cooldown | `enemies/grey_goo/quiller/quiller.tres` |
+| The Quiller's spikes: speed and turn rate going out (`OutTurnDegrees`), how far past its target point each flies (`SpikeBeyond`), speed and turn rate coming back, damage, size, and the health it loses for each one broken | `quiller.tres` |
+| The Quiller's look while forming: how much it swells and how much paler it glows | `quiller.tres` |
 | How much faster newly spawned enemies are at each escalation step, every type (`EscalationEnemySpeedPerStep`) | `tuning/difficulty.tres` |
 
 ## Not yet decided
@@ -183,6 +186,20 @@ The prototype now does the following; any of it can still change.
     - `DroneSwarm.HitAlong`, which damages drones along a path once each;
     - the `Launches` threat tag.
   - **The full recording check** now also requires an attack declared before it lands.
+- **The Quiller (stage 4):** `enemies/grey_goo/quiller/`, `Quiller` on the shared Grey Goo code. It drains no drones and doesn't grow.
+  - **Its volley:**
+    - **Drifting:** an urchin-like blob, quills round its middle, drifting after the VNP.
+    - **Forming:** once the VNP or a drone is within its volley range and its cooldown is done, it stops, swells and glows paler. Each spike's target point is set as it starts: its spikes are shared out among the VNP, if in range, and the nearest drones, each point straying a little round the Quiller, so the volley spreads.
+    - **Firing:** with a rattle, the spikes leave from every side, evenly round it, and curl in on their target points (`OutTurnDegrees`), so one launched away from its target sweeps round in an arc. Each turns back as soon as it hits the VNP or a drone (damaging it), or once it has flown `SpikeBeyond` past its target point, then arcs home, turning at a limited rate, and is taken back in. On the way back it can hit again.
+    - It forms its next volley only once all of the last are back or broken, and its cooldown is done.
+  - **Breaking spikes:** any damage that touches a spike breaks it: Orbital Shards (blocking or not), Shockwave rings, mine blasts, charging Ram drones, and the VNP's and drones' shots and Seeker Missiles, which are used up doing it. Beams don't, since they only hit what they aim at. Each spike broken before it gets home costs its Quiller `SpikeLossHealth`, credited to whatever broke it, with a glassy tink. A spike whose Quiller is gone fizzles out.
+  - **From every side (after playtesting):** at the designer's request, spikes leave from every side and curl in on their targets, rather than firing toward them in a spread, and each flies a set distance past its target point. (Before that, each spike's reach was its target's distance plus a margin, also at the designer's choice; at first every spike had the same reach, which fell short of targets at the edge of the volley range.)
+  - **Seen by pilots while forming:** since spikes curve, the Quiller declares a small circle at each target point, landing about when its spike should arrive, rather than a line.
+  - **Fragile shots:** spikes fly through a new shared system, `FragileShots` (`scripts/units/`), for enemy shots the player's weapons can break; the Burster's blobs are meant to use it too.
+  - **Seen by pilots:** while forming, it declares each spike's target point (see below); spikes in flight declare themselves. Against four groups of Quillers for a minute, the planning pilot took 10 to 25 damage from them, the first pilot 25 to 60. They destroyed 15 to 20 drones a minute in those tests, a sign they may be strong against drones.
+  - **Cost:** about 2.7 µs an enemy for 1,000 Quillers, and about 0.3 ms for their spikes. The spikes needed care for a crowd: a spatial grid, positions found once a frame, and counts kept as spikes come and go. Looking each up by scanning the enemies at first cost 13 ms a frame.
+  - **Spawning:** in groups and waves, by its weight in `enemy_spawning.tres`, less often than the basic goo.
+  - **Recorded:** spikes are recorded as enemy shots, and their hazards with the rest.
 - **Sounds pause with the fight:** at the designer's request, while a menu pauses the fight (a level-up offer, the pause menu, the result screen, the starting weapon menu), the fight's own sounds pause too and carry on where they left off once it closes. Menu and result sounds still play. Before, every sound played on through a pause, so a Lancer's wind-up could finish while an offer was open. This changes phase 2's "Sounds while paused".
 - **Escalation speeds enemies up:** at the designer's request, each escalation step past the time limit also makes newly spawned enemies faster, in steps like their health, damage and accuracy (`EscalationEnemySpeedPerStep` in `difficulty.tres`).
   - **Every type, chasing and wandering:** each enemy keeps the speed it spawned with, as it keeps its strength. Halves of a split keep their parent's.

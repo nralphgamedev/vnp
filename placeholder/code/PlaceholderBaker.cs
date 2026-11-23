@@ -28,6 +28,12 @@ public partial class PlaceholderBaker : Node
 	};
 
 	// Orbital Shard: a long thin diamond.
+	// A Quiller's spike in flight: long and thin, pointed at the front (-y).
+	private static readonly Vector2[] QuillOutline =
+	{
+		new(0f, -1.2f), new(0.16f, 0f), new(0f, 0.5f), new(-0.16f, 0f),
+	};
+
 	private static readonly Vector2[] ShardOutline =
 	{
 		new(0f, -1f), new(0.32f, 0f), new(0f, 1f), new(-0.32f, 0f),
@@ -101,6 +107,9 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.Blob(31, 0.22f), "meshes/goo.tres");
 		// The Lancer: a Grey Goo teardrop, its point aimed where it will launch. The game stretches it into a spike.
 		Save(PlaceholderShapes.Teardrop(37, 0.16f, 1.1f), "meshes/lancer.tres");
+		// The Quiller: a Grey Goo urchin, quills round its middle; and the spikes it fires.
+		Save(PlaceholderShapes.Urchin(41, 0.14f, 9, 0.55f), "meshes/quiller.tres");
+		Save(PlaceholderShapes.ExtrudedShape(QuillOutline, 0.22f), "meshes/quill.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.

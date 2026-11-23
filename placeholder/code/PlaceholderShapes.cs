@@ -147,6 +147,28 @@ public static class PlaceholderShapes
 		return new Vector3(v.X * taper, v.Y * taper, -forward * (1f + point * forward));
 	});
 
+	/// <summary>
+	/// A blob bristling with <paramref name="quills"/> short points evenly round its middle, tilted a little up,
+	/// like an urchin: for the Quiller. Each point reaches <paramref name="length"/> beyond the blob.
+	/// </summary>
+	public static ArrayMesh Urchin(int seed, float lumpiness, int quills, float length) => ShapedBlob(seed, lumpiness, v =>
+	{
+		Vector3 direction = v.Normalized();
+		float best = -1f;
+		for (int q = 0; q < quills; q++)
+		{
+			float angle = Mathf.Tau * q / quills;
+			var quill = new Vector3(Mathf.Cos(angle), 0.35f, Mathf.Sin(angle)).Normalized();
+			best = Mathf.Max(best, direction.Dot(quill));
+		}
+		// Only the corners close to a quill's direction are drawn out, more the closer they are.
+		const float Width = 0.94f;
+		if (best <= Width)
+			return v;
+		float t = (best - Width) / (1f - Width);
+		return v * (1f + length * t * t);
+	});
+
 	/// <summary>The blob, with <paramref name="shape"/> moving each corner after its lumps, or none.</summary>
 	private static ArrayMesh ShapedBlob(int seed, float lumpiness, System.Func<Vector3, Vector3> shape)
 	{

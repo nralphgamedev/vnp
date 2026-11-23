@@ -15,6 +15,8 @@ All made by `code/PlaceholderBaker.cs`.
 | `drone.tres` | Small kite-shaped slab | Drones (`DroneSwarm.cs`) |
 | `enemy.tres` | Pincer-shaped slab | The basic enemy (`BasicEnemy.cs`) |
 | `lancer.tres` | A Grey Goo teardrop: the lumpy blob with its front drawn out into a long point, about twice as long as it is wide, pointing forward (-z). Made by `PlaceholderShapes.Teardrop`. `Lancer.cs` turns its point toward the VNP, and stretches it into a spike while forming and launching. | The Lancer (`Lancer.cs`) |
+| `quiller.tres` | A Grey Goo urchin: the lumpy blob with nine short quills round its middle, tilted a little up. Made by `PlaceholderShapes.Urchin`. `Quiller.cs` swells it while forming a volley. | The Quiller (`Quiller.cs`) |
+| `quill.tres` | A long, thin, pointed spike, flat-topped, pointing forward (-y). Made by `PlaceholderShapes.ExtrudedShape` from `QuillOutline`. | A Quiller's spikes in flight (`FragileShots.cs`) |
 | `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
@@ -98,6 +100,7 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `goo_death.wav` | Heavy splat: a deep thud and low, wet noise | A Grey Goo is destroyed |
 | `lancer_form.wav` | A thin, rising whine that brightens, over a wet creak, about a second long | A Lancer starts forming its spike |
 | `lancer_launch.wav` | A sharp whoosh of rising noise over a quick falling tone | A Lancer launches |
+| `quiller_volley.wav` | A wet rattle of quick ticks over a short hiss | A Quiller fires its volley. A spike broken in flight plays `shard_block.wav` |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

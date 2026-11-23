@@ -138,9 +138,11 @@ public partial class Projectiles : Node3D
 			shot.Life -= dt;
 
 			// Test the whole path covered this frame, so a fast shot cannot skip past its target.
+			// The VNP's and drones' shots also break fragile enemy shots they fly into, such as a Quiller's spikes.
 			bool hit = shot.FromEnemy
 				? HitPlayerSide(before, shot.Position, shot.Damage, shot.Source)
-				: HitEnemy(before, shot.Position, shot.Damage, shot.Source);
+				: HitEnemy(before, shot.Position, shot.Damage, shot.Source)
+					|| Fight.FragileShots.DestroyAlong(before, shot.Position, 0.2f, shot.Source);
 			if (hit)
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.6f);
 

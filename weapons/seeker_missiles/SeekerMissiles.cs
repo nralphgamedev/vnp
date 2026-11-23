@@ -140,6 +140,14 @@ public partial class SeekerMissiles : VnpWeapon
 				continue;
 			}
 
+			// A missile that flies into a fragile enemy shot, such as a Quiller's spike, breaks it and is used up.
+			if (Fight.FragileShots.DestroyAlong(before, missile.Position, 0.3f, Source))
+			{
+				Fight.Effects.Explosion(missile.Position, Seekers.Color, Power * 0.5f);
+				_missiles[i] = _missiles[--_count];
+				continue;
+			}
+
 			if (missile.Life <= 0f)
 			{
 				Fight.Effects.Fizzle(missile.Position, Seekers.Color);

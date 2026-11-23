@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="QuillerDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://enemies/grey_goo/quiller/QuillerDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "quiller"
+Name = "Quiller"
+GroupSize = 2
+Health = 120.0
+HitRadius = 1.6
+DebrisMassMin = 4.0
+DebrisMassMax = 6.0
+Speed = 5.5
+WanderSpeed = 2.0
+Acceleration = 10.0
+TurnSpeed = 120.0
+IdleTurnSpeed = 60.0
+IdleTurnDeadband = 10.0
+WanderRadius = 10.0
+AggroRange = 30.0
+LoseAggroRange = 45.0
+TargetsDronesFirst = false
+TargetHoldSeconds = 1.5
+DroneKeepBack = 1.5
+DroneAvoidDistance = 3.0
+NeighborRadius = 9.0
+SeparationRadius = 4.0
+Separation = 1.6
+Alignment = 0.6
+Cohesion = 0.4
+WanderWeight = 0.5
+Size = 1.5
+Color = Color(0.74, 0.8, 0.88, 1)
+ContactDamage = 6.0
+ContactCooldown = 1.0
+DroneDrainPerSecond = 0.0
+BulkPerDrone = 0.0
+DebrisMassPerDrone = 0.0
+Wobble = 0.06
+WobbleSpeed = 0.5
+AbsorbPulse = 0.0
+AbsorbPulseSeconds = 0.3
+VolleyRange = 24.0
+FormSeconds = 0.8
+SpikeCount = 12
+MaxTargets = 4
+SpreadDegrees = 8.0
+VolleyCooldown = 2.0
+SpikeSpeed = 30.0
+OutTurnDegrees = 300.0
+SpikeBeyond = 6.0
+ReturnSpeed = 45.0
+ReturnTurnDegrees = 220.0
+SpikeDamage = 2.0
+SpikeRadius = 0.4
+SpikeLossHealth = 2.0
+FormSwell = 0.25
+FormGlow = 0.5

@@ -146,10 +146,28 @@ public partial class DroneSwarm : Node3D
 
 	private Drone[] _drones = new Drone[64];
 
-#if RECORDING
-	/// <summary>Where a drone is, for testing tools such as the run review's maps.</summary>
+	/// <summary>Where a drone is. Game code: enemies such as the Quiller aim at drones.</summary>
 	public Vector2 PositionOf(int index) => _drones[index].Position;
 
+	/// <summary>A drone's ID, which stays the same for its life.</summary>
+	public int IdOf(int index) => _drones[index].Id;
+
+	/// <summary>Fills <paramref name="results"/> with the living drones within a distance of a point, in no
+	/// particular order, and returns how many. Stops when it is full. Game code: the Quiller picks targets with it.</summary>
+	public int CollectNear(Vector2 center, float radius, int[] results)
+	{
+		int candidates = _grid.Query(center, radius + 1f, results);
+		int kept = 0;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = results[c];
+			if (_drones[i].Health > 0f && _drones[i].Position.DistanceTo(center) <= radius)
+				results[kept++] = i;
+		}
+		return kept;
+	}
+
+#if RECORDING
 	/// <summary>A drone's health as a fraction of a new drone's. Read-only, for the run review's maps.</summary>
 	public float HealthFractionOf(int index) => _drones[index].Health / Mathf.Max(0.01f, Tuning.Drones.Health);
 

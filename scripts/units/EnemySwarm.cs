@@ -199,6 +199,9 @@ public partial class EnemySwarm : Node3D
 	/// <summary>A number that identifies an enemy for its whole life. Use it to remember a target between frames.</summary>
 	public int IdOf(int index) => _enemies[index].Id;
 
+	/// <summary>Whether the enemy at this place in the list is still alive.</summary>
+	public bool IsAlive(int index) => _enemies[index].Health > 0f;
+
 	/// <summary>Where the living enemy with this ID is in the list right now, or -1 if it is gone.</summary>
 	public int IndexOfId(int id)
 	{

@@ -351,6 +351,18 @@ public class ReviewRecorder
 			float kind = projectiles.IsEnemyShot(i) || source == null ? -1f : WeaponIndex(source.Id, source.Name, source.Color);
 			shotList.Add(new[] { Round(p.X), Round(p.Y), Round(v.X), Round(v.Y), kind });
 		}
+		// Fragile enemy shots, such as a Quiller's spikes, are enemy shots on the maps too.
+		FragileShots fragile = _fight.FragileShots;
+		for (int i = 0; i < fragile.Count; i++)
+		{
+			if (!fragile.IsFlying(i))
+				continue;
+			Vector2 p = fragile.PositionOf(i);
+			if (p.DistanceSquaredTo(me) > reach * reach)
+				continue;
+			Vector2 v = fragile.VelocityOf(i);
+			shotList.Add(new[] { Round(p.X), Round(p.Y), Round(v.X), Round(v.Y), -1f });
+		}
 
 		// What the weapons have out (VnpWeapon and DroneAttack CollectPlaced): position, the radius it acts over,
 		// its weapon, its shape (PlacedShape) and, for a line, where it ends. And the loadout: each VNP Weapon with
@@ -392,6 +404,7 @@ public class ReviewRecorder
 		_situation.Clear();
 		_fight.Enemies.DeclareThreats(_situation, me, reach);
 		_fight.Projectiles.DeclareThreats(_situation, me, reach);
+		_fight.FragileShots.DeclareThreats(_situation, me, reach);
 		foreach (VnpWeapon weapon in _fight.Weapons)
 			weapon.DeclareZones(_situation, (int)WeaponIndex(weapon.Definition.Id, weapon.Definition.Name, weapon.Definition.Color));
 		var hazardList = new List<float[]>();

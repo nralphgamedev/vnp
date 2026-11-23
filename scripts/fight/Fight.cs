@@ -13,6 +13,8 @@ public partial class Fight : Node3D
 	public EnemySwarm Enemies { get; private set; }
 	public DroneSwarm Drones { get; private set; }
 	public Projectiles Projectiles { get; private set; }
+	/// <summary>Enemy shots the player's weapons can break in flight, such as a Quiller's spikes.</summary>
+	public FragileShots FragileShots { get; private set; }
 	public Harvestables Harvestables { get; private set; }
 	public VnpHarvester VnpHarvester { get; private set; }
 	public Effects Effects { get; private set; }
@@ -263,6 +265,8 @@ public partial class Fight : Node3D
 		Drones.Add(Tuning.Drones.StartingCount, Vnp.PlanePosition);
 		Stats.DronesStarted = Tuning.Drones.StartingCount;
 		Projectiles.Fight = this;
+		FragileShots = new FragileShots { Name = "FragileShots", Fight = this };
+		AddChild(FragileShots);
 		// The starting weapons come from vnp.tres, unless a playtest cheat in the editor lets the player choose.
 		bool chooseStartingWeapon = false;
 #if TOOLS

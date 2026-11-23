@@ -212,6 +212,7 @@ public partial class Pilot
 		_situation.Clear();
 		enemies.DeclareThreats(_situation, me, awareness, OnScreen);
 		_fight.Projectiles.DeclareThreats(_situation, me, awareness, OnScreen);
+		_fight.FragileShots.DeclareThreats(_situation, me, awareness, OnScreen);
 		for (int w = 0; w < _fight.Weapons.Count; w++)
 			_fight.Weapons[w].DeclareZones(_situation, w);
 		_situation.Overlook(Skill.DodgeChance, Random);

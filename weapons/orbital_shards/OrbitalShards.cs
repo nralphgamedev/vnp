@@ -109,6 +109,10 @@ public partial class OrbitalShards : VnpWeapon
 				}
 			}
 
+			// Any shard breaks fragile enemy shots it touches, such as a Quiller's spikes, blocking or not.
+			if (!Fight.Vnp.IsDestroyed)
+				Fight.FragileShots.DestroyWithin(position, Shards.HitRadius * Area, Source);
+
 			// With the harvesting upgrade, a shard also harvests what it passes through: its damage, by the
 			// conversion rate, as mass drawn out, credited like any beam's harvest.
 			if (HasFeature(WeaponFeature.Harvesting) && !Fight.Vnp.IsDestroyed)

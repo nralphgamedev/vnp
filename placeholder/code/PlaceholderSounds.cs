@@ -259,6 +259,13 @@ public static class PlaceholderSounds
 			Noise(b, random, 0f, 0.3f, 1500f, 7000f, 0.55f);
 			Tone(b, 0f, 0.18f, 700f, 180f, Wave.Triangle, 0.4f);
 		}));
+		// The Quiller's volley: a wet rattle of quick ticks as its spikes fly out, over a short hiss.
+		Save(folder, "quiller_volley", Make(0.4f, b =>
+		{
+			for (int i = 0; i < 6; i++)
+				Tone(b, i * 0.035f, 0.05f, 1400f - i * 90f, 600f, Wave.Square, 0.22f);
+			Noise(b, random, 0f, 0.3f, 4000f, 1500f, 0.3f);
+		}));
 	}
 
 	/// <summary>
