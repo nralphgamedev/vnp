@@ -10,6 +10,7 @@ It builds on the earlier specs:
 - Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md
 - Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
 - Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
+- Performance: the requirement below, how it is measured, its tests and what is open: @docs/dev/PERFORMANCE_SPEC.md
 
 Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also written into the current design spec.
 
@@ -33,7 +34,7 @@ Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the ga
   - no frame takes more than 16.7 ms, outside loading and menus;
   - game logic's slowest 1% takes no more than 4 ms, so weaker computers, which suffer most from CPU work, keep headroom.
 
-  The budgets are in `scripts/cheats/playtesting/performance.tres`. A change that breaks them is fixed before it is committed. `profile=yes` in the harness shows which part of the update the time goes to. Crowds may grow to about ten times today's late fight, so `--full` also reports a tenfold crowd, without failing, until that becomes a requirement. Avoid printing during play: a single print costs 10 ms or more when the output goes to a console or the editor's output.
+  The budgets are in `scripts/cheats/playtesting/performance.tres`. A change that breaks them is fixed before it is committed. `docs/dev/PERFORMANCE_SPEC.md` describes the tools and tests, including a tenfold crowd that `--full` reports without failing, and how to find a slow frame's cause. Avoid printing during play: a single print costs 10 ms or more when the output goes to a console or the editor's output.
 - Playtest cheats go in `scripts/cheats/`, which `VNP.csproj` compiles only in the editor's Debug configuration. Wrap the cheat code and every line that uses it in `#if TOOLS`, so a cheat can never reach an exported game. This covers any testing aid that must not ship, not only cheats in the narrow sense. Cheat settings go in `scripts/cheats/in_game_cheats.tres`, not in the game's tuning files. A cheat that needs a node creates it from code under `#if TOOLS` rather than placing it in a scene, since a scene node whose script is left out of a build would break. When an export preset is made, exclude `scripts/cheats/` from its files.
   - The run review's recordings need small hooks on game classes outside `scripts/cheats/`, such as each weapon's `CollectPlaced`. Wrap those in `#if RECORDING`, a symbol `VNP.csproj` defines only in the editor's Debug configuration, so exports leave them out. It is separate from `TOOLS` so that a special build that records fights could define it later.
 
@@ -57,7 +58,7 @@ This project is developed on Windows, where a few editing habits cause damage:
 - Keep the current spec up to date. Whenever something changes during prototyping, whether from playtest feedback, a new design decision, or a choice made for something marked not yet decided, update the spec in the same step so it always describes what is built. Move items that get settled out of the spec's not-yet-decided list and record what was chosen.
 - The spec describes behavior, not tuning numbers. Numbers change constantly while prototyping and the tuning files already record them, so name the tuning value and file instead of quoting its number. Keep only numbers the designer set as part of the design, such as weapon slots or upgrade limits, and leave out test measurements, which go stale when a value changes.
 - After a stage is approved, commit it to git so there is a working version to return to. Always ask before committing or pushing, except on a calibration branch under the rules in "Unattended work on calibration branches" below.
-- Before every commit, run the stage check with `--full` (`check_stage.sh --full`), which adds the full recording check: a few recorded fights covering every weapon, Drone Weapon, mod and asteroid amount, checked field by field. The plain stage check, for checking work along the way, leaves it out.
+- Before every commit, run the stage check with `--full` (`check_stage.sh --full`), which adds the full recording check: a few recorded fights covering every weapon, Drone Weapon, mod and asteroid amount, checked field by field. The plain stage check, for checking work along the way, leaves it out. A commit that changes only documents (Markdown files such as the specs, the journal and READMEs) needs no stage check.
 
 ## Unattended work on calibration branches
 

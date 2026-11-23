@@ -16,6 +16,7 @@ Development only: the testing tools and how the game is checked, which design do
 
 - `AUTOMATED_PLAYTESTING_SPEC.md`: pilots, batches, fight logs and reports.
 - `RUN_REVIEW_SPEC.md`: detectors, recordings, maps and calibration.
+- `PERFORMANCE_SPEC.md`: the performance requirement, how it is measured, its tests and what they found.
 - `calibration/JOURNAL.md`: the record of unattended calibration runs.
 
 ## Where a new doc goes

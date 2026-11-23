@@ -1,6 +1,6 @@
 ---
 name: check-stage
-description: Verify the VNP Godot project after building or changing something, before handing it to the designer to play or before committing. Runs all three C# builds, an editor rescan for .uid files, a load of every .tres data file, a headless fight, a check that playtest cheats stay out of export builds, and a review of the spec, CLAUDE.md rules and PLACEHOLDERS.md against the change. Use this whenever a build stage or playtest fix is finished, when the user asks to check, verify, test or "make sure everything works", before any commit, and after moving or renaming files, baking placeholders, or editing .tres files, even if the user doesn't say "check".
+description: Verify the VNP Godot project after building or changing something, before handing it to the designer to play or before committing. Runs all three C# builds, an editor rescan for .uid files, a load of every .tres data file, a headless fight, a check that playtest cheats stay out of export builds, and a review of the spec, CLAUDE.md rules and PLACEHOLDERS.md against the change. Use this whenever a build stage or playtest fix is finished, when the user asks to check, verify, test or "make sure everything works", before any commit that changes more than documents, and after moving or renaming files, baking placeholders, or editing .tres files, even if the user doesn't say "check".
 ---
 
 # Check a stage
@@ -80,6 +80,6 @@ Keep the report short, for a designer who is a programmer and about to play the 
 - **Problems:** anything found and fixed during the check, and anything still open, with the file.
 - **Doc gaps:** what step 3 turned up, and whether you fixed it.
 - **Screenshot:** what it showed, if you took one.
-- **Commit:** that it is ready to commit, once `--full` has passed. Never commit or push without the designer asking: CLAUDE.md requires asking first, every time.
+- **Commit:** that it is ready to commit, once `--full` has passed (a commit of only documents, Markdown files, needs no check). Never commit or push without the designer asking: CLAUDE.md requires asking first, every time.
 
 Don't paste the whole script output. Pick out what matters.
