@@ -33,6 +33,23 @@ namespace Arbiter
 		public void Add(in Zone zone) => _zones.Add(zone);
 
 		/// <summary>
+		/// Decides which hazards the agent fails to notice this time, as a less skilled player misses things: each
+		/// that comes and goes (a shot, an attack being readied) is noticed with <paramref name="chance"/>, drawn from
+		/// <paramref name="random"/>. Lasting hazards, such as bodies that hurt by touch, are always noticed. A chance
+		/// of 1 or more draws nothing.
+		/// </summary>
+		public void Overlook(float chance, IRandom random)
+		{
+			if (chance >= 1f)
+				return;
+			foreach (ref Hazard hazard in CollectionsMarshal.AsSpan(_hazards))
+			{
+				bool fleeting = hazard.LandsIn > 0f || !float.IsPositiveInfinity(hazard.Lasts);
+				hazard.Overlooked = fleeting && random.Value() >= chance;
+			}
+		}
+
+		/// <summary>
 		/// How much harm reaches <paramref name="point"/> at <paramref name="seconds"/> from now, for whoever
 		/// <paramref name="who"/> is, from every hazard that is hurting then and reaches the point padded by
 		/// <paramref name="pad"/>. Harm per second counts as one second's worth. A first, simple measure; path

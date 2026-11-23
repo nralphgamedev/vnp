@@ -219,9 +219,10 @@ public partial class EnemySwarm : Node3D
 
 	/// <summary>
 	/// Has every living enemy within <paramref name="radius"/> of a point declare its body and hazards
-	/// (EnemyBehavior.DeclareThreats) to a situation, for pilots and the run review. Read-only.
+	/// (EnemyBehavior.DeclareThreats) to a situation, for pilots and the run review. With <paramref name="visible"/>,
+	/// only those it says can be seen, such as what is on screen. Read-only.
 	/// </summary>
-	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius)
+	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius, System.Func<Vector2, bool> visible = null)
 	{
 		if (_declareNear.Length < Count)
 			_declareNear = new int[Count * 2];
@@ -229,7 +230,8 @@ public partial class EnemySwarm : Node3D
 		for (int c = 0; c < count; c++)
 		{
 			ref Enemy enemy = ref _enemies[_declareNear[c]];
-			_types[enemy.Type].DeclareThreats(enemy, situation);
+			if (visible == null || visible(enemy.Position))
+				_types[enemy.Type].DeclareThreats(enemy, situation);
 		}
 	}
 

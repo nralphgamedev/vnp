@@ -89,15 +89,15 @@ public partial class Projectiles : Node3D
 	/// <summary>
 	/// Declares every enemy shot within <paramref name="radius"/> of a point as a hazard, for pilots and the run
 	/// review: a point moving at the shot's velocity, harmful until it fizzles, to the VNP or a drone, whichever it
-	/// meets first. Read-only.
+	/// meets first. With <paramref name="visible"/>, only shots it says can be seen. Read-only.
 	/// </summary>
-	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius)
+	public void DeclareThreats(Arbiter.Situation situation, Vector2 center, float radius, System.Func<Vector2, bool> visible = null)
 	{
 		float radiusSquared = radius * radius;
 		for (int i = 0; i < Count; i++)
 		{
 			ref Shot shot = ref _shots[i];
-			if (!shot.FromEnemy || shot.Position.DistanceSquaredTo(center) > radiusSquared)
+			if (!shot.FromEnemy || shot.Position.DistanceSquaredTo(center) > radiusSquared || (visible != null && !visible(shot.Position)))
 				continue;
 			var path = Arbiter.Area.Circle(shot.Position.ToArbiter(), 0f, shot.Velocity.ToArbiter());
 			situation.Add(Arbiter.Hazard.Timed(path, 0f, shot.Life, shot.Damage, Arbiter.Endangers.Both));

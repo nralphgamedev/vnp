@@ -36,6 +36,9 @@ namespace Arbiter
 		public Endangers Endangers;
 		/// <summary>The game's ID for what declared it, such as the body it belongs to; 0 for none.</summary>
 		public int Source;
+		/// <summary>Set by <see cref="Situation.Overlook"/> when the agent failed to notice it this time. Planning
+		/// leaves an overlooked hazard out.</summary>
+		public bool Overlooked;
 
 		/// <summary>Whether it hurts at <paramref name="seconds"/> from now.</summary>
 		public readonly bool ActiveAt(float seconds) => seconds >= LandsIn && seconds <= LandsIn + Lasts;

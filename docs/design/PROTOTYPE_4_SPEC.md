@@ -157,6 +157,9 @@ The prototype now does the following; any of it can still change.
   - **Nothing changed in play:** two automated fights traced identically before and after the move, with the basic enemy still spawning: one an ordinary fight, one with many Goos absorbing and splitting.
 - **Grey Goo difficulty:** the Goo's difficulty values in `difficulty.tres` are now the Grey Goo's, shared by every type, and renamed to match. Their numbers are unchanged.
 - **Grey Goo only:** the basic enemy's spawn weights are 0 in `enemy_spawning.tres`, for groups and waves. Its files and its entry stay, so a weight brings it back, and the scenario harness can still spawn it (`spawn=basic_enemy:N`).
+- **Pilots that plan (stage 2):** built as `docs/dev/PILOT_SPEC.md` describes, and now flying every pilot.
+  - **Results:** over the same 50 seeds, fights of Grey Goo only were won 52% of the time instead of 40%, and none of its pilots were destroyed by the 8:00 cap, against 15. Touching a Goo fell from 0.50 to 0.07 times a minute.
+  - **Closer to the designer later:** it outlives the designer's own fights by far more than the first pilot did. At the designer's choice, closing that gap waits for fitting it to their recorded Grey Goo fights; until then, batches read the game as easier than it plays.
 - **Older fight logs:** these name the Goo `goo`. No report or tool groups results by enemy ID across logs, so nothing needed converting.
 - **First measurement:** 50 expert fights with the Designer build and random starting weapons and asteroid amounts, on the same seeds, once with the old mix and once with Grey Goo only:
 

@@ -220,6 +220,42 @@ public partial class PilotDefinition : Resource
 	/// chasing it, at full TacticSkill and a profile's full LeadChasers.</summary>
 	[Export] public float LeadWeight;
 
+	/// <summary>Plans its moves (docs/dev/PILOT_SPEC.md): perceives the threats enemies and shots declare, and scores
+	/// candidate paths through them with Arbiter, instead of adding up its wants into one direction. On for every
+	/// skill level since it replaced the first pilot; off flies the first pilot, kept for comparison (variant
+	/// first_pilot) until its code is removed. The judgements above, of affording a fight, regrouping, harvest worth
+	/// and so on, are shared by both.</summary>
+	[ExportGroup("Planning")]
+	[Export] public bool Planner;
+
+	/// <summary>Seconds ahead each candidate path looks, predicting where it and the hazards will be.</summary>
+	[Export] public float LookAheadSeconds = 1f;
+
+	/// <summary>Directions it tries, evenly round the circle, each at a few speeds, plus stopping.</summary>
+	[Export] public int PathDirections = 16;
+
+	/// <summary>The most hazards it keeps track of at once, nearest first, as a player can only watch so much. It
+	/// also bounds the planner's cost in a big crowd. 0 for no limit.</summary>
+	[Export] public int Attention = 64;
+
+	/// <summary>How much it minds harm a path would take, as a fraction of its health now, so the same hit matters
+	/// more at low health. 10 makes losing a tenth of its health count as much as a full second of its best want.</summary>
+	[Export] public float HarmWeight = 10f;
+
+	/// <summary>How much it minds its drones being near hazards that hurt them, such as a drone eater, scaled by
+	/// how much it relies on drones (their share of the cap).</summary>
+	[Export] public float DroneDangerWeight = 1f;
+
+	/// <summary>How much it minds turning sharply or reversing, against flicking from one way to another.</summary>
+	[Export] public float TurnCost = 0.2f;
+
+	/// <summary>While fighting and not holding still, how much it circles the enemy it fights, as a share of its
+	/// fight weight, as the first pilot did.</summary>
+	[Export] public float OrbitShare = 0.6f;
+
+	/// <summary>How strongly it closes in on its harvest target once committed (HarvestCommitDistance).</summary>
+	[Export] public float CommitWeight = 2f;
+
 	/// <summary>Randomness added to every upgrade's score when it chooses, on top of its build's. Lower is more
 	/// consistent.</summary>
 	[ExportGroup("Choosing upgrades")]

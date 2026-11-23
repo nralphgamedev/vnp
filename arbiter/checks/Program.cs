@@ -45,5 +45,53 @@ Check(Near(s.HarmAt(new Vector2(2.5f, 0), 0, 0.6f, Endangers.Allies), 12f), "sit
 Check(Near(s.HarmAt(new Vector2(5, 0), 0, 0.6f, Endangers.Both), 0f), "situation: nothing reaches a point clear of it");
 var zone = Zone.ReachAround(9f);
 Check(zone.Area.Moved(new Vector2(100, 0)).Reaches(new Vector2(108, 0), 0), "a following zone moves with the agent");
+// ── Path planning: paths follow the agent's movement, and hazards along them count.
+var mover = new Mover { MaxSpeed = 20f, Acceleration = 80f, Deceleration = 60f, ControlRate = 0f };
+var planner = new PathPlanner { Horizon = 1f, Steps = 10, Directions = 8, Strengths = new[] { 1f } };
+planner.Build(new Motion { Position = Vector2.Zero }, mover);
+Check(planner.Count == 9, "planner: 8 directions at one strength, and stopping");
+Check(planner.End(0).X > 15f && planner.End(0).X < 20f && Near(planner.End(0).Y, 0f), $"planner: from rest, accelerating to top speed ({planner.End(0).X:0.0} units in 1 s)");
+Check(Near(planner.End(8).X, 0f) && Near(planner.End(8).Y, 0f), "planner: stopping from rest stays put");
+var danger = new Situation();
+danger.Add(Hazard.Lasting(Area.Circle(new Vector2(8f, 0f), 2f), 10f, Endangers.Agent));
+planner.Assess(danger, 0.5f, 5f, 0f);
+Check(planner.HarmOf(0) >= 10f, "planner: the path through a hazard is harmed");
+Check(Near(planner.HarmOf(4), 0f), "planner: the path away from it is not");
+Check(planner.ClosenessOf(0) > planner.ClosenessOf(1) && planner.ClosenessOf(1) > 0f && Near(planner.ClosenessOf(2), 0f), "planner: closeness falls off sideways (45 degrees comes near, 90 never does)");
+Check(Near(planner.ClosenessOf(4), 0f), "planner: and is nothing far away");
+var drain = new Situation();
+drain.Add(Hazard.Lasting(Area.Circle(new Vector2(6f, 0f), 2f), 12f, Endangers.Allies, perSecond: true));
+planner.Assess(drain, 0.5f, 0f, 6f);
+Check(planner.AllyDangerOf(0) > planner.AllyDangerOf(4), "planner: danger to allies is worse heading toward a drain");
+Check(Near(planner.HarmOf(0), 0f), "planner: a hazard to allies does the agent no harm");
+var slow = new PathPlanner { Horizon = 1f, Steps = 10, Directions = 4, Strengths = new[] { 1f }, IncludeStop = false };
+slow.Build(new Motion { Position = Vector2.Zero, Velocity = new Vector2(20f, 0f), Control = new Vector2(1f, 0f) },
+	new Mover { MaxSpeed = 20f, Acceleration = 80f, Deceleration = 60f, ControlRate = 6f });
+Check(slow.Point(2, 1).X > 0f && slow.End(2).X < 0f, "planner: turning back takes time (still going forward after 0.2 s, back past the start by 1 s)");
+
+// ── Decisions: weighted terms, the best taken, explained.
+var decision = new Decision("move");
+float[] near = { 0f, 2f, 5f };
+float[] safe = { -1f, 0f, -3f };
+int toward = decision.AddTerm("toward", o => near[o]);
+int harm = decision.AddTerm("harm", o => safe[o]);
+decision.SetWeight(toward, 1f);
+decision.SetWeight(harm, 2f);
+Check(decision.Choose(3) == 1, "decision: the best total wins (2 - 0 beats 5 - 6)");
+decision.SetWeight(harm, 0.1f);
+Check(decision.Choose(3) == 2, "decision: changing a weight changes the choice");
+Check(decision.Explain(2).StartsWith("2 +4.70 (toward +5.00 harm -0.30)"), $"decision: explained ({decision.Explain(2)})");
+var shots = new Situation();
+shots.Add(Hazard.Timed(Area.Circle(Vector2.Zero, 0f), 0f, 1f, 5f, Endangers.Agent));
+shots.Add(Hazard.Lasting(Area.Circle(Vector2.Zero, 1f), 5f, Endangers.Agent));
+shots.Overlook(0f, new Never());
+Check(shots.Hazards[0].Overlooked && !shots.Hazards[1].Overlooked, "situation: a fleeting hazard can be overlooked, a lasting one can't");
+
 Console.WriteLine(fails == 0 ? "ALL PASSED" : $"{fails} FAILED");
 return fails;
+
+/// <summary>Randomness that always rolls high: nothing is noticed by chance.</summary>
+sealed class Never : IRandom
+{
+	public float Value() => 0.99f;
+}

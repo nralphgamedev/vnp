@@ -1,0 +1,5 @@
+# The first pilot, which adds its wants up into one direction, in place of the planning pilot that replaced it
+# (docs/dev/PILOT_SPEC.md, stage 2). For comparison, until the first pilot's code is removed (stage 7).
+pilots/skill_levels/expert.tres:Planner = false
+pilots/skill_levels/average.tres:Planner = false
+pilots/skill_levels/novice.tres:Planner = false

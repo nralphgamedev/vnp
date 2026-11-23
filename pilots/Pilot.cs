@@ -108,7 +108,10 @@ public partial class Pilot : Node, IVnpController
 		_sinceDecision += dt;
 		if (_decisionTimer <= 0f)
 		{
-			Decide(_sinceDecision);
+			if (Skill.Planner)
+				DecideByPlanning(_sinceDecision);
+			else
+				Decide(_sinceDecision);
 			_sinceDecision = 0f;
 			_decisionTimer = Skill.ReactionSeconds * Rng.Range(0.8f, 1.2f);
 		}
@@ -594,8 +597,13 @@ public partial class Pilot : Node, IVnpController
 	/// Toward the best material it can afford to reach: more mass is better, farther is worse, and material
 	/// with enemies around it is discounted by caution. Once the beam reaches it, it holds still.
 	/// </summary>
+	// HarvestMove's working space: each candidate's worth, and its score before danger, by which it is sorted.
+	private readonly float[] _harvestWorth = new float[512];
+	private readonly float[] _harvestBound = new float[512];
+	private readonly int[] _harvestOrder = new int[512];
+
 	private Vector2 HarvestMove(Vector2 me, float awareness, int enemyCount, float droneReliance, out bool holding,
-		out float targetWorth, out float targetEdge, out float targetDanger)
+		out float targetWorth, out float targetEdge, out float targetDanger, int weighAtMost = 0, int considerAtMost = 0)
 	{
 		holding = false;
 		targetWorth = 0f;
@@ -604,12 +612,18 @@ public partial class Pilot : Node, IVnpController
 		Harvestables harvestables = _fight.Harvestables;
 		int count = OnScreenOnly(harvestables.CollectNear(me, awareness, _material), _material, i => harvestables.PositionOf(i));
 		Remember(harvestables, me, awareness, count);
+		// The planning pilot considers only the nearest material (considerAtMost), after remembering all it sees.
+		if (considerAtMost > 0 && count > considerAtMost)
+			count = KeepNearest(_material, count, considerAtMost, i => harvestables.EdgeDistance(i, me));
 		int best = -1;
 		float bestScore = 0f;
 		float bestWorth = 0f;
 		float bestDanger = 0f;
 		EnemySwarm enemies = _fight.Enemies;
 		float clusterRadiusSquared = Skill.ClusterRadius * Skill.ClusterRadius;
+		// First each material's score before danger, which danger can only lower. Then danger is weighed from the best
+		// of those down, stopping once none left could beat the best found: the same choice as weighing them all, at a
+		// fraction of the cost beside a crowd, where weighing every rock against every enemy took over 10 ms.
 		for (int c = 0; c < count; c++)
 		{
 			int m = _material[c];
@@ -635,6 +649,22 @@ public partial class Pilot : Node, IVnpController
 			float score = (_regrouping ? Mathf.Max(0.01f, worth) : Mathf.Sqrt(Mathf.Max(0.01f, worth))) / (distance + 10f);
 			if (harvestables.IdOf(m) == _harvestTargetId)
 				score *= 1.5f; // Finish what it started, rather than dithering between rocks.
+			_harvestWorth[c] = worth;
+			_harvestOrder[c] = c;
+			_harvestBound[c] = -score; // Sorted lowest first, so the best comes first.
+		}
+		System.Array.Sort(_harvestBound, _harvestOrder, 0, count);
+		for (int i = 0; i < count; i++)
+		{
+			float score = -_harvestBound[i];
+			// The planning pilot weighs the danger of only its attention's worth of the most promising (weighAtMost);
+			// the first pilot weighs them all.
+			if (score <= bestScore || (weighAtMost > 0 && i >= weighAtMost))
+				break;
+			int c = _harvestOrder[i];
+			int m = _material[c];
+			Vector2 position = harvestables.PositionOf(m);
+			float worth = _harvestWorth[c];
 
 			float danger = 0f;
 			for (int e = 0; e < enemyCount; e++)
@@ -788,6 +818,22 @@ public partial class Pilot : Node, IVnpController
 		if (harvestables.IsAsteroidOf(item))
 			return 1f;
 		return Mathf.Max(0f, 1f + Skill.DebrisRewardInfluence * (_fight.DebrisExperience - 1f));
+	}
+
+	private float[] _nearestKeys = new float[512];
+
+	/// <summary>Keeps the <paramref name="keep"/> items nearest by <paramref name="distanceOf"/>, nearest first, and
+	/// returns how many are left. For the planning pilot's attention.</summary>
+	private int KeepNearest(int[] items, int count, int keep, System.Func<int, float> distanceOf)
+	{
+		if (count <= keep)
+			return count;
+		if (_nearestKeys.Length < count)
+			_nearestKeys = new float[count * 2];
+		for (int c = 0; c < count; c++)
+			_nearestKeys[c] = distanceOf(items[c]);
+		System.Array.Sort(_nearestKeys, items, 0, count);
+		return keep;
 	}
 
 	/// <summary>Whether a point is on screen, as a player would see it.</summary>
