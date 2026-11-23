@@ -21,7 +21,8 @@ using System.Reflection;
 ///                      of every enemy type.
 ///   drones=N           add N drones, raising the cap to fit
 ///   invulnerable       keep the VNP alive, for measuring
-///   frames=N           how long to run (default 600, 10 seconds at 60 fps; with maxtime, long enough to reach it)
+///   frames=N           how long to run (default 600, 10 seconds at 60 fps; with maxtime, long enough to reach it;
+///                      watched in a window with neither, until the fight ends)
 ///   report=N           print a status line every N frames of fight time (default 1800: every 30 seconds of
 ///                      fight, not counting pauses). Each level-up,
 ///                      and each reroll, is printed as it happens, whatever this is.
@@ -411,6 +412,11 @@ public partial class ScenarioRunner : Node
 		// Measuring runs uncapped, with many more frames a second, so it sets no frame limit of its own.
 		if (_maxTime > 0 && !_framesGiven)
 			_frames = _perf != null || _profile ? int.MaxValue : (int)(_maxTime * 60 * 3);
+		// Watched in a window with no limit given, it plays until the fight ends (into endless mode for a pilot), as
+		// the designer expects of a fight they are watching: the 10-second default stopped it twice. Headless runs
+		// keep the default, as do screenshots and performance runs, which need an end.
+		else if (!_framesGiven && _maxTime <= 0 && DisplayServer.GetName() != "headless" && _shotPath == null && _perf == null)
+			_frames = int.MaxValue;
 		CheckIds();
 	}
 

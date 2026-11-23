@@ -38,6 +38,8 @@ public static class Sound
 	public const string Win = "win";
 	public const string Loss = "loss";
 	public const string Retreat = "retreat";
+	public const string LancerForm = "lancer_form";
+	public const string LancerLaunch = "lancer_launch";
 }
 
 /// <summary>
@@ -46,7 +48,9 @@ public static class Sound
 /// slightly between copies where the sound allows it. Looping sounds, like harvesting, play while the game
 /// keeps asking for them each frame and fade out when it stops.
 ///
-/// It keeps running while the fight is paused, so menu sounds play during level-up offers and the pause menu.
+/// While a menu pauses the fight (a level-up offer, the pause menu, the result screen), the fight's own sounds
+/// pause with it and carry on where they left off once it closes; menu and result sounds still play
+/// (PlaysWhilePaused). The player itself keeps running, so it can play them.
 /// </summary>
 public partial class Sounds : Node
 {
@@ -54,6 +58,8 @@ public partial class Sounds : Node
 	{
 		public SoundDefinition Definition;
 		public AudioStreamPlayer[] Players;
+		// How many times each copy has been started, so a handle to an earlier start can't stop a later one.
+		public int[] Starts;
 		public ulong LastStartedMsec;
 		public bool Started;
 		// For looping sounds: how loud it is now, from 0 to 1, and whether it was asked for this frame.
@@ -79,10 +85,12 @@ public partial class Sounds : Node
 
 			AudioStream stream = definition.Loop ? Looping(definition.Stream) : definition.Stream;
 			int copies = definition.Loop ? 1 : definition.MaxCopies > 0 ? definition.MaxCopies : Mathf.Max(1, Audio.DefaultMaxCopies);
-			var entry = new Entry { Definition = definition, Players = new AudioStreamPlayer[copies] };
+			var entry = new Entry { Definition = definition, Players = new AudioStreamPlayer[copies], Starts = new int[copies] };
+			// Godot pauses a player's sound while the game is paused, and carries it on after, if its node pauses.
+			ProcessModeEnum mode = PlaysWhilePaused(definition.Category) ? ProcessModeEnum.Always : ProcessModeEnum.Pausable;
 			for (int i = 0; i < copies; i++)
 			{
-				entry.Players[i] = new AudioStreamPlayer { Stream = stream, Name = $"{definition.Id}_{i}" };
+				entry.Players[i] = new AudioStreamPlayer { Stream = stream, Name = $"{definition.Id}_{i}", ProcessMode = mode };
 				AddChild(entry.Players[i]);
 			}
 			_entries[definition.Id] = entry;
@@ -93,19 +101,21 @@ public partial class Sounds : Node
 
 	/// <summary>
 	/// Plays a sound once. Skipped if every copy of it is already playing, or if it started a moment ago.
-	/// <paramref name="volume"/> scales it further, for quieter variants of the same sound.
+	/// <paramref name="volume"/> scales it further, for quieter variants of the same sound. Returns a handle to
+	/// stop it early (Stop), such as a wind-up whose maker died; most callers ignore it.
 	/// </summary>
-	public void Play(string id, float volume = 1f)
+	public SoundHandle Play(string id, float volume = 1f)
 	{
 		if (!_entries.TryGetValue(id, out Entry entry) || entry.Definition.Loop)
-			return;
+			return default;
 
 		ulong now = Time.GetTicksMsec();
 		if (entry.Started && now - entry.LastStartedMsec < (ulong)(Audio.MinRepeatSeconds * 1000f))
-			return;
+			return default;
 
-		foreach (AudioStreamPlayer player in entry.Players)
+		for (int copy = 0; copy < entry.Players.Length; copy++)
 		{
+			AudioStreamPlayer player = entry.Players[copy];
 			if (player.Playing)
 				continue;
 			player.VolumeDb = ToDb(Loudness(entry.Definition) * volume);
@@ -113,10 +123,25 @@ public partial class Sounds : Node
 				? 1f + Audio.PitchVariation * ((float)_random.NextDouble() * 2f - 1f)
 				: 1f;
 			player.Play();
+			// Godot pauses only what is already playing when the game pauses: a fight sound started during a pause,
+			// such as by something later in the frame the menu opened, starts paused, and carries on with the rest.
+			if (!player.CanProcess())
+				player.StreamPaused = true;
 			entry.Started = true;
 			entry.LastStartedMsec = now;
-			return;
+			return new SoundHandle(id, copy, ++entry.Starts[copy]);
 		}
+		return default;
+	}
+
+	/// <summary>Stops a sound started by Play, if that start is still playing. A copy started again since, by
+	/// something else, is left alone.</summary>
+	public void Stop(SoundHandle handle)
+	{
+		if (handle.Id == null || !_entries.TryGetValue(handle.Id, out Entry entry))
+			return;
+		if (entry.Starts[handle.Copy] == handle.Start && entry.Players[handle.Copy].Playing)
+			entry.Players[handle.Copy].Stop();
 	}
 
 	/// <summary>Keeps a looping sound playing. Call it every frame it should be heard; it fades out once the calls stop.</summary>
@@ -131,6 +156,9 @@ public partial class Sounds : Node
 		float fade = Audio.LoopFadeSeconds > 0f ? (float)delta / Audio.LoopFadeSeconds : 1f;
 		foreach (Entry entry in _loops)
 		{
+			// Paused with the fight: leave it as it is, neither fading nor starting it, so it carries on after.
+			if (!entry.Players[0].CanProcess())
+				continue;
 			entry.LoopLevel = Mathf.MoveToward(entry.LoopLevel, entry.LoopWanted ? 1f : 0f, fade);
 			entry.LoopWanted = false;
 
@@ -147,6 +175,11 @@ public partial class Sounds : Node
 			}
 		}
 	}
+
+	/// <summary>Whether a sound plays while a menu pauses the fight: the menus' own sounds and the results'. The
+	/// fight's sounds pause instead.</summary>
+	private static bool PlaysWhilePaused(SoundCategory category) =>
+		category is SoundCategory.Menus or SoundCategory.Results;
 
 	/// <summary>How loud a sound plays, from 0 to 1: its own volume times its category volume from
 	/// audio.tres, times the player's master and effects volumes from the pause menu's settings.</summary>
@@ -188,5 +221,20 @@ public partial class Sounds : Node
 			default:
 				return stream;
 		}
+	}
+}
+
+/// <summary>One start of a sound by Sounds.Play, to stop it early with Sounds.Stop. The default is no sound.</summary>
+public readonly struct SoundHandle
+{
+	public readonly string Id;
+	public readonly int Copy;
+	public readonly int Start;
+
+	public SoundHandle(string id, int copy, int start)
+	{
+		Id = id;
+		Copy = copy;
+		Start = start;
 	}
 }

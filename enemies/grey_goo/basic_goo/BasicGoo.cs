@@ -20,7 +20,7 @@ public sealed class BasicGoo : GreyGoo
 	}
 
 	/// <summary>Bulging toward a split. The swarm splits it once the bulge is done.</summary>
-	protected override void ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
+	protected override bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
 	{
 		if (enemy.SplitTimer > 0f)
 		{
@@ -28,6 +28,7 @@ public sealed class BasicGoo : GreyGoo
 			if (enemy.SplitTimer <= 0f)
 				Swarm.QueueSplit(index);
 		}
+		return false;
 	}
 
 	protected override void AfterAbsorbing(ref EnemySwarm.Enemy enemy)
@@ -97,14 +98,4 @@ public sealed class BasicGoo : GreyGoo
 			1f - BulgeSqueeze * bulge) * shape;
 	}
 
-	/// <summary>A basis that stretches by <paramref name="along"/> in a direction on the plane and by
-	/// <paramref name="across"/> at right angles to it, leaving height alone.</summary>
-	private static Basis StretchAlong(Vector2 direction, float along, float across)
-	{
-		Vector3 u = PlaneMath.ToWorld(direction);
-		Vector3 v = new Vector3(-u.Z, 0f, u.X);
-		// Each column is where one axis ends up: along * u(u.axis) + across * v(v.axis), height unchanged.
-		Vector3 Column(float uPart, float vPart) => u * (along * uPart) + v * (across * vPart);
-		return new Basis(Column(u.X, v.X), Vector3.Up, Column(u.Z, v.Z));
-	}
 }

@@ -32,7 +32,8 @@ public partial class EnemyDefinition : Resource
 	/// <summary>Largest mass of the debris an enemy leaves.</summary>
 	[Export] public float DebrisMassMax;
 
-	/// <summary>Speed while chasing. Below the VNP's speed, so the player can get away.</summary>
+	/// <summary>Speed while chasing. Below the VNP's speed, so the player can get away. Escalation makes newly
+	/// spawned enemies faster (EscalationEnemySpeedPerStep in difficulty.tres).</summary>
 	[ExportGroup("Movement")]
 	[Export] public float Speed;
 

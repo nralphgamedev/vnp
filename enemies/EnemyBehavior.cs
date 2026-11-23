@@ -33,6 +33,7 @@ public abstract class EnemyBehavior
 	/// <summary>The behavior for an enemy definition's kind, or null if the kind is not known.</summary>
 	public static EnemyBehavior Create(EnemySwarm swarm, EnemyDefinition definition) => definition switch
 	{
+		LancerDefinition lancer => new Lancer(swarm, lancer),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,

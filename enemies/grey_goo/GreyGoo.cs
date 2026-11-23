@@ -32,6 +32,14 @@ public abstract class GreyGoo : EnemyBehavior
 
 	public override bool DamagesByTouch => true;
 
+	/// <summary>Whether it turns slowly as it drifts, so its lumps shift. A type that faces where it attacks,
+	/// such as the Lancer, doesn't.</summary>
+	protected virtual bool Spins => true;
+
+	/// <summary>Whether touching it hurts the VNP right now. The Lancer's touch doesn't while it launches, since
+	/// the launch itself is what hits.</summary>
+	protected virtual bool TouchHurts(in EnemySwarm.Enemy enemy) => true;
+
 	public override void Spawned(ref EnemySwarm.Enemy enemy)
 	{
 		// Grey Goo spawned later in the fight is stronger, and keeps that strength.
@@ -59,11 +67,12 @@ public abstract class GreyGoo : EnemyBehavior
 	{
 		enemy.FireTimer = Mathf.Max(0f, enemy.FireTimer - dt);
 		enemy.Pulse = Mathf.Max(0f, enemy.Pulse - dt);
-		enemy.Yaw += SpinSpeed * enemy.OrbitSign * dt;
+		if (Spins)
+			enemy.Yaw += SpinSpeed * enemy.OrbitSign * dt;
 
 		// Touching the VNP damages it, then it has to wait out its cooldown.
 		Vnp vnp = Fight.Vnp;
-		if (!vnp.IsDestroyed && enemy.FireTimer <= 0f
+		if (!vnp.IsDestroyed && enemy.FireTimer <= 0f && TouchHurts(enemy)
 			&& enemy.Position.DistanceTo(vnp.PlanePosition) <= enemy.Radius + Tuning.Vnp.HitRadius)
 		{
 			vnp.TakeDamage(enemy.Damage, Source);
@@ -72,14 +81,14 @@ public abstract class GreyGoo : EnemyBehavior
 			Fight.Effects.Impact(enemy.Position + toward * enemy.Radius, GooType.Color, 1f);
 		}
 
-		ActOwn(ref enemy, index, target, dt);
-		return true;
+		// A type that spins keeps the facing its spin gives it; one that doesn't is faced where it goes, unless its
+		// own attack faced it somewhere.
+		return ActOwn(ref enemy, index, target, dt) || Spins;
 	}
 
-	/// <summary>The type's own attack for one frame, after the shared touch damage.</summary>
-	protected virtual void ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
-	{
-	}
+	/// <summary>The type's own attack for one frame, after the shared touch damage. Returns true if it set the
+	/// enemy's facing itself; otherwise a type that doesn't spin is faced the way it is going.</summary>
+	protected virtual bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt) => false;
 
 	public override float DroneDrain(in EnemySwarm.Enemy enemy) => enemy.Drain;
 
@@ -87,9 +96,10 @@ public abstract class GreyGoo : EnemyBehavior
 	/// drones each second. Both move with it. Its touch cooldown isn't declared, since a player can't see it.</summary>
 	public override void DeclareThreats(in EnemySwarm.Enemy enemy, Situation situation)
 	{
-		DeclareBody(enemy, situation);
+		DeclareBody(enemy, situation, OwnTags);
 		Area body = Area.Circle(enemy.Position.ToArbiter(), enemy.Radius, enemy.Velocity.ToArbiter());
-		situation.Add(Hazard.Lasting(body, enemy.Damage, Endangers.Agent, enemy.Id));
+		if (TouchHurts(enemy))
+			situation.Add(Hazard.Lasting(body, enemy.Damage, Endangers.Agent, enemy.Id));
 		if (AbsorbsDrones)
 			situation.Add(Hazard.Lasting(body, enemy.Drain, Endangers.Allies, enemy.Id, perSecond: true));
 	}
@@ -145,4 +155,18 @@ public abstract class GreyGoo : EnemyBehavior
 
 	/// <summary>The type's own change to the wobbling blob's shape, such as the basic goo's bulge before a split.</summary>
 	protected virtual Basis Reshape(in EnemySwarm.Enemy enemy, Basis shape, float time) => shape;
+
+	/// <summary>Tags of the type's own for the body it declares to pilots (ThreatTags), on top of the shared ones.</summary>
+	protected virtual ulong OwnTags => 0;
+
+	/// <summary>A basis that stretches by <paramref name="along"/> in a direction on the plane and by
+	/// <paramref name="across"/> at right angles to it, leaving height alone.</summary>
+	protected static Basis StretchAlong(Vector2 direction, float along, float across)
+	{
+		Vector3 u = PlaneMath.ToWorld(direction);
+		Vector3 v = new Vector3(-u.Z, 0f, u.X);
+		// Each column is where one axis ends up: along * u(u.axis) + across * v(v.axis), height unchanged.
+		Vector3 Column(float uPart, float vPart) => u * (along * uPart) + v * (across * vPart);
+		return new Basis(Column(u.X, v.X), Vector3.Up, Column(u.Z, v.Z));
+	}
 }

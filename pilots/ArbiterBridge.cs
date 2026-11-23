@@ -25,4 +25,7 @@ public static class ThreatTags
 
 	/// <summary>Fires shots, as the basic enemy does.</summary>
 	public const ulong Shoots = 4;
+
+	/// <summary>Launches itself along a line, as the Lancer does.</summary>
+	public const ulong Launches = 8;
 }

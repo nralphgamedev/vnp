@@ -123,6 +123,7 @@ def verify(folder, f):
     check(any(int(h[12]) & 1 and h[10] < 0 for h in hazards), 'hazards: bodies that hurt the VNP by touch, for as long as they exist')
     check(any(int(h[12]) & 2 and int(h[12]) & 4 for h in hazards), 'hazards: bodies that drain drones each second')
     check(any(h[10] >= 0 and (h[3] or h[4]) for h in hazards), 'hazards: enemy shots, moving, until they fizzle')
+    check(any(h[9] > 0 for h in hazards), 'hazards: attacks declared while being readied, before they land')
     zoned = {int(z[7]) for x in frames for z in x['zones']}
 
     names = [w['id'] for w in maps.get('weaponTypes', [])]

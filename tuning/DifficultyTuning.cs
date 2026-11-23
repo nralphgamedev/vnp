@@ -52,6 +52,11 @@ public partial class DifficultyTuning : Resource
 	/// <summary>Accuracy added to newly spawned enemies at each step, on the 0 to 1 accuracy scale.</summary>
 	[Export] public float EscalationEnemyAccuracyPerStep;
 
+	/// <summary>Extra speed of newly spawned enemies per step, for every enemy type, chasing and wandering alike.
+	/// Each keeps the speed it spawned with. 0.1 makes enemies a tenth faster at the limit and half as fast again
+	/// five steps later. Enemies that become faster than the VNP can no longer be outrun.</summary>
+	[Export] public float EscalationEnemySpeedPerStep;
+
 	/// <summary>Extra health of newly spawned Grey Goo per step.</summary>
 	[Export] public float EscalationGreyGooHealthPerStep;
 

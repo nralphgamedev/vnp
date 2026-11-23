@@ -32,6 +32,7 @@ public partial class EnemySwarm : Node3D
 		public float Radius;            // How far from its center it can be hit, and touches things.
 		public float Scale;             // Size of its model.
 		public float Damage;            // Damage of its attack, at the strength it spawned with.
+		public float SpeedScale;        // Its speed as a multiple of its type's, from escalation when it spawned.
 		public float Drain;             // Health per second it drains from a drone touching it (Grey Goo that absorbs drones).
 		public float FireTimer;         // Seconds until it can attack again.
 		public float OrbitSign;         // 1 or -1: which way it circles or turns.
@@ -55,6 +56,17 @@ public partial class EnemySwarm : Node3D
 		public float SplitTimer;        // Seconds left of bulging before it splits, or 0.
 		public float SplitAngle;        // The line it will split along, as an angle on the plane.
 		public float Phase;             // Where it is in its wobble.
+
+		// Used by Grey Goo attacks that take time, such as the Lancer's launch: which phase it is in (the type's own
+		// numbering, 0 between attacks), seconds left in it, where the attack started, which way it goes, how far it
+		// reaches, and its damage at the strength it spawned with.
+		public int AttackPhase;
+		public float AttackTimer;
+		public Vector2 AttackFrom;
+		public Vector2 AttackDirection;
+		public float AttackLength;
+		public float AttackDamage;
+		public bool AttackHitVnp;       // Whether this attack has hit the VNP yet, so it hits once.
 	}
 
 	/// <summary>What a chasing enemy is after this frame, for its behavior to attack.</summary>
@@ -580,6 +592,7 @@ public partial class EnemySwarm : Node3D
 				OrbitSign = Rng.Sign(),
 				Aggro = hunting,
 				Hunting = hunting,
+				SpeedScale = Fight?.EnemySpeedScale ?? 1f,
 			};
 			behavior.Spawned(ref enemy);
 			Append(enemy);
@@ -704,12 +717,12 @@ public partial class EnemySwarm : Node3D
 			float speed;
 			if (aggro)
 			{
-				speed = type.Speed;
+				speed = type.Speed * enemy.SpeedScale;
 				goal = behavior.Chase(ref enemy, trackDirection, distance);
 			}
 			else
 			{
-				speed = type.WanderSpeed;
+				speed = type.WanderSpeed * enemy.SpeedScale;
 				enemy.WanderTimer -= dt;
 				if (enemy.WanderTimer <= 0f)
 				{
@@ -750,7 +763,7 @@ public partial class EnemySwarm : Node3D
 			}
 			else if (aggro && enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
-			else if (!aggro && enemy.Velocity.Length() > type.WanderSpeed * 0.5f)
+			else if (!aggro && enemy.Velocity.Length() > type.WanderSpeed * enemy.SpeedScale * 0.5f)
 			{
 				// Idle: turn slowly, and ignore small changes of course, so nudges from flockmates
 				// do not show as twitching.

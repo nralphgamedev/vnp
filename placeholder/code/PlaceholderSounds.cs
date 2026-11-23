@@ -243,6 +243,22 @@ public static class PlaceholderSounds
 			Noise(b, random, 0f, 0.5f, 1500f, 120f, 0.6f);
 			Tone(b, 0.02f, 0.2f, 240f, 90f, Wave.Triangle, 0.25f);
 		}));
+
+		// ───────────── Phase 4: Grey Goo ─────────────
+		// The Lancer forming its spike: a thin, rising whine that brightens, with a wet creak under it, about as
+		// long as it takes to form, so the player hears it coming.
+		Save(folder, "lancer_form", Make(1f, b =>
+		{
+			Tone(b, 0f, 0.95f, 220f, 880f, Wave.Triangle, 0.35f, Shape.Hold);
+			Tone(b, 0.3f, 0.65f, 440f, 1760f, Wave.Sine, 0.2f, Shape.Hold);
+			Noise(b, random, 0f, 0.9f, 300f, 1200f, 0.15f);
+		}));
+		// The Lancer launching: a sharp whoosh of rising noise over a quick falling tone.
+		Save(folder, "lancer_launch", Make(0.35f, b =>
+		{
+			Noise(b, random, 0f, 0.3f, 1500f, 7000f, 0.55f);
+			Tone(b, 0f, 0.18f, 700f, 180f, Wave.Triangle, 0.4f);
+		}));
 	}
 
 	/// <summary>

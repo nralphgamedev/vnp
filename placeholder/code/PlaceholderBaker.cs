@@ -99,6 +99,8 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.ExtrudedShape(MineOutline, 0.35f), "meshes/mine.tres");
 		// Grey Goo: a smooth, lumpy blob, radius about 1. The game squashes and wobbles it.
 		Save(PlaceholderShapes.Blob(31, 0.22f), "meshes/goo.tres");
+		// The Lancer: a Grey Goo teardrop, its point aimed where it will launch. The game stretches it into a spike.
+		Save(PlaceholderShapes.Teardrop(37, 0.16f, 1.1f), "meshes/lancer.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.

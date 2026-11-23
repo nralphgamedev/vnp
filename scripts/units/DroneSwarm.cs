@@ -313,6 +313,31 @@ public partial class DroneSwarm : Node3D
 		return hit;
 	}
 
+	/// <summary>
+	/// Damages every living drone within <paramref name="radius"/> of the path between two points that isn't in
+	/// <paramref name="alreadyHit"/>, and adds each to it by its ID, so an attack that carries on through drones,
+	/// such as a Lancer's launch, hits each once. Returns how many it hit.
+	/// </summary>
+	public int HitAlong(Vector2 from, Vector2 to, float radius, float damage, DamageSource source,
+		System.Collections.Generic.HashSet<int> alreadyHit)
+	{
+		float reach = from.DistanceTo(to) * 0.5f + radius + Tuning.Drones.HitRadius + 1f;
+		int candidates = _grid.Query((from + to) * 0.5f, reach, _nearby);
+		int hits = 0;
+		for (int c = 0; c < candidates; c++)
+		{
+			int i = _nearby[c];
+			if (_drones[i].Health <= 0f || alreadyHit.Contains(_drones[i].Id))
+				continue;
+			if (PlaneMath.DistanceToSegment(_drones[i].Position, from, to) > radius + Tuning.Drones.HitRadius)
+				continue;
+			alreadyHit.Add(_drones[i].Id);
+			Damage(i, damage, source);
+			hits++;
+		}
+		return hits;
+	}
+
 	/// <summary>Damages a drone. A destroyed drone leaves wreckage that disintegrates. <paramref name="source"/>
 	/// is what dealt the damage, for fight statistics.</summary>
 	public void Damage(int index, float amount, DamageSource source)

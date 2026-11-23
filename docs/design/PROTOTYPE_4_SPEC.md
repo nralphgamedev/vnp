@@ -127,6 +127,10 @@ As in the earlier specs, this file names each value and where it lives rather th
 | The basic goo's split: drones absorbed before it splits, and how long it bulges | `enemies/grey_goo/basic_goo/basic_goo.tres` |
 | How quickly Grey Goo grows stronger during the fight and per escalation step, shared by every type (`RampGreyGooHealthPerMinute`, `RampGreyGooDamagePerMinute`, `EscalationGreyGooHealthPerStep`, `EscalationGreyGooDamagePerStep`) | `tuning/difficulty.tres` |
 | Each type's spawn weight, for groups and for waves; the basic enemy's is 0 | `tuning/enemy_spawning.tres` |
+| The Lancer's launch: the range it starts forming at, how long it forms, its speed, how far it carries on past the point it aimed at (`LaunchBeyond`), its damage, how long it recovers, its cooldown between launches | `enemies/grey_goo/lancer/lancer.tres` |
+| The Lancer's aim: how rare accurate ones are, how far ahead it leads, and how much it strays, from least to most accurate | `lancer.tres`; the difficulty ramp's accuracy in `difficulty.tres` raises it, as for the basic enemy |
+| The Lancer's look while forming: how far it stretches and how much paler it glows | `lancer.tres` |
+| How much faster newly spawned enemies are at each escalation step, every type (`EscalationEnemySpeedPerStep`) | `tuning/difficulty.tres` |
 
 ## Not yet decided
 
@@ -160,6 +164,32 @@ The prototype now does the following; any of it can still change.
 - **Pilots that plan (stage 2):** built as `docs/dev/PILOT_SPEC.md` describes, and now flying every pilot.
   - **Results:** over the same 50 seeds, fights of Grey Goo only were won 52% of the time instead of 40%, and none of its pilots were destroyed by the 8:00 cap, against 15. Touching a Goo fell from 0.50 to 0.07 times a minute.
   - **Closer to the designer later:** it outlives the designer's own fights by far more than the first pilot did. At the designer's choice, closing that gap waits for fitting it to their recorded Grey Goo fights; until then, batches read the game as easier than it plays.
+- **The Lancer (stage 3):** `enemies/grey_goo/lancer/`, `Lancer` on the shared Grey Goo code. It drains no drones and doesn't grow.
+  - **Its cycle:**
+    - **Drifting:** a teardrop-shaped blob, drifting after the VNP with its point turned toward it once it has noticed the VNP. Before that it wanders and faces where it goes, as other enemies do; at first it faced the VNP even while idle, which the designer noticed.
+    - **Forming:** once the VNP is within its launch range and its cooldown is done, it stops and forms into a spike over `FormSeconds`, stretching and glowing paler, with a rising whine. The whine stops when it launches, or if it is destroyed while forming; at first it played on after the Lancer died, which the designer noticed.
+    - **Launching:** it shoots along its line with a whoosh, carrying on through what it meets and past the point it aimed at by `LaunchBeyond`, and damages the VNP and each drone in its path once (`LaunchDamage`, which grows with the Grey Goo damage ramp).
+
+      **Changed after playtesting:** at the designer's request, it flies farther beyond its target and twice as fast. Before, each launch covered a fixed distance from where it started, which overshot a target at the edge of its launch range by only a few units.
+    - **Recovering:** it turns back into a blob, then drifts until its next launch. A group's first launches are spread out.
+  - **Aim:** its aim is set as it starts forming, so moving off the line dodges it. (The spec didn't say whether it keeps tracking while forming; set at the start gives the player the warning the spec asks for.) It leads ahead of a moving VNP by its accuracy, which it rolls as it spawns and the difficulty ramp raises, as the basic enemy does: sloppy ones aim nearer where the VNP is and stray more.
+  - **Touch:** it damages the VNP by touch like every Grey Goo type, except during a launch, when the launch itself is what hits.
+  - **Spawning:** in groups and waves, by its weight in `enemy_spawning.tres`, less often than the basic goo.
+  - **Seen by pilots:** while forming and launching, it declares its line, landing when the launch does. In a 90-second test against four groups of Lancers, the planning pilot took no damage from them and lost 2 drones to them. The first pilot, with no code for Lancers either, took 42 damage and lost 6 drones.
+  - **Cost:** about 2.6 µs an enemy alone, against 2.4 for the basic goo (about 1,000 each); every type mixed, about 3.3.
+  - **Shared code it added:**
+    - attack fields on enemies (`AttackPhase`, `AttackTimer`, `AttackFrom`, `AttackDirection`, `AttackDamage`), for the next types' attacks;
+    - `Spins` and `TouchHurts` on Grey Goo;
+    - `DroneSwarm.HitAlong`, which damages drones along a path once each;
+    - the `Launches` threat tag.
+  - **The full recording check** now also requires an attack declared before it lands.
+- **Sounds pause with the fight:** at the designer's request, while a menu pauses the fight (a level-up offer, the pause menu, the result screen, the starting weapon menu), the fight's own sounds pause too and carry on where they left off once it closes. Menu and result sounds still play. Before, every sound played on through a pause, so a Lancer's wind-up could finish while an offer was open. This changes phase 2's "Sounds while paused".
+- **Escalation speeds enemies up:** at the designer's request, each escalation step past the time limit also makes newly spawned enemies faster, in steps like their health, damage and accuracy (`EscalationEnemySpeedPerStep` in `difficulty.tres`).
+  - **Every type, chasing and wandering:** each enemy keeps the speed it spawned with, as it keeps its strength. Halves of a split keep their parent's.
+  - **Before the limit:** nothing changes.
+  - **Outrunning them:** enemies whose speed climbs past the VNP's can no longer be outrun. The slow Grey Goo types stay well below it for many steps; the basic enemy, nearer the VNP's speed, would pass it sooner, but it doesn't spawn in this phase.
+
+  This changes phase 1's escalation, which made enemies tougher, hit harder, spawn faster and widened every enemy's aggro range, but left their speed alone.
 - **Older fight logs:** these name the Goo `goo`. No report or tool groups results by enemy ID across logs, so nothing needed converting.
 - **First measurement:** 50 expert fights with the Designer build and random starting weapons and asteroid amounts, on the same seeds, once with the old mix and once with Grey Goo only:
 

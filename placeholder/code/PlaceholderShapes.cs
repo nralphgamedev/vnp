@@ -130,7 +130,25 @@ public static class PlaceholderShapes
 	/// Builds a smooth lumpy blob: a finely divided sphere pushed in and out by gentle noise, shaded smoothly
 	/// rather than in flat faces, so it reads as soft rather than rocky. Its farthest point is 1 from the centre.
 	/// </summary>
-	public static ArrayMesh Blob(int seed, float lumpiness)
+	public static ArrayMesh Blob(int seed, float lumpiness) => ShapedBlob(seed, lumpiness, null);
+
+	/// <summary>
+	/// A blob drawn out at the front (-z, the way units face) into a point, like a teardrop: its back is the
+	/// blob's, radius about 1, and its point reaches <paramref name="point"/> beyond that. For the Lancer, whose
+	/// silhouette points where it will launch.
+	/// </summary>
+	public static ArrayMesh Teardrop(int seed, float lumpiness, float point) => ShapedBlob(seed, lumpiness, v =>
+	{
+		if (v.Z >= 0f)
+			return v;
+		float forward = -v.Z;
+		// Narrower toward the front, then a long point.
+		float taper = 1f - 0.8f * Mathf.Pow(forward, 1.4f);
+		return new Vector3(v.X * taper, v.Y * taper, -forward * (1f + point * forward));
+	});
+
+	/// <summary>The blob, with <paramref name="shape"/> moving each corner after its lumps, or none.</summary>
+	private static ArrayMesh ShapedBlob(int seed, float lumpiness, System.Func<Vector3, Vector3> shape)
 	{
 		float t = (1f + Mathf.Sqrt(5f)) * 0.5f;
 		var corners = new List<Vector3>
@@ -186,6 +204,11 @@ public static class PlaceholderShapes
 		}
 		for (int i = 0; i < corners.Count; i++)
 			corners[i] /= farthest;
+		if (shape != null)
+		{
+			for (int i = 0; i < corners.Count; i++)
+				corners[i] = shape(corners[i]);
+		}
 
 		// Corners are shared between faces, and each takes the average facing of the faces around it,
 		// which is what makes the shading smooth.

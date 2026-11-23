@@ -15,7 +15,9 @@ lists them all. The most useful:
   weapon=ID              the starting VNP Weapon, such as scatter_shot
   drone_weapon=ID        the starting Drone Weapon: projectile, beam or ram
   spawn=basic_goo:3      spawn enemy groups around the VNP (basic_goo, basic_enemy, or all)
-  frames=N               how long to run, at 60 frames a second (default 600, 10 seconds)
+  frames=N               how long to run, at 60 frames a second. Default: with -Window, until the fight ends
+                         (a pilot carries on into endless mode until destroyed); headless, 600 (10 seconds).
+                         maxtime=SECONDS stops it at that fight time instead.
   log=res://playtests/x  write the fight log to that folder instead (log=none for no log). A pilot
                          fight is logged to playtests/pilot/ unless told otherwise.
   shot=C:\path\shot.png  save a screenshot (needs -Window)

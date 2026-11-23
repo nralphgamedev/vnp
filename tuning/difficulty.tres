@@ -16,6 +16,7 @@ EscalationEnemyDamagePerStep = 0.5
 EscalationSpawnRatePerStep = 1.0
 EscalationAggroRangePerStep = 0.4
 EscalationEnemyAccuracyPerStep = 0.15
+EscalationEnemySpeedPerStep = 0.1
 EscalationGreyGooHealthPerStep = 0.6
 EscalationGreyGooDamagePerStep = 0.5
 EscalationAlertSeconds = 1.6
