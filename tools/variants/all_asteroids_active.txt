@@ -1,0 +1,2 @@
+# Every asteroid and piece of debris kept active, as before ActiveRadius: for checking that the radius changes no fight.
+asteroids.ActiveRadius = 1000000

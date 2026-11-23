@@ -33,6 +33,7 @@ public partial class Harvestables : Node3D
 		public Vector3 TumbleAxis; // Axis a tumbling asteroid turns around. Zero if it does not tumble.
 		public float TumbleSpeed;  // Radians per second.
 		public float TumblePhase;  // Starting tumble angle, so tumblers are not in step.
+		public bool Active;        // Within ActiveRadius of the VNP: kept up to date, findable and drawn.
 	}
 
 	// Farthest point of the debris mesh from its centre at scale 1. Debris tumbles, so any point can face
@@ -69,6 +70,9 @@ public partial class Harvestables : Node3D
 	private Field[] _fields = new Field[16];
 	private int _fieldCount;
 	private readonly HashSet<(int X, int Y)> _filledCells = new();
+	// Active asteroids and debris this frame, for drawing; and where the slice of activation checks has reached.
+	private int _activeAsteroids, _activeDebris;
+	private int _activationCursor;
 	private AsteroidAmountDefinition _amount;
 	private int _lastId;
 	private float _maxRadius;
@@ -250,21 +254,35 @@ public partial class Harvestables : Node3D
 				_items[i] = _items[--_count]; // Fill the gap with the last one.
 		}
 
+		// A slice of every asteroid and piece of debris is checked against ActiveRadius each frame. Only active
+		// ones are moved with their field, found by queries and drawn; the rest wait, and are placed correctly
+		// with their field when they wake. All of the arena's material still counts in AsteroidCount and
+		// DebrisCount.
+		Vector2 anchor = Anchor;
+		ActivateSome(anchor);
 		AsteroidCount = 0;
 		DebrisCount = 0;
+		_activeAsteroids = 0;
+		_activeDebris = 0;
 		_grid.Clear();
 		for (int i = 0; i < _count; i++)
 		{
 			ref Item item = ref _items[i];
+			if (item.IsAsteroid)
+				AsteroidCount++;
+			else
+				DebrisCount++;
+			if (!item.Active)
+				continue;
 			if (item.Field >= 0)
 			{
 				Field field = _fields[item.Field];
 				item.Position = field.Center + item.Offset.Rotated(field.Angle);
 			}
 			if (item.IsAsteroid)
-				AsteroidCount++;
+				_activeAsteroids++;
 			else
-				DebrisCount++;
+				_activeDebris++;
 			item.Glow = Mathf.Max(0f, item.Glow - dt);
 			_grid.Insert(i, item.Position);
 		}
@@ -272,20 +290,52 @@ public partial class Harvestables : Node3D
 		Draw();
 	}
 
+	/// <summary>Where activity centres: the VNP, or the gateway before the fight has one.</summary>
+	private Vector2 Anchor => Fight?.Vnp != null ? Fight.Vnp.PlanePosition : Tuning.Fight.GatewayPosition;
+
+	/// <summary>Whether a spot is within ActiveRadius of the VNP.</summary>
+	private bool NearAnchor(Vector2 position) =>
+		position.DistanceSquaredTo(Anchor) <= Tuning.Asteroids.ActiveRadius * Tuning.Asteroids.ActiveRadius;
+
+	/// <summary>Checks the next slice of asteroids and debris against ActiveRadius, so all are checked every
+	/// ActivationFrames frames.</summary>
+	private void ActivateSome(Vector2 anchor)
+	{
+		if (_count == 0)
+			return;
+		float radiusSquared = Tuning.Asteroids.ActiveRadius * Tuning.Asteroids.ActiveRadius;
+		int slice = Mathf.Max(1, Mathf.CeilToInt(_count / (float)Mathf.Max(1, Tuning.Asteroids.ActivationFrames)));
+		for (int k = 0; k < slice && k < _count; k++)
+		{
+			if (_activationCursor >= _count)
+				_activationCursor = 0;
+			ref Item item = ref _items[_activationCursor++];
+			Vector2 position = item.Position;
+			if (item.Field >= 0)
+			{
+				Field field = _fields[item.Field];
+				position = field.Center + item.Offset.Rotated(field.Angle);
+			}
+			item.Active = position.DistanceSquaredTo(anchor) <= radiusSquared;
+		}
+	}
+
 	private void Draw()
 	{
 		for (int v = 0; v < _asteroidBatches.Length; v++)
 		{
-			_asteroidBatches[v].Begin(AsteroidCount);
+			_asteroidBatches[v].Begin(_activeAsteroids);
 			_variantCounts[v] = 0;
 		}
-		_debrisBatch.Begin(DebrisCount);
+		_debrisBatch.Begin(_activeDebris);
 		int debris = 0;
 		float time = (float)Fight.Elapsed;
 
 		for (int i = 0; i < _count; i++)
 		{
 			ref Item item = ref _items[i];
+			if (!item.Active)
+				continue;
 			Color color = item.IsAsteroid ? Tuning.Asteroids.Color : Tuning.Harvesting.DebrisColor;
 			if (item.Glow > 0f)
 				color = color.Lerp(Tuning.Look.ExperienceColor, 0.6f * item.Glow / GlowTime);
@@ -522,6 +572,7 @@ public partial class Harvestables : Node3D
 			IsAsteroid = isAsteroid,
 			Field = field,
 			Offset = offset,
+			Active = NearAnchor(position),
 		};
 	}
 

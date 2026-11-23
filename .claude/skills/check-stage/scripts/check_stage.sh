@@ -210,6 +210,50 @@ if [ $full -eq 1 ]; then
 	fi
 fi
 
+if [ $full -eq 1 ]; then
+	echo "== Performance requirement (before each commit; opens a window)"
+	# The stress case for CLAUDE.md's performance requirement: a Rich field, a full swarm of Beam drones, Orbital
+	# Shards with extra shards and Mine Layer for effects, eight groups of every enemy type plus six more of Goos,
+	# and an expert pilot flying, kept alive, for a minute of fight, in a window with vsync off (perf=). plain judges
+	# the frame budget and hitches on clock time with nothing extra measuring; detail adds the logic budget and
+	# shows where the time goes. Frames run uncapped, so each takes a few seconds.
+	stress=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam
+		take=orbital_shards_count,orbital_shards_count,orbital_shards_area,mine_layer,drone_cap,drone_cap
+		spawn=all:8 spawn=goo:6 drones=40 invulnerable maxtime=60 mute=yes log=none close=yes)
+	for mode in plain detail; do
+		perf_out="$(run_scenario window "${stress[@]}" perf=$mode)"
+		echo "$perf_out" | grep "^PERF"
+		if echo "$perf_out" | grep -q "^PERF: requirement MET"; then
+			note "Performance ($mode): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps), worst [0-9.]* ms')"
+		else
+			fail "the performance requirement is not met in the stress test ($mode; see the PERF lines above)"
+		fi
+	done
+
+	# The late fight: an invulnerable expert plays a Rich field to 6:00, fast forwarded (perfstart=), then a
+	# minute of escalated fight is measured, with recording on as in the designer's fights. It catches costs
+	# that grow over a long fight, such as asteroids piling up as the VNP explores, which the stress minute
+	# doesn't reach. About 100 seconds.
+	late=(pilot=expert build=designer seed=8 asteroids=rich weapon=orbital_shards drone_weapon=beam invulnerable
+		maxtime=420 perfstart=360 record=yes perf=detail profile=yes mute=yes log=none close=yes)
+	perf_out="$(run_scenario window "${late[@]}")"
+	echo "$perf_out" | grep -E "^PERF|^PROFILE"
+	if echo "$perf_out" | grep -q "^PERF: requirement MET"; then
+		note "Performance (late fight, 6:00 to 7:00): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps), worst [0-9.]* ms'); $(echo "$perf_out" | grep -o 'game logic [0-9.]* ms (budget [0-9.]*)')"
+	else
+		fail "the performance requirement is not met in the late fight (see the PERF lines above)"
+	fi
+
+	# The tenfold crowd, report only: about ten times a late fight's enemies (360 groups of each type, about
+	# 2,500), for where crowds may go (the designer's "full Vampire Survivors"). It doesn't meet the logic budget
+	# yet and doesn't fail the check; it shows progress until it becomes a requirement.
+	crowd=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam spawn=all:360
+		drones=40 invulnerable maxtime=30 perf=detail profile=yes mute=yes log=none close=yes)
+	perf_out="$(run_scenario window "${crowd[@]}")"
+	alive="$(echo "$perf_out" | grep -E "^t [0-9.]+s" | tail -1 | grep -oE "basic_enemy [0-9]+ goo [0-9]+" | awk '{print $2 + $4}')"
+	note "Tenfold crowd (report only, ${alive:-?} enemies alive at the end): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps)' | head -1); $(echo "$perf_out" | grep -o 'game logic [0-9.]* ms (budget [0-9.]*)'); enemies $(echo "$perf_out" | grep -oE 'PROFILE: +enemies +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms; pilot $(echo "$perf_out" | grep -oE 'PROFILE: +pilot +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms (average / slowest 1%)"
+fi
+
 echo "== Cheats kept out of export builds"
 # Top-level classes only: nested ones go with their parent, and their short names (such as Page)
 # turn up in other code too.

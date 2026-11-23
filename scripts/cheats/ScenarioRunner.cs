@@ -39,6 +39,19 @@ using System.Reflection;
 ///                      what it chose to do. For finding out why it did something odd.
 ///   maps=yes           draw the run review maps when the fight log is written: an overview of the fight and a
 ///                      strip map of each flagged moment, in a maps folder beside the log
+///   perf=plain|detail  measure against the performance requirement (performance.tres), in a window: vsync off and
+///                      no frame cap, so frames run as fast as the computer allows. plain times whole frames by the
+///                      clock with nothing extra switched on, and is what the requirement is judged on; detail also
+///                      switches on Godot's CPU and GPU render timing and reports logic, render CPU and GPU times,
+///                      which costs a little itself. Prints a PERF line with the slowest 1%, the worst frames with
+///                      their fight times, and whether the requirement is met. Paused frames (menus) and the first
+///                      SkipSeconds (loading) are left out.
+///   profile=yes        time each part of the fight's update (UpdateOrder: the pilot, the VNP, harvestables, enemies,
+///                      drones, projectiles, weapons, effects, ...) and print each part's average and slowest 1% at
+///                      the end, from perfstart= on if given. Works headless: it times game logic only.
+///   perfstart=SECONDS  with perf= or profile=, measure only from this fight time, such as perfstart=360 for a
+///                      late, escalated fight: an invulnerable pilot plays there first, fast forwarded
+///                      (FastForwardScale in performance.tres)
 ///   record=yes         record the whole fight's picture around the VNP, as the designer's fights do, into a
 ///                      compressed file beside the log, so tools\maps.cmd can draw any moment (for testing it)
 ///   strip=T1,T2        also save strips around these fight times in seconds, such as a moment spotted on an
@@ -108,6 +121,110 @@ public partial class ScenarioRunner : Node
 	private string[] _take;
 	private int _exitCode;
 
+	// perf=: each counted frame's clock time, fight time, whether the fight was paused, and in detail its logic,
+	// render CPU and GPU times.
+	private string _perf;
+	// perf=detail: when the last frame's updates began and ended, marked by two nodes that run first and last.
+	private ulong _logicStart, _logicEnd;
+	private double _lastLogicMs;
+	private double _lastTestingMs;
+	// perf=: the fight time measuring starts at (perfstart=), such as 360 to measure a late, escalated fight only.
+	private double _perfStart;
+	private bool _fastForwarding;
+
+	// profile=: one marker per update priority, run after every node of that priority (they come after the fight
+	// in the tree), so the time between two markers is one part of the fight's update.
+	private bool _profile;
+	private static readonly (int Priority, string Name)[] ProfileParts =
+	{
+		(UpdateOrder.Fight, "fight"), (UpdateOrder.Pilots, "pilot"), (UpdateOrder.Vnp, "VNP and default-priority nodes"),
+		(UpdateOrder.Harvestables, "harvestables"), (UpdateOrder.Enemies, "enemies"), (UpdateOrder.Drones, "drones"),
+		(UpdateOrder.Projectiles, "projectiles"), (UpdateOrder.Weapons, "weapons"), (UpdateOrder.Effects, "effects"),
+		(UpdateOrder.Audio, "audio"), (UpdateOrder.Camera, "camera"), (UpdateOrder.Ground, "ground"), (UpdateOrder.Hud, "HUD"),
+	};
+	private long _profileStart;
+	private readonly long[] _profileMarks = new long[ProfileParts.Length];
+	private readonly List<double>[] _profileTimes = ProfileParts.Select(_ => new List<double>()).ToArray();
+
+	/// <summary>profile=: marks the end of one update priority's nodes, or with Index -1 the start of the frame.</summary>
+	private sealed partial class ProfileMark : Node
+	{
+		public ScenarioRunner Runner;
+		public int Index;
+
+		public override void _Process(double delta)
+		{
+			long now = System.Diagnostics.Stopwatch.GetTimestamp();
+			if (Index < 0)
+			{
+				Runner.CollectProfile();
+				Runner._profileStart = now;
+			}
+			else
+				Runner._profileMarks[Index] = now;
+		}
+	}
+
+	/// <summary>The last frame's time in each part, from its markers, while the fight was running.</summary>
+	private void CollectProfile()
+	{
+		if (_profileStart == 0 || _fight == null || GetTree().Paused || _fight.Elapsed < Math.Max(2, _perfStart))
+			return;
+		long previous = _profileStart;
+		for (int i = 0; i < ProfileParts.Length; i++)
+		{
+			long mark = _profileMarks[i];
+			_profileTimes[i].Add(mark > previous ? (mark - previous) * 1000.0 / System.Diagnostics.Stopwatch.Frequency : 0);
+			if (mark > previous)
+				previous = mark;
+		}
+	}
+
+	private void StartProfile()
+	{
+		AddChild(new ProfileMark { Runner = this, Index = -1, ProcessPriority = int.MinValue + 1, ProcessMode = ProcessModeEnum.Always });
+		for (int i = 0; i < ProfileParts.Length; i++)
+			AddChild(new ProfileMark { Runner = this, Index = i, ProcessPriority = ProfileParts[i].Priority, ProcessMode = ProcessModeEnum.Always });
+	}
+
+	private void PrintProfile()
+	{
+		if (_profileTimes[0].Count == 0)
+			return;
+		Say($"PROFILE: {_profileTimes[0].Count} frames" + (_perfStart > 0 ? $" from {_perfStart:0}s" : "") +
+			", each part of the fight's update: average / slowest 1% (ms)");
+		for (int i = 0; i < ProfileParts.Length; i++)
+		{
+			var sorted = _profileTimes[i].OrderBy(v => v).ToList();
+			double average = sorted.Average(), slowest = sorted[Math.Min(sorted.Count - 1, (int)(0.99 * sorted.Count))];
+			if (slowest >= 0.01)
+				Say($"PROFILE:   {ProfileParts[i].Name,-30} {average,6:0.00} / {slowest,6:0.00}");
+		}
+	}
+
+	/// <summary>Marks a moment in each frame for perf=detail's logic timing: the first node to update, or the last.</summary>
+	private sealed partial class FrameMark : Node
+	{
+		public ScenarioRunner Runner;
+		public bool IsEnd;
+
+		public override void _Process(double delta)
+		{
+			if (IsEnd)
+				Runner._logicEnd = Time.GetTicksUsec();
+			else
+			{
+				// The frame before: its updates ran from its start mark to its end mark, and testing code spent
+				// TestingCost's total within them.
+				Runner._lastLogicMs = Runner._logicEnd > Runner._logicStart ? (Runner._logicEnd - Runner._logicStart) / 1000.0 : 0;
+				Runner._lastTestingMs = TestingCost.FrameMs;
+				TestingCost.FrameMs = 0;
+				Runner._logicStart = Time.GetTicksUsec();
+			}
+		}
+	}
+	private readonly List<(double Ms, double Time, bool Paused, double Logic, double Cpu, double Gpu, double Testing)> _perfFrames = new();
+
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
@@ -124,6 +241,8 @@ public partial class ScenarioRunner : Node
 		}
 		Fight.NextSeed = _seed;
 		Fight.NextAsteroidAmount = _asteroidAmount;
+		if (_perf != null)
+			StartPerf();
 		FightLog.NextFolder = _logFolder == "none" ? ""
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		// A pilot fight logged to playtests/pilot gets a folder of its own, like the designer's fights.
@@ -139,7 +258,7 @@ public partial class ScenarioRunner : Node
 		if (_mute)
 		{
 			AudioServer.SetBusMute(AudioServer.GetBusIndex("Master"), true);
-			GD.Print("SCENARIO: sound muted");
+			Say("SCENARIO: sound muted");
 		}
 		// Release the scene once it is instantiated, so it isn't reported as still in use when the game quits.
 		using (PackedScene scene = GD.Load<PackedScene>("res://scenes/Fight.tscn"))
@@ -149,6 +268,16 @@ public partial class ScenarioRunner : Node
 		// pause as it does in a normal game.
 		_fight.ProcessMode = ProcessModeEnum.Pausable;
 		AddChild(_fight);
+		// After the fight, so each marker comes after that priority's fight nodes in the tree, and runs after them.
+		if (_profile)
+			StartProfile();
+		// perfstart=: play fast up to the measuring start (see PerformanceSettings.FastForwardScale).
+		if (_perfStart > 0 && (_perf != null || _profile))
+		{
+			var settings = GD.Load<PerformanceSettings>("res://scripts/cheats/playtesting/performance.tres") ?? new PerformanceSettings();
+			Engine.TimeScale = settings.FastForwardScale;
+			_fastForwarding = true;
+		}
 	}
 
 	// What each option takes, for the message when one is mistyped or given a value it can't use.
@@ -165,6 +294,9 @@ public partial class ScenarioRunner : Node
 		["maxtime"] = "a fight time in seconds",
 		["maps"] = "yes or no",
 		["record"] = "yes or no",
+		["perf"] = "plain or detail, in a window",
+		["perfstart"] = "a fight time in seconds to start measuring at, with perf= or profile=",
+		["profile"] = "yes or no",
 		["strip"] = "comma-separated T, T:S, FROM-TO or FROM-TO:S, in seconds",
 		["logname"] = "a file name without .json",
 		["mute"] = "yes or no",
@@ -221,6 +353,13 @@ public partial class ScenarioRunner : Node
 					case "maxtime": _maxTime = double.Parse(value, culture); break;
 					case "maps": FightLog.NextDrawMaps = YesNo(value); break;
 					case "record": FightLog.NextRecord = YesNo(value); break;
+					case "perfstart": _perfStart = double.Parse(value, culture); break;
+					case "profile": _profile = YesNo(value); break;
+					case "perf":
+						if (value != "plain" && value != "detail")
+							throw new FormatException();
+						_perf = value;
+						break;
 					case "strip":
 						FightLog.NextStripTimes = value.Split(',').Select(ReviewRecorder.StripRequest.Parse).ToList();
 						break;
@@ -269,8 +408,9 @@ public partial class ScenarioRunner : Node
 		}
 		// A fight time to stop at, without a frame limit, should reach it: allow three times its frames, since
 		// level-up offers pause the fight but still count frames. Without this, the 10-second default stopped it.
+		// Measuring runs uncapped, with many more frames a second, so it sets no frame limit of its own.
 		if (_maxTime > 0 && !_framesGiven)
-			_frames = (int)(_maxTime * 60 * 3);
+			_frames = _perf != null || _profile ? int.MaxValue : (int)(_maxTime * 60 * 3);
 		CheckIds();
 	}
 
@@ -313,6 +453,8 @@ public partial class ScenarioRunner : Node
 		if (_variant != null && _variant != "base"
 			&& !System.IO.File.Exists(System.IO.Path.Combine(ProjectSettings.GlobalizePath("res://"), TuningVariant.Folder, _variant + ".txt")))
 			_argumentErrors.Add($"variant={_variant}: no {TuningVariant.Folder}/{_variant}.txt");
+		if (_perf != null && DisplayServer.GetName() == "headless")
+			_argumentErrors.Add($"perf={_perf}: needs a window (run with -Window or --window)");
 		if (_explainFrom > _explainTo)
 			_argumentErrors.Add($"explain={_explainFrom}-{_explainTo}: FROM is after TO");
 	}
@@ -337,8 +479,28 @@ public partial class ScenarioRunner : Node
 		return row[b.Length];
 	}
 
+	// Timed as testing work (TestingCost), so the performance requirement is judged on the game's own time.
 	public override void _Process(double delta)
 	{
+		long started = TestingCost.Begin();
+		try
+		{
+			ProcessFrame();
+		}
+		finally
+		{
+			TestingCost.End(started);
+		}
+	}
+
+	private void ProcessFrame()
+	{
+		if (_fastForwarding && _fight != null && _fight.Elapsed >= _perfStart - 1)
+		{
+			// A second before the measuring starts, back to normal speed, so measured frames have normal steps.
+			Engine.TimeScale = 1;
+			_fastForwarding = false;
+		}
 		if (_quitting)
 		{
 			// Clean up before quitting, as closing the game's window does (see ShutdownCleanup).
@@ -352,7 +514,11 @@ public partial class ScenarioRunner : Node
 		_frame++;
 		ulong now = Time.GetTicksUsec();
 		if (_frame > 3 && _lastTicks != 0)
+		{
 			_frameMs.Add((now - _lastTicks) / 1000.0);
+			if (_perf != null && _fight != null)
+				RecordPerfFrame((now - _lastTicks) / 1000.0);
+		}
 		_lastTicks = now;
 
 		if (_frame == 2)
@@ -360,8 +526,9 @@ public partial class ScenarioRunner : Node
 		TakeUpgrade();
 		PrintLevelUps();
 		ExplainPilot();
-		// Status lines on fight time, so pauses for level-up offers don't shift them.
-		if (_frame > 2 && _fight.Elapsed >= _nextReport)
+		// Status lines on fight time, so pauses for level-up offers don't shift them. Not while perf= measures:
+		// building one costs a few milliseconds of the harness's own, which would be measured as a slow frame.
+		if (_frame > 2 && _perf == null && _fight.Elapsed >= _nextReport)
 		{
 			PrintStatus();
 			_lastStatusTime = _fight.Elapsed;
@@ -377,7 +544,7 @@ public partial class ScenarioRunner : Node
 			if (_fight.GetNodeOrNull<Control>("Hud/ResultScreen") is Control resultScreen)
 				resultScreen.Visible = false;
 			_fight.ContinueEndless();
-			GD.Print($"SCENARIO: won at {_fight.Elapsed:0.0}s, carrying on into endless mode");
+			Say($"SCENARIO: won at {_fight.Elapsed:0.0}s, carrying on into endless mode");
 		}
 		if (_fight.IsOver && _overFrame == 0)
 			_overFrame = _frame;
@@ -387,7 +554,7 @@ public partial class ScenarioRunner : Node
 		{
 			_capped = true;
 			_fight.FightLog?.FightCapped();
-			GD.Print($"SCENARIO: reached the cap of {_maxTime:0}s of fight time");
+			Say($"SCENARIO: reached the cap of {_maxTime:0}s of fight time");
 		}
 		bool finishing = _frame >= _frames || overLongEnough || _capped;
 		if (_shotPath != null && (_frame == _shotFrame || (_shotFrame <= 0 && finishing)))
@@ -405,7 +572,7 @@ public partial class ScenarioRunner : Node
 				_finished = true;
 				if (!_fight.IsOver)
 					GetTree().Paused = true;
-				GD.Print("SCENARIO: finished; close the window to quit");
+				Say("SCENARIO: finished; close the window to quit");
 				return;
 			}
 			// Free the fight first and quit on the next frame, so it isn't reported as still in use at exit.
@@ -514,7 +681,7 @@ public partial class ScenarioRunner : Node
 				spawnGroup.Invoke(swarm, new object[] { home, type, true });
 			}
 		}
-		GD.Print($"SCENARIO: seed {_fight.Seed}, pilot {(_fight.Pilot == null ? "none" : $"{_fight.Pilot.Skill.Id}/{_fight.Pilot.Build.Id}")}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
+		Say($"SCENARIO: seed {_fight.Seed}, pilot {(_fight.Pilot == null ? "none" : $"{_fight.Pilot.Skill.Id}/{_fight.Pilot.Build.Id}")}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +
 			$"spawned {string.Join(", ", spawns.Select(s => $"{s.Item2} {s.Item1} groups"))}");
 	}
 
@@ -532,7 +699,7 @@ public partial class ScenarioRunner : Node
 				: "";
 			return $"{t.Definition.Id} {ofType.Length}{growth}";
 		}));
-		GD.Print($"t {_fight.Elapsed:0.0}s  {byType}  drones {_fight.Drones.Count}/{_fight.Drones.Cap}  " +
+		Say($"t {_fight.Elapsed:0.0}s  {byType}  drones {_fight.Drones.Count}/{_fight.Drones.Cap}  " +
 			$"vnp {_fight.Vnp.Health:0}/{_fight.Vnp.MaxHealth:0}  " +
 			$"gateway {_fight.Vnp.PlanePosition.DistanceTo(_fight.Gateway.PlanePosition):0} away  " +
 			$"kills {_fight.Kills}  level {_fight.Level}  " +
@@ -555,12 +722,12 @@ public partial class ScenarioRunner : Node
 			FightStats.LevelUp levelUp = levelUps[latest];
 			for (; _rerollsPrinted < levelUp.Rerolls; _rerollsPrinted++)
 			{
-				GD.Print($"  rerolled{(levelUp.FreeRerolls > 0 ? " (free)" : "")} at level {levelUp.Level}: " +
+				Say($"  rerolled{(levelUp.FreeRerolls > 0 ? " (free)" : "")} at level {levelUp.Level}: " +
 					$"{Names(levelUp.Offers[_rerollsPrinted])}  ->  {Names(levelUp.Offers[_rerollsPrinted + 1])}");
 			}
 			if (levelUp.Taken != null)
 			{
-				GD.Print($"LEVEL {levelUp.Level} at {When(levelUp.Time)}: took {NameOf(levelUp.Taken)}" +
+				Say($"LEVEL {levelUp.Level} at {When(levelUp.Time)}: took {NameOf(levelUp.Taken)}" +
 					$"   (offered {Names(levelUp.Offers[^1])})");
 				_levelUpsPrinted = latest + 1;
 				_rerollsPrinted = 0;
@@ -577,7 +744,7 @@ public partial class ScenarioRunner : Node
 		_decisionsExplained = pilot.Decisions;
 		double time = _fight.Elapsed;
 		if (time >= _explainFrom && time <= _explainTo)
-			GD.Print($"  {time:0.00}s  {pilot.Reasoning}");
+			Say($"  {time:0.00}s  {pilot.Reasoning}");
 	}
 
 	private static string When(double time)
@@ -613,9 +780,106 @@ public partial class ScenarioRunner : Node
 		for (int i = 0; i < swarm.Count; i++)
 			enemySum += enemies[i].Position.X * 1.3 + enemies[i].Position.Y + enemies[i].Health * 0.01;
 		Vector2 vnp = _fight.Vnp.PlanePosition;
-		GD.Print($"TRACE {_frame} t {_fight.Elapsed:0.000} paused {GetTree().Paused} draws {Rng.Draws} " +
+		Say($"TRACE {_frame} t {_fight.Elapsed:0.000} paused {GetTree().Paused} draws {Rng.Draws} " +
 			$"vnp {vnp.X:0.0000},{vnp.Y:0.0000} enemies {swarm.Count} {enemySum:0.0000} drones {_fight.Drones.Count} " +
 			$"kills {_fight.Kills} level {_fight.Level}");
+	}
+
+	// perf=: the harness's own lines, held until the measurement ends, since a print costs 10 ms or more when
+	// the output goes to a console, and would be measured as a hitch.
+	private readonly List<string> _heldLines = new();
+
+	/// <summary>Prints a line, or holds it while perf= is measuring.</summary>
+	private void Say(string text)
+	{
+		if (_perf != null && !_finishedMeasuring)
+			_heldLines.Add(text);
+		else
+			GD.Print(text);
+	}
+
+	private bool _finishedMeasuring;
+
+	/// <summary>perf=: frames as fast as the computer allows, and in detail Godot's render timing.</summary>
+	private void StartPerf()
+	{
+		DisplayServer.WindowSetVsyncMode(DisplayServer.VSyncMode.Disabled);
+		Engine.MaxFps = 0;
+		// The start mark collects each frame's testing time, in both modes; the end mark times logic, in detail.
+		AddChild(new FrameMark { Runner = this, ProcessPriority = int.MinValue, ProcessMode = ProcessModeEnum.Always });
+		if (_perf == "detail")
+		{
+			RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
+			// Logic is timed from the first node's update to the last's, every node in the tree in between.
+			AddChild(new FrameMark { Runner = this, IsEnd = true, ProcessPriority = int.MaxValue, ProcessMode = ProcessModeEnum.Always });
+		}
+		Vector2I size = DisplayServer.WindowGetSize();
+		GD.Print($"PERF: measuring ({_perf}) at {size.X}x{size.Y}, vsync off, no frame cap; the harness's own lines follow afterwards");
+		RunReview.Say = Say;
+	}
+
+	private void RecordPerfFrame(double ms)
+	{
+		double logic = 0, cpu = 0, gpu = 0;
+		if (_perf == "detail")
+		{
+			Rid viewport = GetViewport().GetViewportRid();
+			// The last frame's updates (this runs early in the next frame, before the marks update again).
+			logic = _lastLogicMs;
+			cpu = RenderingServer.ViewportGetMeasuredRenderTimeCpu(viewport) + RenderingServer.GetFrameSetupTimeCpu();
+			gpu = RenderingServer.ViewportGetMeasuredRenderTimeGpu(viewport);
+		}
+		_perfFrames.Add((ms, _fight.Elapsed, GetTree().Paused, logic, cpu, gpu, _lastTestingMs));
+	}
+
+	/// <summary>The PERF lines: the slowest 1% of frames against the budget, hitches, the worst frames with their
+	/// fight times, and in detail where the time went.</summary>
+	private void PrintPerf()
+	{
+		_finishedMeasuring = true;
+		foreach (string line in _heldLines)
+			GD.Print(line);
+		_heldLines.Clear();
+		var settings = GD.Load<PerformanceSettings>("res://scripts/cheats/playtesting/performance.tres") ?? new PerformanceSettings();
+		var frames = _perfFrames.Where(f => !f.Paused && f.Time >= Math.Max(settings.SkipSeconds, _perfStart)).ToList();
+		if (frames.Count == 0)
+		{
+			Say("PERF: no frames counted (all paused or within the loading seconds)");
+			return;
+		}
+		double Slowest(IEnumerable<double> values)
+		{
+			var sorted = values.OrderBy(v => v).ToList();
+			return sorted[Math.Min(sorted.Count - 1, (int)((1 - settings.SlowestShare) * sorted.Count))];
+		}
+		// The game's own time: each frame less the testing code's work in it (TestingCost), which an exported game
+		// doesn't do. A frame over budget only because of testing work is tagged, and doesn't fail the requirement.
+		double Game(double ms, double testing) => Math.Max(0, ms - testing);
+		double slowest = Slowest(frames.Select(f => Game(f.Ms, f.Testing)));
+		int overBudget = frames.Count(f => Game(f.Ms, f.Testing) > settings.FrameBudgetMs);
+		int hitches = frames.Count(f => Game(f.Ms, f.Testing) > settings.HitchMs);
+		int tagged = frames.Count(f => f.Ms > settings.FrameBudgetMs && Game(f.Ms, f.Testing) <= settings.FrameBudgetMs);
+		Say($"PERF: {frames.Count} frames" + (_perfStart > 0 ? $" from {_perfStart:0}s" : "") +
+			$", game's own time: average {frames.Average(f => Game(f.Ms, f.Testing)):0.00} ms, " +
+			$"slowest {settings.SlowestShare * 100:0.#}% {slowest:0.00} ms ({1000 / Math.Max(0.01, slowest):0} fps), " +
+			$"worst {frames.Max(f => Game(f.Ms, f.Testing)):0.00} ms; {overBudget} frames over {settings.FrameBudgetMs:0.##} ms, " +
+			$"{hitches} over {settings.HitchMs:0.#} ms. Testing code averaged {frames.Average(f => f.Testing):0.00} ms a frame; " +
+			$"{tagged} frames over budget only because of it (tagged as testing, not failing)");
+		Say("PERF: worst frames at fight time " + string.Join(", ",
+			frames.OrderByDescending(f => f.Ms).Take(8).Select(f => $"{f.Time:0.00}s {f.Ms:0.0} ms" +
+				(f.Testing >= 0.5 ? $" of which testing {f.Testing:0.0}" : "") +
+				(_perf == "detail" ? $" (logic {f.Logic:0.0}, CPU {f.Cpu:0.0}, GPU {f.Gpu:0.0})" : "") +
+				(f.Ms > settings.FrameBudgetMs && Game(f.Ms, f.Testing) <= settings.FrameBudgetMs ? " [testing]" : ""))));
+		bool met = slowest <= settings.FrameBudgetMs && hitches == 0;
+		if (_perf == "detail")
+		{
+			double logic = Slowest(frames.Select(f => Game(f.Logic, f.Testing)));
+			Say($"PERF: slowest {settings.SlowestShare * 100:0.#}% by part: game logic {logic:0.00} ms (budget {settings.LogicBudgetMs:0.##}), " +
+				$"render CPU {Slowest(frames.Select(f => f.Cpu)):0.00} ms, GPU {Slowest(frames.Select(f => f.Gpu)):0.00} ms; " +
+				$"averages logic {frames.Average(f => f.Logic):0.00}, render CPU {frames.Average(f => f.Cpu):0.00}, GPU {frames.Average(f => f.Gpu):0.00} ms");
+			met &= logic <= settings.LogicBudgetMs;
+		}
+		Say(met ? "PERF: requirement MET" : "PERF: requirement NOT MET");
 	}
 
 	private void PrintTiming()
@@ -625,7 +889,11 @@ public partial class ScenarioRunner : Node
 		var sorted = _frameMs.OrderBy(ms => ms).ToList();
 		double Percentile(double p) => sorted[Math.Min(sorted.Count - 1, (int)(p * sorted.Count))];
 		bool headless = DisplayServer.GetName() == "headless";
-		GD.Print($"TIMING: {sorted.Count} frames, average {sorted.Average():0.00} ms, 95th percentile {Percentile(0.95):0.00} ms, " +
+		if (_perf != null)
+			PrintPerf();
+		if (_profile)
+			PrintProfile();
+		Say($"TIMING: {sorted.Count} frames, average {sorted.Average():0.00} ms, 95th percentile {Percentile(0.95):0.00} ms, " +
 			$"worst {sorted[^1]:0.00} ms" + (headless
 				? " (headless: game logic only, no rendering)"
 				: " (windowed: includes rendering and waiting for vsync)"));
@@ -634,7 +902,7 @@ public partial class ScenarioRunner : Node
 	private void SaveShot()
 	{
 		Error error = GetViewport().GetTexture().GetImage().SavePng(_shotPath);
-		GD.Print(error == Error.Ok ? $"SCREENSHOT: {_shotPath}" : $"SCREENSHOT failed: {error}");
+		Say(error == Error.Ok ? $"SCREENSHOT: {_shotPath}" : $"SCREENSHOT failed: {error}");
 	}
 }
 #endif

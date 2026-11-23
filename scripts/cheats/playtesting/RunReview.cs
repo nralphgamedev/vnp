@@ -31,6 +31,15 @@ public class RunReview
 
 	public readonly List<Detector> Detectors = new();
 
+	/// <summary>Print each moment as a REVIEW line. Off in the designer's fights: a print costs 10 ms or more when
+	/// the output goes to a console or the editor's output, a hitch in play, and the moments are in the log
+	/// anyway. Set by the fight log.</summary>
+	public bool PrintMoments = true;
+
+	/// <summary>Where REVIEW lines go: printed straight away, unless the scenario harness holds its output while
+	/// measuring performance (perf=).</summary>
+	public static System.Action<string> Say = text => GD.Print(text);
+
 	/// <summary>Told when a detector fires, so it can save a strip of the moment.</summary>
 	public ReviewRecorder Recorder;
 
@@ -265,7 +274,8 @@ public class RunReview
 		var moment = new Moment(Math.Round(now, 2), detail);
 		detector.Moments.Add(moment);
 		Recorder?.Flag(detector.Id, now);
-		GD.Print($"REVIEW: {detector.Name} at {Ui.Clock(now)} (clock {OnScreenClock(now)}): {moment.Detail}");
+		if (PrintMoments)
+			Say?.Invoke($"REVIEW: {detector.Name} at {Ui.Clock(now)} (clock {OnScreenClock(now)}): {moment.Detail}");
 	}
 
 	/// <summary>The HUD clock at a fight time: counting down to the time limit, then "+" and the time past it.</summary>

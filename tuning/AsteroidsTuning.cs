@@ -139,6 +139,19 @@ public partial class AsteroidsTuning : Resource
 	/// <summary>Lone asteroids in a cell. 17 matches the density around the gateway.</summary>
 	[Export] public int LonePerCell;
 
+	/// <summary>Only asteroids and debris within this distance of the VNP are kept up to date, found by harvest
+	/// beams, drones and pilots, and drawn; the rest wait, unchanged, until it comes near (their fields keep
+	/// moving). Without it, every asteroid ever placed was updated and drawn every frame, so a long fight that
+	/// explored far slowed down (the performance requirement's late-fight test). It must stay well beyond the
+	/// farthest anything looks at material, the pilot's awareness (80 for the expert), plus how far the VNP moves
+	/// in ActivationFrames.</summary>
+	[ExportGroup("Performance")]
+	[Export] public float ActiveRadius = 130f;
+
+	/// <summary>Every asteroid's distance from the VNP is checked once in this many frames, a slice each frame, so
+	/// one that comes within ActiveRadius wakes within that time.</summary>
+	[Export] public int ActivationFrames = 15;
+
 	/// <summary>Scale of an asteroid with mass 1, about 1.8 units across. Heavier asteroids are
 	/// drawn larger, and every asteroid shrinks as it is harvested.</summary>
 	[ExportGroup("Look")]

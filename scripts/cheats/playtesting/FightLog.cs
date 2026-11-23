@@ -82,6 +82,14 @@ public partial class FightLog : Node
 	private readonly List<Dictionary<string, object>> _timeline = new();
 	private readonly List<float[]> _input = new();
 	private readonly List<double> _frameMs = new();
+	// The designer's fights, in a window: each frame's whole time by the clock, and Godot's render CPU and GPU
+	// times for it, so a log shows the full cost of a frame, not only game logic. Measuring them costs too little
+	// to see (checked against the performance requirement's stress test).
+	private bool _measureRender;
+	private ulong _lastFrameTicks;
+	private readonly List<double> _wholeFrameMs = new();
+	private readonly List<double> _renderCpuMs = new();
+	private readonly List<double> _gpuMs = new();
 	private int _mostEnemies;
 	private int _mostDrones;
 	private Label _note;
@@ -136,13 +144,17 @@ public partial class FightLog : Node
 		NextDrawMaps = false;
 		log._recorder.RecordWholeFight = NextRecord || (player == "designer" && reviewSettings.RecordPlayerFights);
 		NextRecord = false;
-		log._review = new RunReview(fight, reviewSettings) { Recorder = log._recorder };
+		log._review = new RunReview(fight, reviewSettings) { Recorder = log._recorder, PrintMoments = player != "designer" };
 		fight.AddChild(log);
 		return log;
 	}
 
 	public override void _Ready()
 	{
+		// The designer's fights, in a window, also measure render CPU and GPU time (see _measureRender).
+		_measureRender = _player == "designer" && DisplayServer.GetName() != "headless";
+		if (_measureRender)
+			RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
 		// Build the log once and throw it away, as the fight is set up, so .NET compiles that code now: the first
 		// real write otherwise spent about 70 ms compiling it on the main thread, a hitch at the win. Deferred, so
 		// the fight is ready; it runs even while the starting weapon menu has the game paused.
@@ -159,7 +171,21 @@ public partial class FightLog : Node
 		}).CallDeferred();
 	}
 
+	// Timed as testing work (TestingCost), so the performance requirement is judged on the game's own time.
 	public override void _Process(double delta)
+	{
+		long started = TestingCost.Begin();
+		try
+		{
+			ProcessFrame();
+		}
+		finally
+		{
+			TestingCost.End(started);
+		}
+	}
+
+	private void ProcessFrame()
 	{
 		// The fight clock only runs while the fight does, so this skips the paused starting weapon menu.
 		double now = _fight.Elapsed;
@@ -193,7 +219,21 @@ public partial class FightLog : Node
 		// partway through a frame whose start was never marked, and the last mark is from before the offer,
 		// so measuring from it would count the time spent choosing as one long frame.
 		if (_frameStart != 0 && _frameStartFrame == Engine.GetProcessFrames())
+		{
 			_frameMs.Add((Time.GetTicksUsec() - _frameStart) / 1000.0);
+			if (_measureRender)
+			{
+				ulong ticks = Time.GetTicksUsec();
+				if (_lastFrameTicks != 0)
+					_wholeFrameMs.Add((ticks - _lastFrameTicks) / 1000.0);
+				_lastFrameTicks = ticks;
+				Rid viewport = GetViewport().GetViewportRid();
+				_renderCpuMs.Add(RenderingServer.ViewportGetMeasuredRenderTimeCpu(viewport) + RenderingServer.GetFrameSetupTimeCpu());
+				_gpuMs.Add(RenderingServer.ViewportGetMeasuredRenderTimeGpu(viewport));
+			}
+		}
+		else
+			_lastFrameTicks = 0; // A pause (a menu) in between: the next frame's time would include it.
 		_mostEnemies = Math.Max(_mostEnemies, _fight.Enemies.Count);
 		_mostDrones = Math.Max(_mostDrones, _fight.Drones.Count);
 	}
@@ -354,6 +394,17 @@ public partial class FightLog : Node
 		FightStats stats = _fight.Stats;
 		var sorted = _frameMs.Where(ms => ms > 0).OrderBy(ms => ms).ToList();
 		double Percentile(double p) => sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)(p * sorted.Count))];
+		// Average and slowest 1% of a list of times, rounded, for the render timing.
+		Dictionary<string, object> Summary(List<double> values)
+		{
+			var s = values.OrderBy(v => v).ToList();
+			return s.Count == 0 ? null : new Dictionary<string, object>
+			{
+				["averageMs"] = Math.Round(s.Average(), 2),
+				["slowest1PercentMs"] = Math.Round(s[Math.Min(s.Count - 1, (int)(0.99 * s.Count))], 2),
+				["worstMs"] = Math.Round(s[^1], 2),
+			};
+		}
 
 		return new Dictionary<string, object>
 		{
@@ -438,9 +489,15 @@ public partial class FightLog : Node
 			{
 				["averageMs"] = sorted.Count == 0 ? 0 : Math.Round(sorted.Average(), 2),
 				["p95Ms"] = Math.Round(Percentile(0.95), 2),
+				["slowest1PercentMs"] = Math.Round(Percentile(0.99), 2),
 				["worstMs"] = sorted.Count == 0 ? 0 : Math.Round(sorted[^1], 2),
 				["mostEnemies"] = _mostEnemies,
 				["mostDrones"] = _mostDrones,
+				// In a window only: the whole frame by the clock (held to the screen's refresh while vsync is on),
+				// and render CPU and GPU.
+				["wholeFrame"] = Summary(_wholeFrameMs),
+				["renderCpu"] = Summary(_renderCpuMs),
+				["gpu"] = Summary(_gpuMs),
 			},
 		};
 	}
