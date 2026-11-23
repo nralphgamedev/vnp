@@ -96,7 +96,7 @@ public partial class Harvestables : Node3D
 				PlaceholderShapes.Rock(1000 + v * 37, Tuning.Asteroids.Bumpiness), lit);
 		_debrisBatch = new InstanceBatch(this, "DebrisShapes", Placeholders.Mesh("debris"), lit);
 
-		// Debris can grow past this, from a Goo that absorbed many drones. AddDebris widens it when it does.
+		// Debris can grow past this, from Grey Goo that absorbed many drones. AddDebris widens it when it does.
 		_maxRadius = AsteroidShapeRadius * Tuning.Asteroids.Size * Mathf.Sqrt(Tuning.Asteroids.MassMax);
 
 		// The fight's asteroid amount scales how many fields and lone asteroids there are. The fight picks it as it

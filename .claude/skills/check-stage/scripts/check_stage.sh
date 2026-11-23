@@ -6,7 +6,7 @@
 #   bash check_stage.sh --scenario [--window] ARGS...   # only a fight set up by the scenario harness
 #
 # --scenario runs res://scripts/cheats/scenario.tscn with its arguments (see ScenarioRunner.cs), such as
-#   bash check_stage.sh --scenario spawn=goo:4 drones=40 invulnerable frames=900
+#   bash check_stage.sh --scenario spawn=basic_goo:4 drones=40 invulnerable frames=900
 #   bash check_stage.sh --scenario --window spawn=all:2 shot=C:/path/shot.png@300
 # It runs headless unless --window is given; a screenshot needs --window.
 #
@@ -219,7 +219,7 @@ if [ $full -eq 1 ]; then
 	# shows where the time goes. Frames run uncapped, so each takes a few seconds.
 	stress=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam
 		take=orbital_shards_count,orbital_shards_count,orbital_shards_area,mine_layer,drone_cap,drone_cap
-		spawn=all:8 spawn=goo:6 drones=40 invulnerable maxtime=60 mute=yes log=none close=yes)
+		spawn=all:8 spawn=basic_goo:6 drones=40 invulnerable maxtime=60 mute=yes log=none close=yes)
 	for mode in plain detail; do
 		perf_out="$(run_scenario window "${stress[@]}" perf=$mode)"
 		echo "$perf_out" | grep "^PERF"
@@ -250,7 +250,7 @@ if [ $full -eq 1 ]; then
 	crowd=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam spawn=all:360
 		drones=40 invulnerable maxtime=30 perf=detail profile=yes mute=yes log=none close=yes)
 	perf_out="$(run_scenario window "${crowd[@]}")"
-	alive="$(echo "$perf_out" | grep -E "^t [0-9.]+s" | tail -1 | grep -oE "basic_enemy [0-9]+ goo [0-9]+" | awk '{print $2 + $4}')"
+	alive="$(echo "$perf_out" | grep -E "^t [0-9.]+s" | tail -1 | grep -oE "enemies [0-9]+" | awk '{print $2}')"
 	note "Tenfold crowd (report only, ${alive:-?} enemies alive at the end): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps)' | head -1); $(echo "$perf_out" | grep -o 'game logic [0-9.]* ms (budget [0-9.]*)'); enemies $(echo "$perf_out" | grep -oE 'PROFILE: +enemies +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms; pilot $(echo "$perf_out" | grep -oE 'PROFILE: +pilot +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms (average / slowest 1%)"
 fi
 

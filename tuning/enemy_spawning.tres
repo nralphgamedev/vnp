@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
-[ext_resource type="Resource" path="res://enemies/goo/goo.tres" id="3_goo"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/basic_goo/basic_goo.tres" id="3_goo"]
 [ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
 
 [resource]
@@ -20,10 +20,10 @@ WaveGroupsAddedPerWave = 1
 WaveWarningSeconds = 3.0
 WaveBannerSeconds = 2.0
 GroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
-ExtResource("2_enemy"): 2.0,
+ExtResource("2_enemy"): 0.0,
 ExtResource("3_goo"): 1.0
 })
 WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
-ExtResource("2_enemy"): 2.0,
+ExtResource("2_enemy"): 0.0,
 ExtResource("3_goo"): 1.0
 })

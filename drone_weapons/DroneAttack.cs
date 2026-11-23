@@ -46,7 +46,7 @@ public abstract class DroneAttack
 	public abstract void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed);
 #endif
 
-	/// <summary>Whether drones using this attack stay back from enemies that ask for it, such as the Goo.
+	/// <summary>Whether drones using this attack stay back from enemies that ask for it, such as the basic goo.
 	/// Ram charges in regardless.</summary>
 	public virtual bool KeepsBack => true;
 

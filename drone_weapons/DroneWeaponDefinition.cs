@@ -40,7 +40,7 @@ public partial class DroneWeaponDefinition : Resource
 	[Export] public float Range;
 
 	/// <summary>How far from its target's edge a drone sits while surrounding it. Some enemies, such as the
-	/// Goo, ask drones to stay farther back (DroneKeepBack in the enemy's file).</summary>
+	/// basic goo, ask drones to stay farther back (DroneKeepBack in the enemy's file).</summary>
 	[Export] public float AttackDistance;
 
 	/// <summary>Speed of a projectile. Only used by the Projectile kind.</summary>

@@ -15,10 +15,10 @@ using System;
 /// player moves away, the drones break off and follow.
 ///
 /// Distances to an enemy, for surrounding it and for weapon range, are measured from its edge, so drones
-/// surround a large enemy at its edge rather than inside it. Some enemies, such as the Goo, ask drones to
+/// surround a large enemy at its edge rather than inside it. Some enemies, such as the basic goo, ask drones to
 /// stay farther back. Drones also steer clear of the enemies they aren't attacking, gently, so a drone fighting
 /// one enemy doesn't drift into the next, and don't go in to harvest material beside a drone eater. An enemy
-/// that absorbs drones, such as the Goo, drains the health of any drone touching
+/// that absorbs drones, such as the basic goo, drains the health of any drone touching
 /// it; a drone drained to nothing is pulled into it and lost, while one that gets away keeps the damage.
 /// </summary>
 public partial class DroneSwarm : Node3D
@@ -362,7 +362,7 @@ public partial class DroneSwarm : Node3D
 		// Everything the drones could go after this frame: what is near enough to the VNP.
 		int enemyCount = enemies.CollectNear(vnpPosition, Tuning.Drones.EngageRange * KeepTargetFactor, _enemyTargets);
 		int harvestCount = harvestables.CollectNear(vnpPosition, Tuning.Harvesting.DroneRange * KeepTargetFactor, _harvestTargets);
-		// Material beside a drone eater, such as a Goo, isn't worth a drone flying in for.
+		// Material beside a drone eater, such as a basic goo, isn't worth a drone flying in for.
 		for (int c = 0; c < harvestCount; c++)
 		{
 			int m = _harvestTargets[c];
@@ -487,7 +487,7 @@ public partial class DroneSwarm : Node3D
 			}
 			drone.Position += drone.Velocity * dt;
 
-			// Touching an enemy that absorbs drones, such as a Goo, drains this drone. It flashes, and motes
+			// Touching an enemy that absorbs drones, such as a basic goo, drains this drone. It flashes, and motes
 			// flow from it into the enemy, so the player can see it being eaten. Drained to nothing, it is absorbed.
 			int absorber = enemies.FindAbsorber(drone.Position, Tuning.Drones.HitRadius);
 			if (absorber >= 0)

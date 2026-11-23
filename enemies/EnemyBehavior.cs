@@ -32,7 +32,7 @@ public abstract class EnemyBehavior
 	/// <summary>The behavior for an enemy definition's kind, or null if the kind is not known.</summary>
 	public static EnemyBehavior Create(EnemySwarm swarm, EnemyDefinition definition) => definition switch
 	{
-		GooDefinition goo => new Goo(swarm, goo),
+		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,
 	};
@@ -46,7 +46,7 @@ public abstract class EnemyBehavior
 	/// <summary>Whether a drone that touches this enemy is absorbed.</summary>
 	public virtual bool AbsorbsDrones => false;
 
-	/// <summary>Whether it damages the VNP by touching it, as the Goo does, so a pilot keeps clear of it.</summary>
+	/// <summary>Whether it damages the VNP by touching it, as every Grey Goo type does, so a pilot keeps clear of it.</summary>
 	public virtual bool DamagesByTouch => false;
 
 	/// <summary>Sets up a newly spawned enemy: its health, damage and size, at the difficulty of the moment.</summary>

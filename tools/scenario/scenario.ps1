@@ -14,7 +14,7 @@ lists them all. The most useful:
   seed=N                 repeat a fight exactly
   weapon=ID              the starting VNP Weapon, such as scatter_shot
   drone_weapon=ID        the starting Drone Weapon: projectile, beam or ram
-  spawn=goo:3            spawn enemy groups around the VNP (goo, basic_enemy, or all)
+  spawn=basic_goo:3      spawn enemy groups around the VNP (basic_goo, basic_enemy, or all)
   frames=N               how long to run, at 60 frames a second (default 600, 10 seconds)
   log=res://playtests/x  write the fight log to that folder instead (log=none for no log). A pilot
                          fight is logged to playtests/pilot/ unless told otherwise.

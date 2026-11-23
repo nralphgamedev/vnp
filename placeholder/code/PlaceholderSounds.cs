@@ -221,7 +221,7 @@ public static class PlaceholderSounds
 			Noise(b, random, 0f, 0.03f, 9000f, 6000f, 0.25f);
 		}));
 
-		// ───────────── Phase 3: the Goo ─────────────
+		// ───────────── Phase 3: the Goo, now the basic goo and shared by Grey Goo ─────────────
 		// A wet gulp: a low tone that drops, with a muffled slurp of noise.
 		Save(folder, "goo_absorb", Make(0.3f, b =>
 		{

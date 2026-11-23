@@ -135,7 +135,7 @@ public partial class Effects : Node3D
 		}
 	}
 
-	/// <summary>A Goo splitting in two: a wet ring spreading to about its size, and pieces thrown out sideways.</summary>
+	/// <summary>A basic goo splitting in two: a wet ring spreading to about its size, and pieces thrown out sideways.</summary>
 	public void GooSplit(Vector2 at, Color color, float size)
 	{
 		Ring(at, color.Lerp(Colors.White, 0.3f), size * 0.3f, size, 0.35f);

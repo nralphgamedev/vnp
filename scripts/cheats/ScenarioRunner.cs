@@ -11,7 +11,7 @@ using System.Reflection;
 /// a change can be checked without writing a throwaway test. Editor only, like every cheat.
 ///
 /// Run it from the project folder; add --headless unless you want to watch or take a screenshot:
-///   godot --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- spawn=goo:4 drones=40 frames=900
+///   godot --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- spawn=basic_goo:4 drones=40 frames=900
 ///
 /// Arguments, all optional:
 ///   weapon=ID          equip this VNP Weapon instead of the first starting weapon (any from in_game_cheats.tres)
@@ -699,7 +699,7 @@ public partial class ScenarioRunner : Node
 				: "";
 			return $"{t.Definition.Id} {ofType.Length}{growth}";
 		}));
-		Say($"t {_fight.Elapsed:0.0}s  {byType}  drones {_fight.Drones.Count}/{_fight.Drones.Cap}  " +
+		Say($"t {_fight.Elapsed:0.0}s  enemies {enemies.Length}: {byType}  drones {_fight.Drones.Count}/{_fight.Drones.Cap}  " +
 			$"vnp {_fight.Vnp.Health:0}/{_fight.Vnp.MaxHealth:0}  " +
 			$"gateway {_fight.Vnp.PlanePosition.DistanceTo(_fight.Gateway.PlanePosition):0} away  " +
 			$"kills {_fight.Kills}  level {_fight.Level}  " +

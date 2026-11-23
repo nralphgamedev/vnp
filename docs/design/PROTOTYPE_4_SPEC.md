@@ -117,6 +117,17 @@ So pilots are rebuilt before the Lancer (stage 2), as `docs/dev/PILOT_SPEC.md` d
 
 **Two pilots for comparison:** batches can then compare two pilots, one trained to play like the designer and one trained to play as well as possible. The gap shows the difficulty headroom, and the builds that win far more often in the best hands show where the balance breaks.
 
+## Tuning values
+
+As in the earlier specs, this file names each value and where it lives rather than its number.
+
+| Value | Where |
+|---|---|
+| What every Grey Goo type shares: contact damage and its cooldown, how fast it drains drones (`DroneDrainPerSecond`, 0 for a type that doesn't drain), growth per absorbed drone (`BulkPerDrone`), debris per absorbed drone (`DebrisMassPerDrone`), and its wobble | each type's own file, from `GreyGooDefinition` in `enemies/grey_goo/` |
+| The basic goo's split: drones absorbed before it splits, and how long it bulges | `enemies/grey_goo/basic_goo/basic_goo.tres` |
+| How quickly Grey Goo grows stronger during the fight and per escalation step, shared by every type (`RampGreyGooHealthPerMinute`, `RampGreyGooDamagePerMinute`, `EscalationGreyGooHealthPerStep`, `EscalationGreyGooDamagePerStep`) | `tuning/difficulty.tres` |
+| Each type's spawn weight, for groups and for waves; the basic enemy's is 0 | `tuning/enemy_spawning.tres` |
+
 ## Not yet decided
 
 The designer has not settled these. Use the behavior listed, say that you did, and keep it easy to change.
@@ -127,6 +138,37 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **The Devourer's targets:** it heads for the nearest harvestable material and ignores the player unless drones or the VNP come close.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
+
+## Settled during the build
+
+The prototype now does the following; any of it can still change.
+
+- **The Grey Goo folder (stage 1):**
+  - **Shared code:** `enemies/grey_goo/` holds `GreyGooDefinition` and `GreyGoo`, what every type shares:
+    - heading straight for its target;
+    - touch damage to the VNP, with its cooldown;
+    - draining and absorbing drones, for a type whose `DroneDrainPerSecond` is above 0;
+    - growing larger and tougher with each absorbed drone;
+    - more debris for what it absorbed;
+    - the wobbling, glossy blob, with the swell on absorbing.
+
+    A type overrides only its own part.
+  - **The basic goo:** the phase 3 Goo is now the basic goo, in `enemies/grey_goo/basic_goo/` (`BasicGoo`, `BasicGooDefinition`, `basic_goo.tres`), with the ID `basic_goo` and the name Basic Goo. Its own part is splitting.
+  - **Nothing changed in play:** two automated fights traced identically before and after the move, with the basic enemy still spawning: one an ordinary fight, one with many Goos absorbing and splitting.
+- **Grey Goo difficulty:** the Goo's difficulty values in `difficulty.tres` are now the Grey Goo's, shared by every type, and renamed to match. Their numbers are unchanged.
+- **Grey Goo only:** the basic enemy's spawn weights are 0 in `enemy_spawning.tres`, for groups and waves. Its files and its entry stay, so a weight brings it back, and the scenario harness can still spawn it (`spawn=basic_enemy:N`).
+- **Older fight logs:** these name the Goo `goo`. No report or tool groups results by enemy ID across logs, so nothing needed converting.
+- **First measurement:** 50 expert fights with the Designer build and random starting weapons and asteroid amounts, on the same seeds, once with the old mix and once with Grey Goo only:
+
+  | | Old mix | Grey Goo only |
+  |---|---|---|
+  | Won (reached the kill target) | 68% | 40% |
+  | Median time to win | 3:00 | 3:52 |
+  | Alive at 5:00 | 22 of 50 | 50 of 50 |
+  | Destroyed by the 8:00 cap | 50 | 15, at a median 7:35 |
+  | Level at 4:00 | 16.5 | 15.8 |
+
+  The basic goo alone is little threat to the VNP, as the GDD expects: every pilot reached 5:00 alive. But it dies more slowly than the basic enemy did, so the kill target is reached less often and later. The stages ahead add types that threaten the VNP; the kill target and Grey Goo's strength are for the designer to judge by playing.
 
 ## Suggested build order
 
@@ -143,6 +185,14 @@ Build one stage at a time, and stop after each so the designer can play it.
 9. **Splitting into other types.**
 
 Each type comes with its look, effects, and sounds, its spawn weight, and its threat declaration for pilots.
+
+The pilot spec's later stages run between the types, where they fit:
+- upgrade picks on the decision core, and the guards that keep it general;
+- fitting the designer-like pilot to the designer's recordings, once the designer has played a few recorded Grey Goo fights;
+- the ceiling pilot;
+- removing the old pilot.
+
+They don't hold up the types.
 
 ## Performance
 

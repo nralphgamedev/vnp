@@ -123,12 +123,12 @@ public partial class Fight : Node3D
 		: (int)((Elapsed - Tuning.Fight.TimeLimitSeconds) / Tuning.Difficulty.EscalationStepSeconds) + 1;
 
 	// Enemy strength now: the ramp during the fight, times escalation past the limit. "Enemy" is the basic
-	// enemy; the Goo has its own. Spawn rate and aggro range are shared by every type.
+	// enemy; every Grey Goo type shares its own. Spawn rate and aggro range are shared by every type.
 	public float EnemyHealthScale => (1f + Tuning.Difficulty.RampEnemyHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyHealthPerStep * EscalationSteps);
 	public float EnemyDamageScale => (1f + Tuning.Difficulty.RampEnemyDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyDamagePerStep * EscalationSteps);
 	public float EnemySpawnRateScale => (1f + Tuning.Difficulty.RampSpawnRatePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationSpawnRatePerStep * EscalationSteps);
-	public float GooHealthScale => (1f + Tuning.Difficulty.RampGooHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGooHealthPerStep * EscalationSteps);
-	public float GooDamageScale => (1f + Tuning.Difficulty.RampGooDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGooDamagePerStep * EscalationSteps);
+	public float GreyGooHealthScale => (1f + Tuning.Difficulty.RampGreyGooHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooHealthPerStep * EscalationSteps);
+	public float GreyGooDamageScale => (1f + Tuning.Difficulty.RampGreyGooDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooDamagePerStep * EscalationSteps);
 	public float EnemyAggroScale => 1f + Tuning.Difficulty.EscalationAggroRangePerStep * EscalationSteps;
 
 	/// <summary>Accuracy added to enemies spawned now, from the ramp and escalation, on the 0 to 1 scale.</summary>

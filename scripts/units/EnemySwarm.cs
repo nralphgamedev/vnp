@@ -9,7 +9,7 @@ using System.Collections.Generic;
 /// What every enemy shares is done here: an enemy roams with its flock around its home point. When the
 /// VNP or a drone comes inside its aggro range it chases it. When everything gets far enough away it gives
 /// up and roams around wherever it ended up. How it closes in and attacks belongs to its type's behavior
-/// (see EnemyBehavior.cs): the basic enemy holds at a distance, circles and fires, and the Goo absorbs
+/// (see EnemyBehavior.cs): the basic enemy holds at a distance, circles and fires, and the basic goo absorbs
 /// drones and splits.
 ///
 /// Waves: every so often several groups arrive at once from all around the VNP, already hunting it. They
@@ -32,7 +32,7 @@ public partial class EnemySwarm : Node3D
 		public float Radius;            // How far from its center it can be hit, and touches things.
 		public float Scale;             // Size of its model.
 		public float Damage;            // Damage of its attack, at the strength it spawned with.
-		public float Drain;             // Health per second it drains from a drone touching it (the Goo).
+		public float Drain;             // Health per second it drains from a drone touching it (Grey Goo that absorbs drones).
 		public float FireTimer;         // Seconds until it can attack again.
 		public float OrbitSign;         // 1 or -1: which way it circles or turns.
 		public float Flash;             // Seconds left of the hit flash.
@@ -46,7 +46,7 @@ public partial class EnemySwarm : Node3D
 		// Used by the basic enemy.
 		public float Accuracy;          // From 0 (sloppy) to 1 (sharpshooter), rolled when it spawns.
 
-		// Used by the Goo.
+		// Used by Grey Goo.
 		public float BaseHealth;        // Health it spawned with. Growth is measured against it.
 		public float Bulk;              // 1 as it spawns. Absorbed drones add to it, and a split halves it.
 		public float Absorbed;          // Drones it has absorbed, shared out between halves when it splits.
@@ -325,10 +325,10 @@ public partial class EnemySwarm : Node3D
 		return false;
 	}
 
-	/// <summary>Whether an enemy damages the VNP by touching it, as the Goo does.</summary>
+	/// <summary>Whether an enemy damages the VNP by touching it, as Grey Goo does.</summary>
 	public bool DamagesByTouchOf(int index) => _types[_enemies[index].Type].DamagesByTouch;
 
-	/// <summary>Whether an enemy absorbs drones that touch it, as the Goo does.</summary>
+	/// <summary>Whether an enemy absorbs drones that touch it, as the basic goo does.</summary>
 	public bool AbsorbsDronesOf(int index) => _types[_enemies[index].Type].AbsorbsDrones;
 
 	/// <summary>Which enemy type an enemy is, by the type's ID.</summary>
@@ -400,7 +400,7 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
-	/// <summary>Splits the enemy at this index after this frame's update. Used by the Goo.</summary>
+	/// <summary>Splits the enemy at this index after this frame's update. Used by the basic goo.</summary>
 	public void QueueSplit(int index) => _splits.Add(index);
 
 	// ───────────── Each frame ─────────────
@@ -578,7 +578,7 @@ public partial class EnemySwarm : Node3D
 	{
 		foreach (int index in _splits)
 		{
-			if (index >= Count || _enemies[index].Health <= 0f || _types[_enemies[index].Type] is not Goo goo)
+			if (index >= Count || _enemies[index].Health <= 0f || _types[_enemies[index].Type] is not BasicGoo goo)
 				continue;
 			Enemy other = default;
 			goo.Split(ref _enemies[index], ref other);

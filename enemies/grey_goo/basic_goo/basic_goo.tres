@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="GooDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BasicGooDefinition" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://enemies/goo/GooDefinition.cs" id="1_script"]
+[ext_resource type="Script" path="res://enemies/grey_goo/basic_goo/BasicGooDefinition.cs" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")
-Id = "goo"
-Name = "Goo"
+Id = "basic_goo"
+Name = "Basic Goo"
 GroupSize = 3
 Health = 60.0
 HitRadius = 1.9

@@ -79,15 +79,15 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 
 ## An enemy type
 
-1. **Folder:** `enemies/<id>/` holding:
-   - `<Name>Definition.cs`: `: EnemyDefinition`, adding only the fields its behavior needs;
-   - `<Name>.cs`: an `EnemyBehavior` subclass;
+1. **Folder:** `enemies/<id>/`, or `enemies/<faction>/<id>/` for a type of a faction, such as `enemies/grey_goo/lancer/`, holding:
+   - `<Name>Definition.cs`: `: EnemyDefinition`, or the faction's shared definition (`GreyGooDefinition` for Grey Goo), adding only the fields its behavior needs;
+   - `<Name>.cs`: an `EnemyBehavior` subclass, or the faction's shared behavior (`GreyGoo` for Grey Goo), overriding only what is its own;
    - `<id>.tres`.
 
-   BasicEnemy is the simple template. Goo shows growth, splitting, absorbing and a custom look.
+   BasicEnemy is the simple template. A Grey Goo type gets touch damage, draining and absorbing drones (when its `DroneDrainPerSecond` is above 0), growth, debris for what it absorbed and the wobbling look from `GreyGoo`; `BasicGoo` shows a type adding its own part, splitting, through `ActOwn`, `AfterAbsorbing` and `Reshape`.
 2. **Factory:** add a case to `EnemyBehavior.Create` (`enemies/EnemyBehavior.cs`). Put subclasses before their base classes in the switch.
 3. **Spawning:** add the `.tres` to both `GroupWeights` and `WaveGroupWeights` in `tuning/enemy_spawning.tres` with the helper and `--weight`. Set `GroupSize`, `TargetsDronesFirst` and `DroneKeepBack` in its own file.
-4. **Difficulty:** if it needs its own ramp, follow the Goo:
+4. **Difficulty:** a Grey Goo type uses the shared Grey Goo ramp (`GreyGooHealthScale` and `GreyGooDamageScale` in `Fight.cs`) through `GreyGoo.Spawned`. A type of a new faction that needs its own ramp follows it:
    - add fields to `DifficultyTuning.cs` and `difficulty.tres`;
    - add a scale to `Fight.cs`;
    - read it in the behavior's `Spawned`.

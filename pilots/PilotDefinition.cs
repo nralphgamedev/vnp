@@ -54,11 +54,11 @@ public partial class PilotDefinition : Resource
 	/// at about half that.</summary>
 	[Export(PropertyHint.Range, "0,1,0.01")] public float Caution;
 
-	/// <summary>How much more threatening an enemy that absorbs drones, such as a Goo, is when the VNP relies on
+	/// <summary>How much more threatening an enemy that absorbs drones, such as a basic goo, is when the VNP relies on
 	/// its drones: with drones at their cap, it counts this many times as much as another enemy.</summary>
 	[Export] public float DroneEaterThreat;
 
-	/// <summary>How far from the edge of an enemy that damages by touch, such as a Goo, it starts steering clear,
+	/// <summary>How far from the edge of an enemy that damages by touch, such as Grey Goo, it starts steering clear,
 	/// whatever else it wants. Added after the designer's logs showed them taking almost no damage from Goos,
 	/// while pilots took about a fifth of theirs from them.</summary>
 	[Export] public float TouchAvoidDistance;
