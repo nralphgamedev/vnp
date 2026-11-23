@@ -106,6 +106,11 @@ Moved here from the automated playtesting spec, where it was kept as an option.
 - **Running it:** unattended, overnight or in the background. Batches run together while iterating stay under a minute.
 - **Data:** it gets more reliable as the designer's logs grow. A handful of fights is too few to set targets.
 - **The designer's part:** playing normally, so the logs grow, and watching a pilot only when the numbers or a map suggest something odd.
+- **Two training targets (planned, `docs/dev/PILOT_SPEC.md`):**
+  - **Like the designer:** calibration toward the designer's results, as here, after the rebuilt pilot's weights are fitted to the designer's recordings.
+  - **As strong as possible:** the ceiling pilot, calibrated for results instead.
+
+  Strips will also draw the danger shapes enemies declare, and the path the pilot chose.
 
 ## Keeping it out of builds
 

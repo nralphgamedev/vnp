@@ -27,6 +27,7 @@ The phase 3 Goo becomes the **basic goo**, the most common type. Phase 4 adds si
 - leaves debris when destroyed;
 - counts as one kill toward the kill target;
 - damages the VNP by touching it, once per touch with a cooldown, as the basic goo does. Only the basic goo, the Devourer and an awake asteroid mimic drain and absorb drones that touch them; the other types reach drones only through their attacks;
+- declares its threats for pilots: its body, its traits, and the danger shapes of its attacks once their tells are visible (see Pilots);
 - is steered clear of by drones that aren't attacking it, as every enemy is;
 - shows in the damage breakdown as its own enemy type.
 
@@ -106,9 +107,15 @@ New placeholder sounds for each type's attack, the Burster bursting, the Devoure
 
 ## Pilots
 
-Batches only tell something about a Grey Goo type if pilots react to it: dodging a forming Lancer, keeping off a Devourer's ripples, shooting down returning spikes. Pilots still see only what a player sees, so a sleeping asteroid mimic is an asteroid to them.
+Batches only tell something about a Grey Goo type if pilots react to it: dodging a forming Lancer, keeping off a Devourer's ripples, shooting down returning spikes. The full game will have dozens of enemy types, each with its own thematic attacks and behaviors, so pilots need a way to handle enemy types that grows with them rather than code for each one.
 
-The full game will have dozens of enemy types, each with its own thematic attacks and behaviors, so pilots need a way to handle enemy types that grows with them rather than code for each one. How is not yet decided (see below); the designer is open to a larger change to the pilot system if it plays better.
+So pilots are rebuilt before the Lancer (stage 2), as `docs/dev/PILOT_SPEC.md` describes:
+
+- **Declared threats:** every enemy type declares its body, its traits, and the danger shapes of its attacks once their tells are visible.
+- **Short paths:** the pilot scores short paths through those threats, so a new type needs no pilot code.
+- **Fair sight:** pilots still see only what a player sees, so a sleeping asteroid mimic is an asteroid to them.
+
+**Two pilots for comparison:** batches can then compare two pilots, one trained to play like the designer and one trained to play as well as possible. The gap shows the difficulty headroom, and the builds that win far more often in the best hands show where the balance breaks.
 
 ## Not yet decided
 
@@ -118,7 +125,6 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 - **The Burster's tiny blobs:** they head for the VNP and pop on whatever they hit first, the VNP or a drone. They leave no debris and don't count as kills.
 - **The Devourer and drones:** it drains and absorbs drones that touch it, like the basic goo, and grows from them as well as from what it consumes.
 - **The Devourer's targets:** it heads for the nearest harvestable material and ignores the player unless drones or the VNP come close.
-- **How pilots handle enemy types:** to be proposed before stage 2, as the first new type is built.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 
@@ -127,15 +133,16 @@ For design questions this file does not answer, ask the designer rather than inv
 Build one stage at a time, and stop after each so the designer can play it.
 
 1. **The Grey Goo folder and Grey Goo only:** move the phase 3 Goo into `enemies/grey_goo/basic_goo/` as the basic goo, set up the shared Grey Goo code, and stop the basic enemy spawning.
-2. **Lancer.**
-3. **Quiller.**
-4. **Spiker.**
-5. **Burster.**
-6. **Devourer.**
-7. **Asteroid mimic.**
-8. **Splitting into other types.**
+2. **Pilots that plan:** the goals and path scoring of `docs/dev/PILOT_SPEC.md` (its stages 1 and 2), replacing the current pilot once it matches or beats it in batches.
+3. **Lancer:** the first type whose attack is declared; pilots should dodge a forming Lancer with no code for it.
+4. **Quiller.**
+5. **Spiker.**
+6. **Burster.**
+7. **Devourer.**
+8. **Asteroid mimic.**
+9. **Splitting into other types.**
 
-Each type comes with its look, effects, and sounds, and its spawn weight.
+Each type comes with its look, effects, and sounds, its spawn weight, and its threat declaration for pilots.
 
 ## Performance
 
@@ -160,6 +167,7 @@ Next phase, planned: Tesla Coil, Cannonball, and the weapon modifiers from the G
 - Fights spawn only Grey Goo, and every type behaves as described and can be told apart from the others at a glance.
 - Basic goo splits produce other types about one time in three.
 - The damage breakdown shows each type separately.
+- Pilots react to each type's attacks through its threat declaration, with no pilot code for the type.
 - The performance requirement in CLAUDE.md holds in a late fight with every type present.
 - Each type's own performance cost has been measured and recorded at the stage that added it.
 - Every new placeholder asset is in `res://placeholder/` and listed in `PLACEHOLDERS.md`.

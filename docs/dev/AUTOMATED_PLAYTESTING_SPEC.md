@@ -64,6 +64,8 @@ The result screen shows the damage breakdown, drones lost and shots blocked, as 
 
 A pilot flies a VNP the way a player does: it chooses a direction to move each moment, and picks from each level-up offer. It sees what a player could see, the fight around the VNP within its awareness, and never reads hidden information such as the next wave's timing. It can learn the timing as a player does, though: the designer judges how long they have before the next wave when deciding whether to stay and harvest or go to a cluster, so a pilot may estimate the next wave from the waves it has seen arrive this fight (their warnings are on screen). Until it has seen two, it doesn't know.
 
+**Being rebuilt:** how pilots move is being rebuilt in `docs/dev/PILOT_SPEC.md`. Enemies will declare their threats, and pilots will score short paths through them, so new enemy types need no pilot code. Upgrade picks move onto the same decision core later. The pilot described in this spec is the first one, kept until the new one matches it in batches; that spec says which of its parts carry over.
+
 - **Reuse:** pilots are game code, in their own feature folder, `pilots/`, not editor-only. The full game will have several VNPs flown by the computer, and the same pilot logic is meant to fly them:
   - rival VNPs, which the GDD says will behave much like the player;
   - escort VNPs, the player's own autonomous VNPs that go into fights alongside the player's VNP;
@@ -86,6 +88,9 @@ A pilot flies a VNP the way a player does: it chooses a direction to move each m
   - Tank: health, armor, Orbital Shards and blocking.
 - **Skill levels** are data too: how often it reconsiders where to move (its reaction time), how far it is aware of things, how well it notices and dodges shots, how cautious or greedy it is, and how much its movement wanders. Starting levels: novice, average, and expert.
 - **Calibration:** the expert pilot is adjusted until its fight logs land near the designer's own (at the designer's suggestion, the expert is worked on first and the other levels made from it afterwards; this was the average pilot until then) on the same tuning (the same tuning fingerprint). The report compares win rate, level at 5:00, time to the kill target and drones lost, and calibration aims at the first two (see Not yet decided). The designer's fights that used free rerolls are left out, since pilots don't get them. The starting weapon choice is fine: the batch uses the same weapons.
+- **Two training targets (planned, `docs/dev/PILOT_SPEC.md`):**
+  - **Like the designer:** this calibration, with the rebuilt pilot's weights also fitted to the designer's recorded fights.
+  - **As strong as possible:** a ceiling pilot, tuned for results rather than closeness to the designer, whose results are reported beside the designer-like pilot's.
 
 ## Batches
 
@@ -151,6 +156,8 @@ Agreed with the designer during stage 2 and built in stage 4 (see Weapon profile
 - **Combination overrides only where needed:** a small profile for a pair of weapons, if blending can't give what a combination needs.
 - **Skill:** a skill value scales how well a pilot uses its weapon profiles, so a novice plays generically and an expert uses its weapons well.
 - **Mine Layer is the first testbed.** Its value depends most on positioning, and a designer playtest showed the pilot standing still while harvesting, dropping no mines.
+
+In the rebuilt pilot (`docs/dev/PILOT_SPEC.md`), weapon profiles stay, as scoring terms. A weapon's lure spots come from where it publishes its effective areas, replacing `IPilotLure`.
 
 ## Automatic calibration
 
@@ -292,7 +299,7 @@ Phase 3 resumes after stage 5, with its stages 3 and 4. Each stage here is finis
 
 ## Out of scope
 
-- Machine learning and other ways to make pilots play more like a person. This is a goal for later. The designer's recorded movement and fight logs start the data it would need, and pilots read the fight through the same view a learned pilot would, so one could be added without rebuilding the rest.
+- **Machine learning:** neural networks and reinforcement learning stay out of scope. Fitting the rebuilt pilot's weights to the designer's recorded fights, which the recordings now make possible, is planned in `docs/dev/PILOT_SPEC.md`.
 - Exact replays of the designer's fights, which would need the fight to run at a fixed time step during normal play.
 - Rival VNPs in fights, and anything else from the full game.
 - Judging how the fight feels or looks, which stays with the designer.

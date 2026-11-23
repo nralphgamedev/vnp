@@ -1,0 +1,247 @@
+# VNP Combat Prototype: Pilots That Plan
+
+The automated playtesting spec (`docs/dev/AUTOMATED_PLAYTESTING_SPEC.md`) built the pilots that fly the VNP in batches. They move by a set of hand-weighted wants, such as harvest, fight, back off, keep clear of contact enemies, and dodge, each tuned by watching fights and fixing what looked wrong. That worked for two enemy types, but it doesn't scale:
+
+- **New enemies need new pilot code.** Each new enemy behavior needs pilot code of its own.
+- **Conflicting wants average out.** Wants that pull different ways add up to weak, in-between moves, which was behind several problems fixed by hand: creeping, indecision, and closing in on enemies to reach rocks.
+
+Phase 4 adds six Grey Goo types with attacks of their own, and the full game will have dozens of enemy types and hundreds of weapons and upgrades.
+
+This spec rebuilds how pilots decide, so that a new enemy or weapon describes itself as data and pilots handle it without new pilot code. It sets two ways to train pilots: to play like the designer, and to play as well as possible. And it builds the general parts as a library that isn't tied to pilots or to VNP. Everything in the automated playtesting and run review specs still applies unless this file changes it.
+
+## What this is for
+
+- Can pilots handle a new enemy type, with attacks of its own, with no pilot code for it?
+- How close does a pilot come to the designer's play when its settings are fitted to the designer's recorded fights?
+- How well can the game be played, and how far is that from how the designer plays it? The gap shows difficulty headroom, and the builds that win far more often in the best hands show where the balance breaks.
+- Can the same pilot fly rival and escort VNPs at a chosen difficulty, fairly?
+- Can the general parts drive other kinds of behavior, in this game and others?
+
+## Terms
+
+- **Decision core:** the general way every choice is made: options scored by adding weighted scoring terms, with skill settings, a record of each choice and an explanation.
+- **Option:** one thing a decision can choose, such as a goal, a path or an upgrade.
+- **Scoring term:** one thing an option is judged on, such as predicted damage, progress toward the goal or keeping drones safe, with a weight.
+- **Threat declaration:** what an enemy publishes about itself for pilots: its body and the reach of its touch, its velocity, its traits, and the danger shapes of its attacks.
+- **Danger shape:** an area an attack is about to hit, as a circle, line, cone or ring, with when it lands, what it endangers (the VNP, drones, or both) and how much it hurts.
+- **Candidate path:** one way the VNP could move over the next moment or two: a direction, possibly turning. Paths are the options of the movement decision.
+- **Goal:** what the pilot is trying to do: harvest, fight, regroup, explore or lead chasers.
+- **Training target:** what a pilot's weights are tuned toward: like the designer, or as strong as possible.
+
+## How a pilot works
+
+Three layers, each replaceable without the others. Goals and movement are both decisions made by the decision core.
+
+### Perception: everything declares itself
+
+- **Enemies:** every enemy type implements a required hook that publishes its threat declaration. A type without one doesn't compile, as with weapons' `CollectPlaced`.
+- **Danger shapes appear with their tells:** an attack's danger shape exists only once its tell is visible. A Lancer's line appears as it starts forming its spike, and a Quiller's cone as it forms its volley, then each spike's path back. Until then the pilot knows nothing of it.
+- **Hidden enemies stay hidden:** a sleeping asteroid mimic publishes nothing, so pilots treat it as an asteroid.
+- **Shots in flight** declare themselves the same way: enemy projectiles, Quiller spikes and Burster blobs, through the shared projectile system where they use it.
+- **Weapons** publish where they are effective: their reach, and objects that work in place, such as mines (replacing `IPilotLure`) or the shards' orbit.
+- **Material** publishes its worth, as harvest scoring does now.
+- **Fair sight:** a pilot reads only declarations within its awareness and on screen, the same view it has now, and notices each danger shape with a chance set by its skill, after its reaction time.
+- **Game code:** the hook is not a testing aid. Rival and escort VNPs will need it in exported games, so it is not inside `#if TOOLS` or `#if RECORDING`.
+
+### Goals: what it is trying to do
+
+- **Picking the goal:** the goal is a decision among harvest, fight, regroup, explore and lead chasers.
+- **Existing judgements carry over** as its scoring terms:
+  - whether it can afford a fight;
+  - regrouping with few drones;
+  - harvest worth and clusters;
+  - pressure that rises at once and falls slowly;
+  - remembered material.
+- **What the goal decides:** which scoring terms count in the movement decision, and how much.
+
+### Movement: scoring short paths
+
+- **Prediction:** each decision, the pilot samples candidate paths over a short look-ahead and predicts where each threat will be along each one: bodies from their velocity, danger shapes from their declared timing.
+- **Scoring:** a path's score adds up its scoring terms:
+  - predicted damage to the VNP;
+  - danger to drones: the swarm near a drone eater or inside a danger shape;
+  - progress toward the goal, such as a rock, a weapon's preferred distance or a lure spot;
+  - a cost for reversing or turning sharply, against indecision.
+- **Following it:** the pilot follows the best path until its next decision. As now, it moves at full speed except when easing in to harvest.
+- **Weapon profiles stay:** preferred distance, keeping moving and leading chasers become scoring terms, blended by investment as now.
+- **Cost:** a decision looks only at threats near the VNP, through the spatial grids, so its cost doesn't grow with the fight's total number of enemies. Several pilots flying at once must stay a small share of game logic's budget (`docs/dev/PERFORMANCE_SPEC.md`).
+
+### Upgrade picks
+
+Builds move onto the decision core too: the upgrades offered are the options, and a build's weights are scoring terms on them. This makes upgrade picks the core's second user (see A generic library). Fitting a build to the designer's picks then uses the same training tools as movement.
+
+### Skill
+
+- **Settings, not behavior:** a skill level is a set of settings, not hand-written behavior:
+  - reaction time;
+  - awareness;
+  - how reliably it notices a danger shape;
+  - how much noise there is in its predictions and choices;
+  - how far ahead it looks;
+  - how many paths it tries;
+  - how much its movement wanders.
+- **Skill levels:** novice, average and expert become points on these settings, and rival and escort VNPs can be given any difficulty the same way.
+
+### Explaining and reviewing
+
+- **`explain=`:** prints, for each decision, the chosen goal and the best few paths with each one's scoring terms, so a choice can be traced to the term that decided it.
+- **Maps:** recordings and strips draw danger shapes and the path the pilot chose, inside `#if RECORDING`, so a review sees what the pilot saw.
+
+### Repeatable
+
+The pilot uses the fight's random numbers and nothing else, so a pilot fight still repeats from its seed, and the stage check's repeatability test covers it.
+
+## Two training targets
+
+The same pilot is trained two ways, for different jobs.
+
+### Like the designer
+
+For balance testing. Batches only stand in for the designer's playtests if pilots play like them.
+
+- **Skill settings:** human-like reaction, noticing and prediction noise.
+- **Weights fitted to the designer's recorded fights:**
+  - **The data:** a recorded fight holds everything within view ten times a second, with the designer's input.
+  - **The fit:** each recorded moment is a choice among candidate paths, and the scoring weights are fitted to the choices the designer made. It is the method that already fits the Designer build's upgrade weights to their picks (`calibrate_build.py`), made general.
+  - **Why weights, not a network:** a few dozen weights can be fitted from a handful of fights; a neural network couldn't be.
+  - **Checking the fit:** it is judged by how well it predicts the designer's choices in fights left out of it.
+- **Then automatic calibration:** against the designer's fight logs at the same fight times, as now (run review spec).
+- **Batches use it by default:** the expert.
+
+### As strong as possible: the ceiling pilot
+
+For finding what is broken, and how much headroom there is.
+
+- **Skill settings:** perfect noticing of what it can see, with the longest look-ahead and the most paths that stay within budget.
+- **Weights:** tuned by automatic calibration for results (wins, survival and level) rather than closeness to the designer.
+- **Still fair:** it sees only what a player could see. It is a perfect player, not a cheating one, so its results say what a player could do.
+- **Reports:** batch reports put its results beside the designer-like pilot's. The gap is how much better the game can be played than the designer plays it. Builds and upgrades that win far more often with it show where the balance breaks.
+
+### Learning beyond this
+
+A pilot trained by reinforcement learning, which only tries to win, may later help find exploits. It would read the same declarations and choose among the same options, so nothing here stands in its way. It is out of scope while tuning changes often, since each change would mean training it again.
+
+## A generic library
+
+At the designer's request, the general parts are a library that isn't tied to pilots or to VNP. It should be able to drive other kinds of behavior in this game, and agents in other games. It is not machine learning: it chooses by scoring terms written by hand, and training means fitting their weights.
+
+| Part | What it is | Who could use it |
+|---|---|---|
+| **Decision core** | Options scored by weighted terms, with skill settings, a record of each choice (the options, each term's value, and what was chosen) and explaining | Any agent making choices: a pilot's goal, path or upgrade, a drone's target, an enemy's attack |
+| **Training tools** | Fitting weights to recorded choices; tuning weights by batch results | Any decision built on the core whose choices are recorded |
+| **Motion planning** | Candidate paths on a plane, threat declarations and danger shapes, predicting threats along a path, built on the decision core | Any top-down real-time game |
+
+- **What stays VNP's:** in `pilots/`:
+  - its goals: harvesting, regrouping and drones;
+  - its scoring terms;
+  - the hooks its enemies and weapons implement;
+  - the conversion between Godot's types and .NET's.
+- **Training tools are Python:** they run outside the game, on the records the core writes, like the batch and calibration scripts.
+- **Free of Godot and VNP:** the core and motion planning use plain .NET types (`System.Numerics` for vectors) and take their random numbers from the game. So they could serve another Godot C# project, or another .NET engine. Unreal's C++ could reuse the design, not the code.
+- **Where it lives:** in this repository, in a folder of its own with its own project file. `VNP.csproj` references it and leaves its folder out of its own compile, so the build enforces the boundary: the library can't use VNP's code or Godot's. A `.gdignore` keeps Godot from importing it.
+- **A second user proves it general:** until something other than movement uses the core, it is only a pilot library that claims to be general. Upgrade picks are the second user, since a fitting tool for them already exists. Drones' choices could follow later.
+- **Packaging comes later:** packaging it for other projects (a repository of its own, a NuGet package, or a Godot addon) waits until a second project needs it.
+
+### Staying general
+
+Every change to the library has to keep it usable outside pilots and outside VNP, so a change made for one VNP need doesn't quietly tie it to VNP. Guards are added once the library exists and has its second user (stage 4), and settled with the designer then. Starting ideas:
+
+- **The build boundary:** the library can't reference VNP's code or Godot (above).
+- **A sample that isn't VNP:** a small program with a different kind of agent, such as a creature choosing what to eat and when to flee. The stage check builds and runs it, so a change that only makes sense for VNP's pilots breaks it.
+- **No game words:** the stage check fails if the library's code names VNP's things, such as the VNP, drones, harvesting, Goos or asteroids.
+- **Its purpose, written down:** a README in the library says what belongs in it and what goes in the game's code. CLAUDE.md and a skill step ask for each library change to be checked against it.
+
+## What happens to the current pilot
+
+`pilots/Pilot.cs` splits three ways:
+
+- **Moved, not rewritten: the judgements.** These become the goal decision's scoring terms:
+  - affording a fight, with threat and pressure that falls slowly (`PressureFall`);
+  - low health;
+  - regrouping;
+  - harvest worth, with clusters and danger near material;
+  - remembered material and exploring;
+  - blending weapon profiles;
+  - fair sight: what is on screen, within awareness.
+
+  The settings calibrated for them (such as `StrengthPerDrone`, `HarvestAtCap` and the regroup thresholds) keep their values.
+- **Replaced by path scoring: the code that turns wants into a direction.**
+  - `KeepClearOfTouch`
+  - `Dodge`
+  - `FightMove`
+  - `CircleTarget`
+  - `EnemyAhead`
+  - `LeadAcrossSpots`, with `IPilotLure`
+  - the direction sums in `HarvestMove` and `Decide`
+
+  Their settings, such as `TouchAvoidWeight` and the dodge chance, become scoring weights or noticing settings.
+- **Unchanged at first: upgrade picks.** `ChooseUpgrade` and the builds stay as they are until they move onto the decision core (stage 4).
+
+**During the rebuild:** the old pilot stays as it is, chosen by a setting, as the baseline the new one must match on the same seeds.
+
+**Once the new pilot matches it (stage 7):**
+- The old movement code is deleted, along with the tuning variants that only switch off parts of it that no longer exist, such as `no_touch_avoidance` and `old_seeking`.
+- Variants that change settings which survive are kept.
+- Git history keeps all of it.
+- The automated playtesting spec keeps its notes on the old pilot, as the record of what was learned. Most of that, such as how the designer plays and what failed, feeds the scoring terms.
+
+## Tuning values
+
+| Value | Where |
+|---|---|
+| Each skill level's reaction, awareness, noticing, prediction noise, look-ahead, number of paths and wander | its file in `pilots/skill_levels/`, the ceiling pilot's included |
+| Each scoring term's weight, for each training target | the skill level files: the expert's for the designer-like target, the ceiling pilot's for the other |
+| Each build's weights for upgrade picks | its file in `pilots/builds/`, as now |
+| Each attack's danger shape: size, timing and damage | taken from the attack's own values in the enemy type's file, so they can't disagree |
+
+## Not yet decided
+
+The designer has not settled these. Use the behavior listed, say that you did, and keep it easy to change.
+
+- **The guards for staying general:** settled with the designer once the library has its second user (see Staying general).
+- **The ceiling pilot's upgrade picks:** the Greedy build for now. A build learned from batch results (which upgrades win most, given what is already owned) may come later.
+- **How many designer fights the fit needs:** fit on what exists, and report how well it predicts the designer's choices in fights left out, so it is clear when there is too little.
+- **The library's name:** PilotKit, as a working name. It may want a name that doesn't say pilot, since it is meant for more than pilots.
+- **Wave timing:** deferred in the run review spec. It fits in the goal decision when wanted.
+
+For design questions this file does not answer, ask the designer rather than inventing a rule.
+
+## Suggested build order
+
+Build one stage at a time, and stop after each so the designer can try it.
+
+1. **The library and perception:**
+   - the decision core and motion planning, in their own project;
+   - threat declarations and danger shapes;
+   - the enemy hook for the basic enemy and the basic goo;
+   - enemy shots;
+   - weapons' effective areas;
+   - danger shapes drawn on strips.
+2. **Goals and path scoring (phase 4's stage 2):**
+   - the current wants rebuilt as goals and scoring terms, with `explain`;
+   - built beside the current pilot, chosen by a setting, and compared in batches on the same seeds;
+   - it replaces the current pilot only once it matches or beats it on results and on the calibration gap.
+3. **The first declared attack:** the Lancer (phase 4's stage 3). This tests the design: the pilot dodges a forming Lancer with no code for it.
+4. **The second user, and staying general:**
+   - upgrade picks moved onto the decision core;
+   - `calibrate_build.py` made into the general fitting tool;
+   - the guards for staying general, as settled with the designer.
+5. **Fitting to the designer's recordings,** for the designer-like target, with the general fitting tool.
+6. **The ceiling pilot,** and reports with both targets side by side.
+7. **Removing the old pilot's code.**
+
+## Out of scope
+
+- Reinforcement learning and neural networks.
+- Packaging the library for other projects.
+- Moving drones, enemies or other behavior onto the decision core, beyond upgrade picks. Possible later, one user at a time.
+- How rival and autonomous VNPs behave on the galactic map.
+
+## Done when
+
+- A new enemy type's attacks are handled by pilots through its declaration alone.
+- The new pilot matches or beats the old one in batches, and has replaced it.
+- The decision core has two users in VNP, movement and upgrade picks, and its guards for staying general are in place.
+- The library builds on its own, without VNP's code or Godot's.
+- The designer-like pilot's weights are fitted to the designer's recordings, and the ceiling pilot's results are reported beside it.
+- A pilot fight repeats from its seed, and several pilots stay within the performance budget.
