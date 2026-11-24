@@ -19,6 +19,7 @@ All made by `code/PlaceholderBaker.cs`.
 | `quill.tres` | A long, thin, pointed spike, flat-topped, pointing forward (-y). Made by `PlaceholderShapes.ExtrudedShape` from `QuillOutline`. | A Quiller's spikes in flight (`FragileShots.cs`) |
 | `spiker.tres` | A Grey Goo blob drawn out into four broad, tapering arms, like a caltrop, so it can't be mistaken for the Quiller. Made by `PlaceholderShapes.Star`. (At first sixteen short spikes, `Urchin`, which the designer found too like the Quiller.) `Spiker.cs` swells it while forming a thrust. | The Spiker (`Spiker.cs`) |
 | `burster.tres` | A swollen Grey Goo blob covered in round bubbles, like a boiling pot. Made by `PlaceholderShapes.Bubbly`. `Burster.cs` makes it throb, faster as it is hurt. | The Burster (`Burster.cs`) |
+| `devourer.tres` | A broad Grey Goo blob whose rim rolls in seven waves, like a rippling surface. Made by `PlaceholderShapes.Lobed`. | The Devourer (`Devourer.cs`) |
 | `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`), and a Burster's tiny blobs in flight (`FragileShots.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
@@ -40,7 +41,7 @@ All made by `code/PlaceholderBaker.cs`, except where noted.
 | File | What it is | Used by |
 |---|---|---|
 | `instanced_lit.tres` | Lit, takes each copy's colour | Drones, the basic enemy, asteroids, debris |
-| `goo.tres` | Lit, glossy, with a soft rim of light at the edges and a faint glow; takes each copy's colour | Grey Goo (`GreyGoo.cs`), so it reads as wet slime rather than rock |
+| `goo.tres` | Lit, satin (it was glossy until the designer asked for less shine), with a faint rim of light at the edges and a fainter glow; takes each copy's colour | Grey Goo (`GreyGoo.cs`), so it reads as wet slime rather than rock |
 | `instanced_unshaded.tres` | Unlit, takes each copy's colour | Projectiles, Orbital Shards, drone beams |
 | `instanced_glow.tres` | Unlit and additive: each copy's colour adds to what is behind it, so fading to black fades out | Effect sparks, rings, trails and harvest particles (`Effects.cs`) |
 | `vnp_hull.tres`, `vnp_core.tres` | Solid colours with a little glow | VNP model. `Vnp.cs` copies the hull material for the hit flash. |
@@ -105,6 +106,7 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `quiller_volley.wav` | A wet rattle of quick ticks over a short hiss | A Quiller fires its volley. A spike broken in flight plays `shard_block.wav` |
 | `spiker_thrust.wav` | A hard, wet stab: a burst of bright noise over a quick low thud that rises | A Spiker thrusts its spikes out. A drone impaled plays `hit.wav`, and one drawn in plays `goo_absorb.wav` |
 | `burster_burst.wav` | A wet, heavy pop: a low tone that drops fast under a spray of noise, with a few small bubbling ticks | A Burster bursts. A blob that hits plays nothing of its own; one broken in flight plays `shard_block.wav` |
+| `devourer_consume.wav` | A low, wet gulp: a deep tone that bends down and back, under a soft crunch | A Devourer consuming material, at most every 0.7 seconds each |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

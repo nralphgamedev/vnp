@@ -232,6 +232,23 @@ public partial class Harvestables : Node3D
 		return taken;
 	}
 
+	/// <summary>Draws up to <paramref name="amount"/> mass out for an enemy that consumes material, such as a
+	/// Devourer: none of it is fight experience. Returns how much was drawn out.</summary>
+	public float Consume(int index, float amount)
+	{
+		ref Item item = ref _items[index];
+		float taken = Mathf.Min(amount, item.Mass);
+		if (taken <= 0f)
+			return 0f;
+		item.Mass -= taken;
+		item.Glow = GlowTime;
+		// Used up: it pops. It is cleared away at the start of the next update.
+		if (item.Mass <= UsedUp && item.Mass + taken > UsedUp)
+			Fight.Effects.MaterialPop(item.Position, item.IsAsteroid ? Tuning.Asteroids.Color : Tuning.Harvesting.DebrisColor,
+				item.IsAsteroid ? Tuning.Asteroids.Color : Tuning.Harvesting.DebrisColor);
+		return taken;
+	}
+
 	// ───────────── Each frame ─────────────
 
 	public override void _Process(double delta)

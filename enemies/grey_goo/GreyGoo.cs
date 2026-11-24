@@ -107,15 +107,27 @@ public abstract class GreyGoo : EnemyBehavior
 	public override void Absorb(ref EnemySwarm.Enemy enemy)
 	{
 		enemy.Absorbed += 1f;
-		enemy.Bulk += GooType.BulkPerDrone;
-		// Tougher as well as larger: health rises by the same share as bulk, measured against its health at
-		// spawn, and the extra is added to what it has left.
-		float extraHealth = enemy.BaseHealth * GooType.BulkPerDrone;
-		enemy.Health += extraHealth;
-		Resize(ref enemy);
+		Grow(ref enemy, GooType.BulkPerDrone);
 		enemy.Pulse = GooType.AbsorbPulseSeconds;
 		Fight.Sounds.Play(Sound.GooAbsorb);
 		AfterAbsorbing(ref enemy);
+	}
+
+	/// <summary>The most bulk the type can grow to, such as a Devourer's large limit. No limit by default.</summary>
+	protected virtual float MaxBulk => float.MaxValue;
+
+	/// <summary>
+	/// Grows by <paramref name="bulk"/>, up to MaxBulk: larger, and tougher as well, since health rises by the same
+	/// share as bulk, measured against its health at spawn, and the extra is added to what it has left.
+	/// </summary>
+	protected void Grow(ref EnemySwarm.Enemy enemy, float bulk)
+	{
+		bulk = Mathf.Min(bulk, MaxBulk - enemy.Bulk);
+		if (bulk <= 0f)
+			return;
+		enemy.Bulk += bulk;
+		enemy.Health += enemy.BaseHealth * bulk;
+		Resize(ref enemy);
 	}
 
 	/// <summary>What the type does once it has absorbed a drone and grown, such as starting to split.</summary>

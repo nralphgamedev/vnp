@@ -115,6 +115,8 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.Star(53, 0.12f, 4, 0.9f, 0.55f), "meshes/spiker.tres");
 		// The Burster: a swollen blob covered in bubbles, like a boiling pot, the warning that it will burst.
 		Save(PlaceholderShapes.Bubbly(67, 0.08f, 14, 0.25f), "meshes/burster.tres");
+		// The Devourer: a broad blob whose rim rolls in waves, like a rippling surface.
+		Save(PlaceholderShapes.Lobed(71, 0.06f, 7, 0.16f), "meshes/devourer.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
@@ -150,15 +152,16 @@ public partial class PlaceholderBaker : Node
 		glow.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
 		glow.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
 		Save(glow, "materials/instanced_glow.tres");
-		// Grey Goo: glossy, with a soft rim of light at its edges, so a wet blob never looks like a dull rock.
+		// Grey Goo: satin rather than glossy, at the designer's request, with a faint rim of light at its edges, so a
+		// blob still reads as soft rather than rock. (It was glossy, roughness 0.18, specular 0.9, rim 0.9.)
 		StandardMaterial3D goo = InstanceMaterial(unshaded: false);
-		goo.Roughness = 0.18f;
-		goo.MetallicSpecular = 0.9f;
+		goo.Roughness = 0.5f;
+		goo.MetallicSpecular = 0.5f;
 		goo.RimEnabled = true;
-		goo.Rim = 0.9f;
+		goo.Rim = 0.4f;
 		goo.RimTint = 0.6f;
 		goo.EmissionEnabled = true;
-		goo.Emission = new Color(0.12f, 0.13f, 0.16f);
+		goo.Emission = new Color(0.08f, 0.085f, 0.1f);
 		Save(goo, "materials/goo.tres");
 
 		Material hull = Save(Solid(VnpHullColor, glow: 0.1f), "materials/vnp_hull.tres");

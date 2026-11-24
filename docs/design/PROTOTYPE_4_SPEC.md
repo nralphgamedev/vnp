@@ -22,7 +22,7 @@ The phase 3 Goo becomes the **basic goo**, the most common type. Phase 4 adds si
 
 **Shared traits.** Unless its section says otherwise, every Grey Goo type:
 
-- looks like Grey Goo: one glossy grey shared by every type, darker than the asteroids, with a soft light at its edges, and a silhouette of its own, so each type can be told apart from the others and from asteroids;
+- looks like Grey Goo: one satin grey shared by every type, darker than the asteroids, with a faint light at its edges, and a silhouette of its own, so each type can be told apart from the others and from asteroids;
 - grows stronger over the fight and with each escalation step, as the basic goo does;
 - leaves debris when destroyed;
 - counts as one kill toward the kill target;
@@ -71,7 +71,6 @@ Unchanged from phase 3, except for splitting:
 
 - Slowly consumes anything harvestable, both asteroids and debris, growing as it does. It never splits, so it can become a very large blob, and it competes with the player for harvestable material.
 - Its growth has a limit, but a large one.
-- Its surface ripples at random, changing its outer shape, so a drone near it can be caught by a ripple and damaged. Staying close to a Devourer is risky even when it isn't heading for you.
 - The more it has consumed, the more its debris is worth, so destroying a grown Devourer wins back some of what it took.
 
 ### Asteroid mimic
@@ -100,14 +99,14 @@ Each type needs a clear tell for what it is about to do:
 - **Quiller:** its spikes visibly arc back to the blob, so the player can see that destroying them matters.
 - **Spiker:** the spikes shooting out, and impaled drones visibly drawn in.
 - **Burster:** something about its look that warns it will burst, such as a swollen, bubbling body.
-- **Devourer:** its size, material visibly drawn in from what it consumes, and its ripples, which should be easy to see coming.
+- **Devourer:** its size, and material visibly drawn in from what it consumes.
 - **Asteroid mimic:** no tell while asleep, since that is its point, but a clear wake effect.
 
 New placeholder sounds for each type's attack, the Burster bursting, the Devourer consuming, and a mimic waking. As always, they go in `res://placeholder/` and are listed in `PLACEHOLDERS.md`.
 
 ## Pilots
 
-Batches only tell something about a Grey Goo type if pilots react to it: dodging a forming Lancer, keeping off a Devourer's ripples, shooting down returning spikes. The full game will have dozens of enemy types, each with its own thematic attacks and behaviors, so pilots need a way to handle enemy types that grows with them rather than code for each one.
+Batches only tell something about a Grey Goo type if pilots react to it: dodging a forming Lancer, shooting down returning spikes. The full game will have dozens of enemy types, each with its own thematic attacks and behaviors, so pilots need a way to handle enemy types that grows with them rather than code for each one.
 
 So pilots are rebuilt before the Lancer (stage 2), as `docs/dev/PILOT_SPEC.md` describes:
 
@@ -139,6 +138,7 @@ As in the earlier specs, this file names each value and where it lives rather th
 | The Spiker's growth per drone it absorbs, and debris per drone (`BulkPerDrone`, `DebrisMassPerDrone`), and its look while forming | `spiker.tres` |
 | The Burster's speed, and its burst: how many blobs, their speed, turn rate toward the VNP, life, damage and size | `enemies/grey_goo/burster/burster.tres` |
 | The Burster's throb: how much it swells, how fast, and how much faster when nearly destroyed (`HurtThrobFactor`) | `burster.tres` |
+| The Devourer's consuming: how far it looks for material, how fast it consumes, growth per mass, its growth limit (`MaxBulk`), and the share of what it consumed added to its debris | `enemies/grey_goo/devourer/devourer.tres` |
 | How much faster newly spawned enemies are at each escalation step, every type (`EscalationEnemySpeedPerStep`) | `tuning/difficulty.tres` |
 
 ## Not yet decided
@@ -147,8 +147,8 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 
 - **Drones and growth for every type:** whether drones a Grey Goo type destroys without absorbing them, such as with a Lancer hit or a Quiller spike, should add to its mass and health, and whether every type, not only the basic goo, should split once it reaches a threshold. For now, drones destroyed without being absorbed add nothing, and only the basic goo splits. This also decides how much each goo's debris is worth, since a goo's mass sets the value of its debris: the more a goo's mass can grow, the more destroying it gives back.
 - **The Burster's tiny blobs:** they head for the VNP and pop on whatever they hit first, the VNP or a drone. They leave no debris and don't count as kills. (Built this way in stage 6.)
-- **The Devourer and drones:** it drains and absorbs drones that touch it, like the basic goo, and grows from them as well as from what it consumes.
-- **The Devourer's targets:** it heads for the nearest harvestable material and ignores the player unless drones or the VNP come close.
+- **The Devourer and drones:** it drains and absorbs drones that touch it, like the basic goo, and grows from them as well as from what it consumes. (Built this way in stage 7.)
+
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
 
@@ -229,7 +229,19 @@ The prototype now does the following; any of it can still change.
   - **Fragile shots, shared code:** `FragileShots.FireHoming` fires a shot that homes on the VNP and pops on its first hit, drawn as a little blob rather than a quill.
   - **Cost:** about 2.6 µs an enemy for 1,000 Bursters, and under 0.2 ms for their blobs while Shockwave killed them quickly.
   - **Spawning:** in groups and waves, by its weight in `enemy_spawning.tres`, less often than the basic goo.
-- **One grey for every type:** at the designer's request, every Grey Goo type is the same glossy grey (`Color` in each type's file, all alike), noticeably darker than the asteroids, so the types are told apart by silhouette alone. Until then each type had a pale tint of its own (blue for the Quiller, cream for the Lancer and Spiker, green for the Burster), all paler than the asteroids, following phase 3's pale grey, chosen because a dull grey Goo was easy to mistake for an asteroid; the glossy rim light still sets them apart from rock. Since enemy types are coloured by their `Color` in the damage breakdown and on review maps, Grey Goo types now share a colour there too, and are told apart by name, and on maps by their markings and key.
+- **The Devourer (stage 7):** `enemies/grey_goo/devourer/`, `Devourer` on the shared Grey Goo code. It drains and absorbs drones like the basic goo, and never splits.
+  - **Look:** a broad, slow blob whose rim rolls in waves.
+  - **Consuming:** it heads for the nearest asteroid or debris within `SeekRange` and draws mass out of whatever it touches, with motes of the material flowing into it and a low gulp. None of it becomes fight experience, so it competes with the player for material. A new hook lets an enemy go about its own business instead of wandering (`EnemyBehavior.Roam`).
+  - **It never chases (after playtesting):** at the designer's request, it never goes after the VNP or drones, even when they are close, when it is shot, or when it comes in a wave (`EnemyBehavior.Chases`); they are hurt only by touching it. Its aggro ranges are unused, and it isn't drawn darker as idle enemies are. This settles the open question of its targets: at first it chased the VNP and drones that came within a short aggro range. At the same time, its `SeekRange` was raised a lot, to just inside the distance from the VNP where material is kept findable (`ActiveRadius` in `asteroids.tres`), beyond which a longer range finds nothing more. It searches close by first, then farther, so it still heads for the nearest.
+  - **Growing:** each unit of mass consumed adds `BulkPerMass`, and each drone absorbed `BulkPerDrone`, larger and tougher together, up to `MaxBulk`, a large limit. Growth with a limit is now shared Grey Goo code (`GreyGoo.Grow`), with no limit for the other types.
+  - **No ripples (after playtesting):** at the designer's request, its rippling surface was taken out altogether. It was built first as the spec described: every so often a lump swelled at a random point of its edge as a warning, then lashed out and back, damaging drones and the VNP it caught. Now it hurts only by touch and by draining drones, like the basic goo.
+  - **Debris:** a share of the mass it consumed is added to its debris (`DebrisShareOfConsumed`), as one large piece.
+  - **Seen by pilots:** its body, like every Grey Goo type.
+  - **Tested:** eight roaming Devourers placed among the gateway's asteroids consumed 117 mass in 30 seconds, using up 25 pieces, and grew.
+  - **Cost:** about 2.7 µs an enemy for 1,000 Devourers chasing, and about 2.5 for 1,000 roaming a rich field, consuming as they go.
+  - **Spawning:** in groups of one, in groups and waves, by its weight in `enemy_spawning.tres`, less often than the other types.
+- **Less shine:** at the designer's request, the goo material is satin rather than glossy, with a fainter rim of light and glow (`materials/goo.tres`, made by the placeholder baker). It covers every Grey Goo type, and the Quiller's and Spiker's spikes and the Burster's blobs.
+- **One grey for every type:** at the designer's request, every Grey Goo type is the same grey (`Color` in each type's file, all alike), noticeably darker than the asteroids, so the types are told apart by silhouette alone. Until then each type had a pale tint of its own (blue for the Quiller, cream for the Lancer and Spiker, green for the Burster), all paler than the asteroids, following phase 3's pale grey, chosen because a dull grey Goo was easy to mistake for an asteroid; the glossy rim light still sets them apart from rock. Since enemy types are coloured by their `Color` in the damage breakdown and on review maps, Grey Goo types now share a colour there too, and are told apart by name, and on maps by their markings and key.
 - **A smaller Spiker:** at the designer's request, it is drawn a third smaller (`Size` in `spiker.tres`); how far it reaches and how big a target it is are unchanged.
 - **Result panels scroll:** at the designer's request, after a long fight's damage breakdown ran off the bottom of the screen, the damage breakdown and the upgrade list (on the result screen and the pause menu) grow with their lines only until they would leave the screen, then scroll, by the mouse wheel or their scroll bar. The damage breakdown also stops above the weapon icons at the bottom left, which it used to run behind. Scrolling with a controller or the keyboard isn't built yet.
 - **Sounds pause with the fight:** at the designer's request, while a menu pauses the fight (a level-up offer, the pause menu, the result screen, the starting weapon menu), the fight's own sounds pause too and carry on where they left off once it closes. Menu and result sounds still play. Before, every sound played on through a pause, so a Lancer's wind-up could finish while an offer was open. This changes phase 2's "Sounds while paused".

@@ -37,6 +37,7 @@ public abstract class EnemyBehavior
 		QuillerDefinition quiller => new Quiller(swarm, quiller),
 		SpikerDefinition spiker => new Spiker(swarm, spiker),
 		BursterDefinition burster => new Burster(swarm, burster),
+		DevourerDefinition devourer => new Devourer(swarm, devourer),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,
@@ -62,6 +63,16 @@ public abstract class EnemyBehavior
 	/// <paramref name="track"/> is its sense of where its target is, and <paramref name="distance"/> how far.
 	/// </summary>
 	public abstract Vector2 Chase(ref EnemySwarm.Enemy enemy, Vector2 track, float distance);
+
+	/// <summary>Whether it ever chases the VNP or drones. One that doesn't, such as the Devourer, goes about its own
+	/// business (Roam) even when they are close, when shot, or as part of a wave, and isn't drawn darker as idle.</summary>
+	public virtual bool Chases => true;
+
+	/// <summary>
+	/// Where an enemy that isn't chasing anything wants to go on its own business, as a direction of length up to 1,
+	/// at its full speed, such as a Devourer heading for material; or null to wander as usual.
+	/// </summary>
+	public virtual Vector2? Roam(ref EnemySwarm.Enemy enemy, float dt) => null;
 
 	/// <summary>
 	/// Attacks for one frame, after the enemy has moved. Returns true if it has set the enemy's facing

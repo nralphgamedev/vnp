@@ -51,6 +51,7 @@ public partial class EnemySwarm : Node3D
 		public float BaseHealth;        // Health it spawned with. Growth is measured against it.
 		public float Bulk;              // 1 as it spawns. Absorbed drones add to it, and a split halves it.
 		public float Absorbed;          // Drones it has absorbed, shared out between halves when it splits.
+		public float Consumed;          // Mass of material it has consumed, such as a Devourer's.
 		public int AbsorbedSinceSplit;  // Drones absorbed since it spawned or last split.
 		public float Pulse;             // Seconds left of the swell after absorbing a drone.
 		public float SplitTimer;        // Seconds left of bulging before it splits, or 0.
@@ -710,7 +711,7 @@ public partial class EnemySwarm : Node3D
 			enemy.TrackDirection = enemy.TrackDirection.Rotated(trackStep);
 			Vector2 trackDirection = enemy.TrackDirection;
 
-			bool aggro = distance <= noticeRange;
+			bool aggro = distance <= noticeRange && behavior.Chases;
 			if (enemy.Aggro && !aggro)
 				enemy.Home = enemy.Position; // Gave up: roam around here from now on.
 			enemy.Aggro = aggro;
@@ -722,6 +723,13 @@ public partial class EnemySwarm : Node3D
 			{
 				speed = type.Speed * enemy.SpeedScale;
 				goal = behavior.Chase(ref enemy, trackDirection, distance);
+			}
+			else if (behavior.Roam(ref enemy, dt) is Vector2 roam)
+			{
+				// Its own business while nothing has its attention, such as a Devourer heading for material.
+				speed = type.Speed * enemy.SpeedScale;
+				goal = roam;
+				enemy.Home = enemy.Position;
 			}
 			else
 			{
@@ -846,7 +854,7 @@ public partial class EnemySwarm : Node3D
 			ref Enemy enemy = ref _enemies[i];
 			EnemyBehavior type = _types[enemy.Type];
 			// Idle enemies are drawn darker, so it is easy to see which ones have noticed the VNP.
-			Color color = enemy.Aggro ? type.Definition.Color : type.Definition.Color.Darkened(0.45f);
+			Color color = enemy.Aggro || !type.Chases ? type.Definition.Color : type.Definition.Color.Darkened(0.45f);
 			if (enemy.Flash > 0f)
 				color = color.Lerp(Colors.White, enemy.Flash / Tuning.Feedback.HitFlashTime);
 			type.Draw(_drawCounts[enemy.Type]++, enemy, color);

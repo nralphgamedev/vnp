@@ -223,6 +223,18 @@ public static class PlaceholderShapes
 		});
 	}
 
+	/// <summary>
+	/// A broad blob whose rim rolls in <paramref name="lobes"/> waves round its middle, each reaching
+	/// <paramref name="depth"/> of its radius in and out, like a rippling surface: for the Devourer.
+	/// </summary>
+	public static ArrayMesh Lobed(int seed, float lumpiness, int lobes, float depth) => ShapedBlob(seed, lumpiness, v =>
+	{
+		// The waves are strongest round its middle, and fade toward its top and bottom.
+		float around = Mathf.Atan2(v.Z, v.X);
+		float middle = 1f - Mathf.Abs(v.Normalized().Y);
+		return new Vector3(v.X, v.Y * 0.8f, v.Z) * (1f + depth * middle * Mathf.Sin(lobes * around));
+	});
+
 	/// <summary>The blob, with <paramref name="shape"/> moving each corner after its lumps, or none.</summary>
 	private static ArrayMesh ShapedBlob(int seed, float lumpiness, System.Func<Vector3, Vector3> shape)
 	{
