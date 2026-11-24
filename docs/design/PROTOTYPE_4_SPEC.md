@@ -87,7 +87,7 @@ Unchanged from phase 3, except for splitting:
 - In this phase, fights spawn only Grey Goo. The basic enemy from phase 1 no longer spawns, but its files stay, so it can be brought back by giving it a spawn weight again.
 - Each spawned group is one Grey Goo type, picked by weight. The basic goo has the highest weight, so it stays the most common type.
 - The Lancer, Quiller, Spiker, Burster, and Devourer spawn in groups like the basic goo, each with its own weight and group size. Asteroid mimics are placed in asteroid fields instead, as described above.
-- Waves can include every type that spawns in groups.
+- Waves can include every type that spawns in groups, except the Devourer: at the designer's request, neither Devourers nor asteroid mimics ever come in waves (their wave weights in `enemy_spawning.tres` are 0).
 
 With the basic enemy gone, the only enemy shots are the Quiller's spikes and the mimic's projectile. Whether Orbital Shards blocking is still worth taking is part of what this phase tests.
 
@@ -139,6 +139,9 @@ As in the earlier specs, this file names each value and where it lives rather th
 | The Burster's speed, and its burst: how many blobs, their speed, turn rate toward the VNP, life, damage and size | `enemies/grey_goo/burster/burster.tres` |
 | The Burster's throb: how much it swells, how fast, and how much faster when nearly destroyed (`HurtThrobFactor`) | `burster.tres` |
 | The Devourer's consuming: how far it looks for material, how fast it consumes, growth per mass, its growth limit (`MaxBulk`), and the share of what it consumed added to its debris | `enemies/grey_goo/devourer/devourer.tres` |
+| Where asteroid mimics hide: the chance a field holds them, and how many it holds | `enemies/grey_goo/asteroid_mimic/asteroid_mimic.tres` |
+| The asteroid mimic's waking: how close the VNP or a drone wakes it (`AggroRange`), and the share of its health a harvesting attempt costs it (`WakeDamageFraction`) | `asteroid_mimic.tres` |
+| The asteroid mimic's shot: range, cooldown, damage, speed, how long it flies, colour, size, and how far it leads | `asteroid_mimic.tres` |
 | How much faster newly spawned enemies are at each escalation step, every type (`EscalationEnemySpeedPerStep`) | `tuning/difficulty.tres` |
 
 ## Not yet decided
@@ -239,7 +242,14 @@ The prototype now does the following; any of it can still change.
   - **Seen by pilots:** its body, like every Grey Goo type.
   - **Tested:** eight roaming Devourers placed among the gateway's asteroids consumed 117 mass in 30 seconds, using up 25 pieces, and grew.
   - **Cost:** about 2.7 µs an enemy for 1,000 Devourers chasing, and about 2.5 for 1,000 roaming a rich field, consuming as they go.
-  - **Spawning:** in groups of one, in groups and waves, by its weight in `enemy_spawning.tres`, less often than the other types.
+  - **Spawning:** in groups of one, by its weight in `enemy_spawning.tres`, less often than the other types. Never in waves, at the designer's request (its wave weight is 0).
+- **The asteroid mimic (stage 8):** `enemies/grey_goo/asteroid_mimic/`, `AsteroidMimic` on the shared Grey Goo code for when it is awake.
+  - **Asleep, it is an asteroid:** a sleeping mimic isn't an enemy at all but one of a field's asteroids, marked as a mimic (`Harvestables`). It looks, moves with its field, records and is seen by pilots exactly as an asteroid, so neither a player nor a pilot can tell. As the spec intends, it has no tell.
+  - **Where:** as each field is placed, around the gateway and as the VNP explores, it holds mimics with the mimic's `FieldChance`, between `PerFieldMin` and `PerFieldMax` of them; the rest hold none. They are picked by a generator of their own, seeded from where the field is, so the fight's own random numbers are untouched. In two rich fights, about a quarter of the fields held mimics, around 220 in all, of which the pilot woke 4 to 7 in three minutes.
+  - **Waking:** when the VNP or a drone comes within its `AggroRange`, or tries to harvest it, the rock bursts with a crack and a hiss, and the goo inside is left, already awake. A harvesting attempt also costs it `WakeDamageFraction` of its health and gives nothing. A Devourer touching one wakes it too, unhurt, rather than eating it. The waking mimic appears at the start of the next update, so an enemy is never added in the middle of the enemies' own update.
+  - **Awake:** a lumpy rock in the goo's grey, darker than the asteroids. It drains and absorbs drones and grows like the basic goo, but never splits, and once every `FireCooldown` fires a single shot at the nearest of the VNP or a drone within `FireRange`. Its shot is an ordinary enemy shot, so Orbital Shards blocking stops it and it declares itself to pilots.
+  - **Never spawned:** its weights in `enemy_spawning.tres` are 0, so it never comes in groups or waves; it is listed there so the fight knows the type. `EnemySwarm.SpawnAwake` adds one where it wakes.
+  - **Cost:** about 2.5 µs an enemy for 1,000 awake mimics; checking sleeping ones for the VNP and drones costs nothing measurable.
 - **Less shine:** at the designer's request, the goo material is satin rather than glossy, with a fainter rim of light and glow (`materials/goo.tres`, made by the placeholder baker). It covers every Grey Goo type, and the Quiller's and Spiker's spikes and the Burster's blobs.
 - **One grey for every type:** at the designer's request, every Grey Goo type is the same grey (`Color` in each type's file, all alike), noticeably darker than the asteroids, so the types are told apart by silhouette alone. Until then each type had a pale tint of its own (blue for the Quiller, cream for the Lancer and Spiker, green for the Burster), all paler than the asteroids, following phase 3's pale grey, chosen because a dull grey Goo was easy to mistake for an asteroid; the glossy rim light still sets them apart from rock. Since enemy types are coloured by their `Color` in the damage breakdown and on review maps, Grey Goo types now share a colour there too, and are told apart by name, and on maps by their markings and key.
 - **A smaller Spiker:** at the designer's request, it is drawn a third smaller (`Size` in `spiker.tres`); how far it reaches and how big a target it is are unchanged.

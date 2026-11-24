@@ -20,6 +20,7 @@ All made by `code/PlaceholderBaker.cs`.
 | `spiker.tres` | A Grey Goo blob drawn out into four broad, tapering arms, like a caltrop, so it can't be mistaken for the Quiller. Made by `PlaceholderShapes.Star`. (At first sixteen short spikes, `Urchin`, which the designer found too like the Quiller.) `Spiker.cs` swells it while forming a thrust. | The Spiker (`Spiker.cs`) |
 | `burster.tres` | A swollen Grey Goo blob covered in round bubbles, like a boiling pot. Made by `PlaceholderShapes.Bubbly`. `Burster.cs` makes it throb, faster as it is hurt. | The Burster (`Burster.cs`) |
 | `devourer.tres` | A broad Grey Goo blob whose rim rolls in seven waves, like a rippling surface. Made by `PlaceholderShapes.Lobed`. | The Devourer (`Devourer.cs`) |
+| `asteroid_mimic.tres` | A lumpy rock, drawn in the goo material and colour, as if the rock had turned to goo. Made by `PlaceholderShapes.Rock`. A sleeping mimic has no look of its own: it is drawn as an ordinary asteroid. | An awake asteroid mimic (`AsteroidMimic.cs`) |
 | `goo.tres` | Smooth, lumpy blob, radius about 1, smoothly shaded. Made by `PlaceholderShapes.Blob`. `GreyGoo.cs` flattens it, wobbles it and swells it on absorbing a drone; `BasicGoo.cs` stretches it before a split. | Grey Goo (`GreyGoo.cs`), and a Burster's tiny blobs in flight (`FragileShots.cs`) |
 | `orbital_shard.tres` | Long thin diamond | Orbital Shards (`OrbitalShards.cs`) |
 | `debris.tres` | Broken plate of hull with torn edges, 0.5 thick. It tumbles, so its farthest point (about 1) is also in `Harvestables.DebrisExtent`. | Enemy debris (`Harvestables.cs`) |
@@ -107,6 +108,7 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `spiker_thrust.wav` | A hard, wet stab: a burst of bright noise over a quick low thud that rises | A Spiker thrusts its spikes out. A drone impaled plays `hit.wav`, and one drawn in plays `goo_absorb.wav` |
 | `burster_burst.wav` | A wet, heavy pop: a low tone that drops fast under a spray of noise, with a few small bubbling ticks | A Burster bursts. A blob that hits plays nothing of its own; one broken in flight plays `shard_block.wav` |
 | `devourer_consume.wav` | A low, wet gulp: a deep tone that bends down and back, under a soft crunch | A Devourer consuming material, at most every 0.7 seconds each |
+| `mimic_wake.wav` | A sudden crack of stone, then a wet, rising hiss | An asteroid mimic waking. Its shots play `enemy_fire.wav` |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |
 | `enemy_death.wav` | Rumbling burst with a low thump | An enemy is destroyed |

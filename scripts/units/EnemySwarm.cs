@@ -603,6 +603,36 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
+	/// <summary>
+	/// Adds one enemy of a type, already awake (it has noticed what is near), at a point, with
+	/// <paramref name="healthFraction"/> of its health, such as an asteroid mimic woken in a field. False if the
+	/// fight has no such type.
+	/// </summary>
+	public bool SpawnAwake(EnemyDefinition definition, Vector2 at, float healthFraction = 1f)
+	{
+		if (definition == null || !_typeIndex.TryGetValue(definition, out int type))
+			return false;
+		Vector2 direction = Rng.Direction();
+		var enemy = new Enemy
+		{
+			Id = ++_lastId,
+			Type = type,
+			Position = at,
+			Home = at,
+			WanderDirection = direction,
+			WanderTimer = Rng.Range(1.5f, 4f),
+			Yaw = PlaneMath.YawFacing(direction),
+			TrackDirection = direction,
+			OrbitSign = Rng.Sign(),
+			Aggro = true,
+			SpeedScale = Fight?.EnemySpeedScale ?? 1f,
+		};
+		_types[type].Spawned(ref enemy);
+		enemy.Health *= Mathf.Clamp(healthFraction, 0.01f, 1f);
+		Append(enemy);
+		return true;
+	}
+
 	private void Append(in Enemy enemy)
 	{
 		if (Count == _enemies.Length)

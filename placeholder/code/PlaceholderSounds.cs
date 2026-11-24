@@ -287,6 +287,14 @@ public static class PlaceholderSounds
 			Tone(b, 0.16f, 0.16f, 70f, 95f, Wave.Sine, 0.45f);
 			Noise(b, random, 0f, 0.25f, 900f, 400f, 0.25f);
 		}));
+		// An asteroid mimic waking: a sudden crack of stone, then a wet, rising hiss as the goo inside comes out.
+		Save(folder, "mimic_wake", Make(0.55f, b =>
+		{
+			Noise(b, random, 0f, 0.06f, 7000f, 3000f, 0.8f);
+			Tone(b, 0f, 0.08f, 180f, 90f, Wave.Square, 0.35f);
+			Noise(b, random, 0.06f, 0.45f, 800f, 3500f, 0.35f);
+			Tone(b, 0.1f, 0.4f, 90f, 160f, Wave.Sine, 0.4f);
+		}));
 	}
 
 	/// <summary>

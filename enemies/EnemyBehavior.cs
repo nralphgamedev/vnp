@@ -38,6 +38,7 @@ public abstract class EnemyBehavior
 		SpikerDefinition spiker => new Spiker(swarm, spiker),
 		BursterDefinition burster => new Burster(swarm, burster),
 		DevourerDefinition devourer => new Devourer(swarm, devourer),
+		AsteroidMimicDefinition mimic => new AsteroidMimic(swarm, mimic),
 		BasicGooDefinition basicGoo => new BasicGoo(swarm, basicGoo),
 		BasicEnemyDefinition basic => new BasicEnemy(swarm, basic),
 		_ => null,

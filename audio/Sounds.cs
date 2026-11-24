@@ -44,6 +44,7 @@ public static class Sound
 	public const string SpikerThrust = "spiker_thrust";
 	public const string BursterBurst = "burster_burst";
 	public const string DevourerConsume = "devourer_consume";
+	public const string MimicWake = "mimic_wake";
 }
 
 /// <summary>

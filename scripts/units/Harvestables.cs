@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 /// <summary>
@@ -34,7 +35,19 @@ public partial class Harvestables : Node3D
 		public float TumbleSpeed;  // Radians per second.
 		public float TumblePhase;  // Starting tumble angle, so tumblers are not in step.
 		public bool Active;        // Within ActiveRadius of the VNP: kept up to date, findable and drawn.
+		public bool IsMimic;       // A sleeping asteroid mimic: an asteroid in every way until it wakes.
 	}
+
+	// The asteroid mimic's type, if the fight has one (any entry in enemy_spawning.tres's weights, normally at 0), for
+	// hiding mimics in fields and waking them.
+	private static AsteroidMimicDefinition Mimic =>
+		_mimic ??= Tuning.EnemySpawning.GroupWeights?.Keys.OfType<AsteroidMimicDefinition>().FirstOrDefault();
+	private static AsteroidMimicDefinition _mimic;
+
+	// Mimics woken this frame, spawned at the start of the next update, so an enemy is never added while the enemies
+	// are updating (a Devourer can wake one by touching it).
+	private readonly System.Collections.Generic.List<(Vector2 At, bool Hurt)> _wakes = new();
+	private readonly int[] _nearDrones = new int[1];
 
 	// Farthest point of the debris mesh from its centre at scale 1. Debris tumbles, so any point can face
 	// up; this is used to sit it below the units.
@@ -211,6 +224,12 @@ public partial class Harvestables : Node3D
 	public float Harvest(int index, float amount, bool byVnp = false)
 	{
 		ref Item item = ref _items[index];
+		if (item.IsMimic)
+		{
+			// Trying to harvest a mimic wakes it, hurts it a little, and gives nothing.
+			Wake(ref item, hurt: true);
+			return 0f;
+		}
 		float taken = Mathf.Min(amount, item.Mass);
 		if (taken <= 0f)
 			return 0f;
@@ -237,6 +256,11 @@ public partial class Harvestables : Node3D
 	public float Consume(int index, float amount)
 	{
 		ref Item item = ref _items[index];
+		if (item.IsMimic)
+		{
+			Wake(ref item, hurt: false);
+			return 0f;
+		}
 		float taken = Mathf.Min(amount, item.Mass);
 		if (taken <= 0f)
 			return 0f;
@@ -249,6 +273,69 @@ public partial class Harvestables : Node3D
 		return taken;
 	}
 
+	// ───────────── Asteroid mimics ─────────────
+
+	/// <summary>Whether the VNP or a drone is within a sleeping mimic's aggro range.</summary>
+	private bool WakesUp(Vector2 at)
+	{
+		float range = Mimic.AggroRange;
+		return (!Fight.Vnp.IsDestroyed && Fight.Vnp.PlanePosition.DistanceTo(at) <= range)
+			|| Fight.Drones.CollectNear(at, range, _nearDrones) > 0;
+	}
+
+	/// <summary>The rock is gone at once, and the mimic appears in its place at the start of the next update.</summary>
+	private void Wake(ref Item item, bool hurt)
+	{
+		item.IsMimic = false;
+		item.Mass = 0f; // Cleared away with no pop, and no longer found.
+		_wakes.Add((item.Position, hurt));
+	}
+
+	private void SpawnWoken()
+	{
+		foreach ((Vector2 at, bool hurt) in _wakes)
+		{
+			// Sudden: the rock bursts, and the goo inside is left.
+			Fight.Effects.MaterialPop(at, Tuning.Asteroids.Color, Mimic.Color);
+			Fight.Effects.EnemyDeath(at, Mimic.Color, 0.8f);
+			Fight.Sounds.Play(Sound.MimicWake);
+			Fight.Enemies.SpawnAwake(Mimic, at, hurt ? 1f - Mimic.WakeDamageFraction : 1f);
+		}
+		_wakes.Clear();
+	}
+
+	/// <summary>
+	/// Maybe hides mimics among a field's asteroids, from <paramref name="first"/> on: with the mimic's FieldChance,
+	/// PerFieldMin to PerFieldMax of them. Picked by a generator of its own, seeded from where the field is, so the
+	/// fight's own random numbers, and so every fight without mimics, are unchanged.
+	/// </summary>
+	private void HideMimics(int first, Vector2 center)
+	{
+		AsteroidMimicDefinition mimic = Mimic;
+		int asteroids = _count - first;
+		if (mimic == null || mimic.FieldChance <= 0f || asteroids <= 0)
+			return;
+		var random = new Random(unchecked((int)(center.X * 1009f) * 7919 ^ (int)(center.Y * 1013f) ^ 0x51A7));
+		if (random.NextDouble() >= mimic.FieldChance)
+			return;
+		int hide = Math.Min(asteroids, random.Next(mimic.PerFieldMin, mimic.PerFieldMax + 1));
+		for (int h = 0; h < hide; h++)
+		{
+			// Pick from those not yet mimics.
+			int pick = random.Next(asteroids - h);
+			for (int i = first; i < _count; i++)
+			{
+				if (_items[i].IsMimic)
+					continue;
+				if (pick-- == 0)
+				{
+					_items[i].IsMimic = true;
+					break;
+				}
+			}
+		}
+	}
+
 	// ───────────── Each frame ─────────────
 
 	public override void _Process(double delta)
@@ -256,7 +343,10 @@ public partial class Harvestables : Node3D
 		float dt = (float)delta;
 
 		if (Fight != null)
+		{
 			FillArenaAround(Fight.Vnp.PlanePosition);
+			SpawnWoken();
+		}
 
 		for (int f = 0; f < _fieldCount; f++)
 		{
@@ -295,6 +385,11 @@ public partial class Harvestables : Node3D
 			{
 				Field field = _fields[item.Field];
 				item.Position = field.Center + item.Offset.Rotated(field.Angle);
+			}
+			if (item.IsMimic && Fight != null && WakesUp(item.Position))
+			{
+				Wake(ref item, hurt: false);
+				continue;
 			}
 			if (item.IsAsteroid)
 				_activeAsteroids++;
@@ -554,6 +649,7 @@ public partial class Harvestables : Node3D
 				}
 			}
 		}
+		HideMimics(first, field.Center);
 	}
 
 	private bool Overlaps(int first, Vector2 offset, float radius)

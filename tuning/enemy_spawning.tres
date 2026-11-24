@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
 [ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
@@ -9,6 +9,7 @@
 [ext_resource type="Resource" path="res://enemies/grey_goo/spiker/spiker.tres" id="7_spiker"]
 [ext_resource type="Resource" path="res://enemies/grey_goo/burster/burster.tres" id="8_burster"]
 [ext_resource type="Resource" path="res://enemies/grey_goo/devourer/devourer.tres" id="9_devourer"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/asteroid_mimic/asteroid_mimic.tres" id="10_mimic"]
 
 [resource]
 script = ExtResource("1_script")
@@ -31,7 +32,8 @@ ExtResource("5_lancer"): 0.35,
 ExtResource("6_quiller"): 0.3,
 ExtResource("7_spiker"): 0.3,
 ExtResource("8_burster"): 0.3,
-ExtResource("9_devourer"): 0.2
+ExtResource("9_devourer"): 0.2,
+ExtResource("10_mimic"): 0.0
 })
 WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
 ExtResource("2_enemy"): 0.0,
@@ -40,5 +42,6 @@ ExtResource("5_lancer"): 0.35,
 ExtResource("6_quiller"): 0.3,
 ExtResource("7_spiker"): 0.3,
 ExtResource("8_burster"): 0.3,
-ExtResource("9_devourer"): 0.2
+ExtResource("9_devourer"): 0.0,
+ExtResource("10_mimic"): 0.0
 })

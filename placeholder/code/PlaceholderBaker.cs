@@ -117,6 +117,8 @@ public partial class PlaceholderBaker : Node
 		Save(PlaceholderShapes.Bubbly(67, 0.08f, 14, 0.25f), "meshes/burster.tres");
 		// The Devourer: a broad blob whose rim rolls in waves, like a rippling surface.
 		Save(PlaceholderShapes.Lobed(71, 0.06f, 7, 0.16f), "meshes/devourer.tres");
+		// An asteroid mimic, awake: a lumpy rock, drawn in the goo's material, as if the rock had turned to goo.
+		Save(PlaceholderShapes.Rock(83, 0.35f), "meshes/asteroid_mimic.tres");
 		// A thin flat ring, outer radius 1, for the Shockwave.
 		Save(PlaceholderShapes.FlatRing(0.9f, 1f, 72), "meshes/shockwave_ring.tres");
 		// A 1 by 1 by 1 box, stretched into beams.
