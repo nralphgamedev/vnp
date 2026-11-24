@@ -12,7 +12,7 @@ This spec rebuilds how pilots decide, so that a new enemy or weapon describes it
 ## What this is for
 
 - Can pilots handle a new enemy type, with attacks of its own, with no pilot code for it?
-- How close does a pilot come to the designer's play when its settings are fitted to the designer's recorded fights?
+- How close does a pilot come to the designer's play when its settings are calibrated against the designer's recorded fights?
 - How well can the game be played, and how far is that from how the designer plays it? The gap shows difficulty headroom, and the builds that win far more often in the best hands show where the balance breaks.
 - Can the same pilot fly rival and escort VNPs at a chosen difficulty, fairly?
 - Can the general parts drive other kinds of behavior, in this game and others?
@@ -100,12 +100,9 @@ The same pilot is trained two ways, for different jobs.
 For balance testing. Batches only stand in for the designer's playtests if pilots play like them.
 
 - **Skill settings:** human-like reaction, noticing and prediction noise.
-- **Weights fitted to the designer's recorded fights:**
-  - **The data:** a recorded fight holds everything within view ten times a second, with the designer's input.
-  - **The fit:** each recorded moment is a choice among candidate paths, and the scoring weights are fitted to the choices the designer made. It is the method that already fits the Designer build's upgrade weights to their picks (`calibrate_build.py`), made general.
-  - **Why weights, not a network:** a few dozen weights can be fitted from a handful of fights; a neural network couldn't be.
-  - **Checking the fit:** it is judged by how well it predicts the designer's choices in fights left out of it.
-- **Then automatic calibration:** against the designer's fight logs at the same fight times, as now (run review spec).
+- **Calibrated against the designer's recorded Grey Goo fights:** automatic calibration (`calibrate_pilot.py`, run review spec) adjusts a few of the expert's settings, such as reaction, how reliably it notices attacks and caution, until its health, drones, kills and level over the fight match the designer's at the same fight times. It needs only a few fights.
+- **Until then:** batches read difficulty as easier than it plays for the designer, since the pilot outlives them. Comparisons between options, such as tuning changes, builds or enemy types, still come out in the right order, since the same pilot plays both sides.
+- **Fitting weights to recorded moments, deferred:** the plan was to fit the scoring weights to each recorded moment, as a choice among candidate paths, the way `calibrate_build.py` fits the Designer build to the designer's picks. At the designer's choice, it is no longer required for phase 4: it is the costliest pilot stage, needing many recorded fights and a general fitting tool, while calibration gets batches near enough. It stays an option if batch numbers ever need to match the designer's play closely. (Why weights rather than a network, if it is done: a few dozen weights can be fitted from a handful of fights; a neural network couldn't be.)
 - **Batches use it by default:** the expert.
 
 ### As strong as possible: the ceiling pilot
@@ -264,7 +261,7 @@ The prototype now does the following; any of it can still change.
   - **Tuning it down didn't help:** minding harm less (`HarmWeight` 4) or noticing less (`DodgeChance` 0.6) barely changed its survival. Its advantage is structural: it predicts where Goos and shots will be.
 - **The planner replaced the first pilot (stage 2):** at the designer's choice, on results alone, against the spec's rule of results and the calibration gap both.
   - **Why the gap could wait:** the gap measures closeness to the designer's fights on the phase 3 mix, which phase 4 no longer plays. And the first pilot couldn't react to the Lancer without the per-type code this rebuild avoids.
-  - **The gap moves to stage 5:** fitting the designer-like pilot to the designer's recorded Grey Goo fights.
+  - **The gap moves to stage 5:** calibrating the designer-like pilot against the designer's recorded Grey Goo fights.
   - **Meanwhile:** batches run a pilot that survives better than the designer, so balance reads easier than it is.
   - **What changed:** `Planner` is on in every skill level. Variant `first_pilot` flies the first pilot for comparison until its code is removed (stage 7).
 - **Recorded and drawn (stage 1):** every picture of a recording holds the hazards and zones, as a pilot would perceive them around the VNP.
@@ -287,7 +284,7 @@ The designer has not settled these. Use the behavior listed, say that you did, a
 
 - **The guards for staying general:** settled with the designer once the library has its second user (see Staying general).
 - **The ceiling pilot's upgrade picks:** the Greedy build for now. A build learned from batch results (which upgrades win most, given what is already owned) may come later.
-- **How many designer fights the fit needs:** fit on what exists, and report how well it predicts the designer's choices in fights left out, so it is clear when there is too little.
+- **How many designer fights calibration needs:** a few; calibrate on what exists, and confirm a change on a second set of seeds as the calibration tools already do, so too little data shows as changes that don't hold up.
 - **Wave timing:** deferred in the run review spec. It fits in the goal decision when wanted.
 
 For design questions this file does not answer, ask the designer rather than inventing a rule.
@@ -311,9 +308,9 @@ Build one stage at a time, and stop after each so the designer can try it.
 3. **The first declared attack:** the Lancer (phase 4's stage 3). This tests the design: the pilot dodges a forming Lancer with no code for it.
 4. **The second user, and staying general:**
    - upgrade picks moved onto the decision core;
-   - `calibrate_build.py` made into the general fitting tool;
+   - `calibrate_build.py` fitting the Designer build's weights to picks made on the core;
    - the guards for staying general, as settled with the designer.
-5. **Fitting to the designer's recordings,** for the designer-like target, with the general fitting tool.
+5. **Calibrating to the designer's Grey Goo fights,** for the designer-like target, with automatic calibration, once the designer has played a few recorded Grey Goo fights. (Fitting weights to recorded moments was planned here; deferred at the designer's choice, see Like the designer.)
 6. **The ceiling pilot,** and reports with both targets side by side.
 7. **Removing the old pilot's code.**
 
@@ -330,5 +327,5 @@ Build one stage at a time, and stop after each so the designer can try it.
 - The new pilot matches or beats the old one in batches, and has replaced it.
 - The decision core has two users in VNP, movement and upgrade picks, and its guards for staying general are in place.
 - Arbiter builds on its own, without VNP's code or Godot's.
-- The designer-like pilot's weights are fitted to the designer's recordings, and the ceiling pilot's results are reported beside it.
+- The designer-like pilot is calibrated against the designer's recorded Grey Goo fights, and the ceiling pilot's results are reported beside it.
 - A pilot fight repeats from its seed, and several pilots stay within the performance budget.

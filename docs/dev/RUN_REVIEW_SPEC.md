@@ -107,7 +107,7 @@ Moved here from the automated playtesting spec, where it was kept as an option.
 - **Data:** it gets more reliable as the designer's logs grow. A handful of fights is too few to set targets.
 - **The designer's part:** playing normally, so the logs grow, and watching a pilot only when the numbers or a map suggest something odd.
 - **Two training targets (planned, `docs/dev/PILOT_SPEC.md`):**
-  - **Like the designer:** calibration toward the designer's results, as here, after the rebuilt pilot's weights are fitted to the designer's recordings.
+  - **Like the designer:** calibration toward the designer's results, as here, against their recorded Grey Goo fights. (Fitting the rebuilt pilot's weights to the recordings first is deferred, at the designer's choice.)
   - **As strong as possible:** the ceiling pilot, calibrated for results instead.
 
   Strips will also draw the danger shapes enemies declare, and the path the pilot chose.

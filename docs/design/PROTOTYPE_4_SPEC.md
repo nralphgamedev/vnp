@@ -175,7 +175,7 @@ The prototype now does the following; any of it can still change.
 - **Grey Goo only:** the basic enemy's spawn weights are 0 in `enemy_spawning.tres`, for groups and waves. Its files and its entry stay, so a weight brings it back, and the scenario harness can still spawn it (`spawn=basic_enemy:N`).
 - **Pilots that plan (stage 2):** built as `docs/dev/PILOT_SPEC.md` describes, and now flying every pilot.
   - **Results:** over the same 50 seeds, fights of Grey Goo only were won 52% of the time instead of 40%, and none of its pilots were destroyed by the 8:00 cap, against 15. Touching a Goo fell from 0.50 to 0.07 times a minute.
-  - **Closer to the designer later:** it outlives the designer's own fights by far more than the first pilot did. At the designer's choice, closing that gap waits for fitting it to their recorded Grey Goo fights; until then, batches read the game as easier than it plays.
+  - **Closer to the designer later:** it outlives the designer's own fights by far more than the first pilot did. At the designer's choice, closing that gap waits for calibrating it against their recorded Grey Goo fights; until then, batches read the game as easier than it plays, though comparisons between options still hold.
 - **The Lancer (stage 3):** `enemies/grey_goo/lancer/`, `Lancer` on the shared Grey Goo code. It drains no drones and doesn't grow.
   - **Its cycle:**
     - **Drifting:** a teardrop-shaped blob, drifting after the VNP with its point turned toward it once it has noticed the VNP. Before that it wanders and faces where it goes, as other enemies do; at first it faced the VNP even while idle, which the designer noticed.
@@ -295,7 +295,7 @@ Each type comes with its look, effects, and sounds, its spawn weight, and its th
 
 The pilot spec's later stages run between the types, where they fit:
 - upgrade picks on the decision core, and the guards that keep it general;
-- fitting the designer-like pilot to the designer's recordings, once the designer has played a few recorded Grey Goo fights;
+- calibrating the designer-like pilot against the designer's recorded Grey Goo fights, once the designer has played a few (fitting its weights to individual recorded moments is no longer required: deferred at the designer's choice, as a later option);
 - the ceiling pilot;
 - removing the old pilot.
 
