@@ -612,6 +612,15 @@ public partial class EnemySwarm : Node3D
 	{
 		if (definition == null || !_typeIndex.TryGetValue(definition, out int type))
 			return false;
+		Enemy enemy = NewAwake(type, at);
+		enemy.Health *= Mathf.Clamp(healthFraction, 0.01f, 1f);
+		Append(enemy);
+		return true;
+	}
+
+	/// <summary>A new enemy of a type, already awake, at a point, at the fight's current difficulty.</summary>
+	private Enemy NewAwake(int type, Vector2 at)
+	{
 		Vector2 direction = Rng.Direction();
 		var enemy = new Enemy
 		{
@@ -628,10 +637,22 @@ public partial class EnemySwarm : Node3D
 			SpeedScale = Fight?.EnemySpeedScale ?? 1f,
 		};
 		_types[type].Spawned(ref enemy);
-		enemy.Health *= Mathf.Clamp(healthFraction, 0.01f, 1f);
-		Append(enemy);
-		return true;
+		return enemy;
 	}
+
+	/// <summary>Another Grey Goo type for a split's second half, each equally likely, or -1 if there is none.</summary>
+	private int OtherGreyGooType()
+	{
+		_otherTypes.Clear();
+		for (int t = 0; t < _types.Count; t++)
+		{
+			if (_types[t] is GreyGoo and not BasicGoo)
+				_otherTypes.Add(t);
+		}
+		return _otherTypes.Count == 0 ? -1 : _otherTypes[Rng.Int(0, _otherTypes.Count - 1)];
+	}
+
+	private readonly List<int> _otherTypes = new();
 
 	private void Append(in Enemy enemy)
 	{
@@ -649,6 +670,16 @@ public partial class EnemySwarm : Node3D
 				continue;
 			Enemy other = default;
 			goo.Split(ref _enemies[index], ref other);
+			// Sometimes the second half is another Grey Goo type: a new one at the fight's difficulty, awake, carrying
+			// on with the half's push apart. It takes nothing from the basic goo, which keeps its own half.
+			if (goo.OtherTypeChance > 0f && Rng.Value() < goo.OtherTypeChance && OtherGreyGooType() is int type and >= 0)
+			{
+				Vector2 velocity = other.Velocity;
+				other = NewAwake(type, other.Position);
+				other.Velocity = velocity;
+				Append(other);
+				continue;
+			}
 			other.Id = ++_lastId;
 			Append(other);
 		}

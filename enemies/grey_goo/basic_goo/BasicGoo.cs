@@ -19,6 +19,9 @@ public sealed class BasicGoo : GreyGoo
 		_type = definition;
 	}
 
+	/// <summary>The chance the second half of a split is one of the other Grey Goo types (BasicGooDefinition).</summary>
+	public float OtherTypeChance => _type.OtherTypeChance;
+
 	/// <summary>Bulging toward a split. The swarm splits it once the bulge is done.</summary>
 	protected override bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
 	{

@@ -38,6 +38,7 @@ DroneDrainPerSecond = 12.0
 BulkPerDrone = 0.25
 DronesToSplit = 4
 SplitBulgeSeconds = 0.8
+OtherTypeChance = 0.333
 DebrisMassPerDrone = 3.0
 Wobble = 0.08
 WobbleSpeed = 0.6
