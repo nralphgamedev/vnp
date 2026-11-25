@@ -8,8 +8,8 @@ using Godot;
 [GlobalClass]
 public partial class LancerDefinition : GreyGooDefinition
 {
-	/// <summary>It starts forming its spike once the VNP is this close and its cooldown is done. Longer launches
-	/// from farther off, giving the player more warning.</summary>
+	/// <summary>It starts forming its spike once the VNP is this close to its edge and its cooldown is done. Longer
+	/// launches from farther off, giving the player more warning.</summary>
 	[ExportGroup("Launching")]
 	[Export] public float LaunchRange;
 

@@ -1,5 +1,16 @@
 using Godot;
 
+/// <summary>What an enemy goes after once it notices something (EnemyDefinition.Targets).</summary>
+public enum EnemyTargets
+{
+	/// <summary>Whichever is nearest, the VNP or a drone.</summary>
+	Nearest,
+	/// <summary>The nearest drone, and the VNP only when no drone is within its aggro range.</summary>
+	DronesFirst,
+	/// <summary>Only the VNP: drones don't draw it, and it reaches them only by meeting them on the way.</summary>
+	VnpOnly,
+}
+
 /// <summary>
 /// What every enemy type has: its body, movement, targeting and flocking. Each type adds its own attack in
 /// a subclass in its folder, such as BasicEnemyDefinition in res://enemies/basic_enemy/, with the code that
@@ -32,8 +43,9 @@ public partial class EnemyDefinition : Resource
 	/// <summary>Largest mass of the debris an enemy leaves.</summary>
 	[Export] public float DebrisMassMax;
 
-	/// <summary>Speed while chasing. Below the VNP's speed, so the player can get away. Escalation makes newly
-	/// spawned enemies faster (EscalationEnemySpeedPerStep in difficulty.tres).</summary>
+	/// <summary>Speed while chasing. Just below the VNP's starting speed, so the player can get away, slowly.
+	/// Newly spawned enemies get faster through the fight and again past the time limit (RampEnemySpeedPerMinute
+	/// and EscalationEnemySpeedPerStep in difficulty.tres).</summary>
 	[ExportGroup("Movement")]
 	[Export] public float Speed;
 
@@ -65,9 +77,8 @@ public partial class EnemyDefinition : Resource
 	/// Keep it above the aggro range.</summary>
 	[Export] public float LoseAggroRange;
 
-	/// <summary>Off: it goes after whichever is nearest, the VNP or a drone. On: it goes after the nearest
-	/// drone, and after the VNP only when no drone is within its aggro range.</summary>
-	[Export] public bool TargetsDronesFirst;
+	/// <summary>What it goes after: whichever is nearest of the VNP or a drone, drones first, or only the VNP.</summary>
+	[Export] public EnemyTargets Targets;
 
 	/// <summary>Seconds an enemy keeps chasing the same drone, or the VNP, before it looks again for a
 	/// target. It looks again sooner if its target is destroyed or gets out of reach. Stops enemies
@@ -99,6 +110,10 @@ public partial class EnemyDefinition : Resource
 
 	/// <summary>How strongly an enemy is pulled toward the middle of its flockmates.</summary>
 	[Export] public float Cohesion;
+
+	/// <summary>How much alignment and cohesion count while it chases, from 0 (not at all, so it heads straight for
+	/// its target) to 1 (as much as while idle). Separation always counts, so a chasing group doesn't stack up.</summary>
+	[Export] public float ChaseFlocking;
 
 	/// <summary>How strongly an idle enemy follows its own random heading instead of its flock.
 	/// Lower gives tighter groups that move as one. Higher scatters them.</summary>

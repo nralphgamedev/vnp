@@ -18,6 +18,9 @@ public partial class BasicGooDefinition : GreyGooDefinition
 	/// <summary>Seconds it bulges before it splits, so the player can see it coming.</summary>
 	[Export] public float SplitBulgeSeconds;
 
+	/// <summary>How fast the two halves of a split are pushed apart.</summary>
+	[Export] public float SplitPushSpeed;
+
 	/// <summary>The chance, from 0 to 1, that the second half of a split is one of the other Grey Goo types instead
 	/// of another basic goo, each type equally likely. That half is a new one of its type, at the fight's difficulty,
 	/// awake; it doesn't share what the basic goo had grown, and the basic goo half keeps its share. Set by the

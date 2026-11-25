@@ -17,4 +17,5 @@ Name = "Mine Layer"
 Damage = 22.0
 Cooldown = 0.9
 Color = Color(0.55, 1, 0.35, 1)
+Explosive = true
 PilotProfile = ExtResource("pilot_profile")

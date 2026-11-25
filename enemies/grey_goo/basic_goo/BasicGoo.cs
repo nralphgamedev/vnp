@@ -73,8 +73,8 @@ public sealed class BasicGoo : GreyGoo
 		other = goo;
 		goo.Position = middle + along * goo.Radius * 0.6f;
 		other.Position = middle - along * goo.Radius * 0.6f;
-		goo.Velocity += along * _type.Speed;
-		other.Velocity -= along * _type.Speed;
+		goo.Velocity += along * _type.SplitPushSpeed;
+		other.Velocity -= along * _type.SplitPushSpeed;
 		other.Phase = goo.Phase + Mathf.Pi;
 		other.OrbitSign = -goo.OrbitSign;
 		other.TargetDroneId = 0;

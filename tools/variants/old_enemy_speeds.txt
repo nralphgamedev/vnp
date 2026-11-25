@@ -1,0 +1,9 @@
+# Enemy speeds as they were before enemies moved near the VNP's speed: for comparing in batches.
+enemies/basic_enemy/basic_enemy.tres:Speed = 13
+enemies/grey_goo/basic_goo/basic_goo.tres:Speed = 7
+enemies/grey_goo/lancer/lancer.tres:Speed = 8
+enemies/grey_goo/quiller/quiller.tres:Speed = 8.5
+enemies/grey_goo/spiker/spiker.tres:Speed = 5.5
+enemies/grey_goo/burster/burster.tres:Speed = 11
+enemies/grey_goo/asteroid_mimic/asteroid_mimic.tres:Speed = 6
+difficulty.RampEnemySpeedPerMinute = 0

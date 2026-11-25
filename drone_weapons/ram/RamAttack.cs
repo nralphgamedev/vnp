@@ -128,8 +128,6 @@ public sealed class RamAttack : DroneAttack
 			}
 
 			case RamState.Charging:
-				// A charging drone breaks fragile enemy shots it runs into, such as a Quiller's spikes.
-				Swarm.Fight.FragileShots.DestroyWithin(drone.Position, Tuning.Drones.HitRadius, Swarm.Source);
 				if (distance <= enemyRadius + Tuning.Drones.HitRadius)
 				{
 					// A hit: the drone keeps going, straight through the target, then arcs round.

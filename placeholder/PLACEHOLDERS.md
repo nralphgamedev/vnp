@@ -107,7 +107,6 @@ Every sound is listed in `audio/audio.tres`, which sets its category, volume, co
 | `quiller_volley.wav` | A wet rattle of quick ticks over a short hiss | A Quiller fires its volley. A spike broken in flight plays `shard_block.wav` |
 | `spiker_thrust.wav` | A hard, wet stab: a burst of bright noise over a quick low thud that rises | A Spiker thrusts its spikes out. A drone impaled plays `hit.wav`, and one drawn in plays `goo_absorb.wav` |
 | `burster_burst.wav` | A wet, heavy pop: a low tone that drops fast under a spray of noise, with a few small bubbling ticks | A Burster bursts. A blob that hits plays nothing of its own; one broken in flight plays `shard_block.wav` |
-| `devourer_consume.wav` | A low, wet gulp: a deep tone that bends down and back, under a soft crunch | A Devourer consuming material, at most every 0.7 seconds each |
 | `mimic_wake.wav` | A sudden crack of stone, then a wet, rising hiss | An asteroid mimic waking. Its shots play `enemy_fire.wav` |
 | `enemy_fire.wav` | Low pew | An enemy fires |
 | `hit.wav` | Thud with a click | An enemy or drone is hit (drones quieter) |

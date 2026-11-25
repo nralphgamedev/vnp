@@ -43,8 +43,10 @@ public sealed class Quiller : GreyGoo
 	{
 		if (enemy.AttackPhase != Drifting)
 			return Vector2.Zero;
+		// It keeps HoldDistance from the VNP (GreyGoo.Hold), waiting in range for its next volley rather than closing
+		// in to touch it.
 		Vector2 toVnp = Fight.Vnp.PlanePosition - enemy.Position;
-		return toVnp.LengthSquared() > 0.01f ? toVnp.Normalized() : track;
+		return toVnp.LengthSquared() > 0.01f ? Hold(enemy, toVnp.Normalized(), toVnp.Length()) : track;
 	}
 
 	protected override bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
@@ -71,7 +73,7 @@ public sealed class Quiller : GreyGoo
 	private void StartForming(ref EnemySwarm.Enemy enemy)
 	{
 		Vector2 vnp = Fight.Vnp.PlanePosition;
-		if (vnp.DistanceTo(enemy.Position) > _type.VolleyRange)
+		if (vnp.DistanceTo(enemy.Position) > enemy.Radius + _type.VolleyRange)
 			return;
 
 		if (!_aims.TryGetValue(enemy.Id, out List<Vector2> aims))

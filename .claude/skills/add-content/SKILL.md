@@ -27,7 +27,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 1. **Folder:** `weapons/<id>/` holding:
    - `<Name>Definition.cs`: `[GlobalClass] public partial class <Name>Definition : WeaponDefinition`, with the weapon's own exported numbers.
    - `<Name>.cs`: the behavior, a `VnpWeapon` subclass.
-   - `<id>.tres`.
+   - `<id>.tres`. Set `Explosive` if its damage is explosive: only explosive weapons, and Orbital Shards with blocking, break fragile enemy shots such as a Quiller's spikes. An explosive weapon's code must also call `Fight.FragileShots` where its damage lands, guarded by `Definition.Explosive`, as Mine Layer and Seeker Missiles do.
    - `upgrades/`.
 
    ScatterShot and Shockwave are compact templates. Use the weapon's own `Damage`, `Cooldown`, `Area`, `Speed`, `Range` and `ExtraCount` so the standard upgrades work on it.
@@ -87,7 +87,7 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 
    BasicEnemy is the simple template. A Grey Goo type gets touch damage, draining and absorbing drones (when its `DroneDrainPerSecond` is above 0), growth, debris for what it absorbed and the wobbling look from `GreyGoo`; `BasicGoo` shows a type adding its own part, splitting, through `ActOwn`, `AfterAbsorbing` and `Reshape`.
 2. **Factory:** add a case to `EnemyBehavior.Create` (`enemies/EnemyBehavior.cs`). Put subclasses before their base classes in the switch.
-3. **Spawning:** add the `.tres` to both `GroupWeights` and `WaveGroupWeights` in `tuning/enemy_spawning.tres` with the helper and `--weight`. Set `GroupSize`, `TargetsDronesFirst` and `DroneKeepBack` in its own file.
+3. **Spawning:** add the `.tres` to both `GroupWeights` and `WaveGroupWeights` in `tuning/enemy_spawning.tres` with the helper and `--weight`. Set `GroupSize`, `Targets` (nearest, drones first, or the VNP only), `ChaseFlocking` and `DroneKeepBack` in its own file.
 4. **Difficulty:** a Grey Goo type uses the shared Grey Goo ramp (`GreyGooHealthScale` and `GreyGooDamageScale` in `Fight.cs`) through `GreyGoo.Spawned`. A type of a new faction that needs its own ramp follows it:
    - add fields to `DifficultyTuning.cs` and `difficulty.tres`;
    - add a scale to `Fight.cs`;

@@ -7,21 +7,25 @@ using System.Collections.Generic;
 /// - consuming: it heads for the nearest asteroid or debris within SeekRange and draws mass out of whatever it
 ///   touches, with motes flowing in, growing by BulkPerMass up to MaxBulk. None of it is fight experience: it
 ///   competes with the player for material. It never chases the VNP or drones, even when shot or sent in a wave;
-/// - debris: a share of the mass it consumed is added to its debris.
+/// - debris: a share of the mass it consumed is added to its debris;
+/// - producing: it stores what it consumes as growth (enemy.Consumed), and spends it only while the VNP is within
+///   AttackRange of its edge: once its cooldown is done and it has ProduceMass stored, it produces a basic goo at
+///   its edge and pushes it out toward the VNP at ProducePushSpeed, shrinking by the growth that mass gave it, and
+///   the mass no longer counts toward its debris. Full, at MaxBulk, it stops consuming. The goo is added after the
+///   enemies' update (QueueSpawn).
 /// Its body is declared to pilots like every Grey Goo type's. Its numbers are in devourer.tres.
 /// </summary>
 public sealed class Devourer : GreyGoo
 {
-	// How often it looks again for the nearest material, and how often it can gulp, in seconds.
+	// How often it looks again for the nearest material, in seconds.
 	private const float RetargetSeconds = 0.5f;
-	private const float GulpSeconds = 0.7f;
 
 	private sealed class State
 	{
 		public Vector2 Target;
 		public bool HasTarget;
 		public float Retarget;
-		public float Gulp;
+		public float Produce;    // Seconds until it can produce again.
 	}
 
 	private readonly DevourerDefinition _type;
@@ -93,12 +97,43 @@ public sealed class Devourer : GreyGoo
 	protected override bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
 	{
 		Consume(ref enemy, dt);
+		Produce(ref enemy, dt);
 		return false;
+	}
+
+	/// <summary>While the VNP is near, once its cooldown is done and it has enough mass stored, produces a basic goo
+	/// and pushes it toward the VNP.</summary>
+	private void Produce(ref EnemySwarm.Enemy enemy, float dt)
+	{
+		if (_type.Produces == null || _type.ProduceMass <= 0f)
+			return;
+		State state = StateOf(enemy.Id);
+		state.Produce -= dt;
+		Vnp vnp = Fight.Vnp;
+		if (state.Produce > 0f || enemy.Consumed < _type.ProduceMass || vnp.IsDestroyed
+			|| vnp.PlanePosition.DistanceTo(enemy.Position) > enemy.Radius + _type.AttackRange)
+			return;
+		state.Produce = _type.ProduceCooldown;
+		// The mass goes into the goo: the Devourer gives back the growth it gave, and its debris no longer counts it.
+		enemy.Consumed -= _type.ProduceMass;
+		Shrink(ref enemy, _type.ProduceMass * _type.BulkPerMass);
+
+		Vector2 toward = vnp.PlanePosition.DistanceSquaredTo(enemy.Position) > 0.0001f
+			? (vnp.PlanePosition - enemy.Position).Normalized()
+			: Rng.Direction();
+		Vector2 at = enemy.Position + toward * enemy.Radius;
+		Swarm.QueueSpawn(_type.Produces, at, toward * _type.ProducePushSpeed);
+		enemy.Pulse = _type.AbsorbPulseSeconds;
+		Fight.Effects.GooSplit(at, _type.Color, enemy.Radius);
+		Fight.Sounds.Play(Sound.GooSplit);
 	}
 
 	/// <summary>Draws mass out of every piece of material it touches, and grows from it.</summary>
 	private void Consume(ref EnemySwarm.Enemy enemy, float dt)
 	{
+		// Full: what it holds is all its growth, so it takes no more until producing makes room.
+		if (enemy.Bulk >= _type.MaxBulk)
+			return;
 		Harvestables material = Fight.Harvestables;
 		int touching = material.CollectNear(enemy.Position, enemy.Radius, _material);
 		if (touching == 0)
@@ -115,14 +150,6 @@ public sealed class Devourer : GreyGoo
 		}
 		enemy.Consumed += taken;
 		Grow(ref enemy, taken * _type.BulkPerMass);
-
-		State state = StateOf(enemy.Id);
-		state.Gulp -= dt;
-		if (taken > 0f && state.Gulp <= 0f)
-		{
-			state.Gulp = GulpSeconds;
-			Fight.Sounds.Play(Sound.DevourerConsume);
-		}
 	}
 
 	/// <summary>Its own debris and its drones', plus a share of what it consumed.</summary>

@@ -29,6 +29,10 @@ public partial class BursterDefinition : GreyGooDefinition
 	/// <summary>How big a blob is, for hitting and being hit.</summary>
 	[Export] public float BlobRadius;
 
+	/// <summary>A blob explodes as it pops, and its damage reaches the VNP and every drone within this distance of
+	/// where it popped. It never hurts enemies. 0 hurts only what it hit.</summary>
+	[Export] public float BlobBlastRadius;
+
 	/// <summary>How much it swells and shrinks as it throbs, as a fraction of its size, and how many throbs a
 	/// second at full health. It throbs up to <see cref="HurtThrobFactor"/> times as fast as its health runs out,
 	/// so the player can see it is about to burst.</summary>

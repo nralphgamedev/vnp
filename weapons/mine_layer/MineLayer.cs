@@ -98,7 +98,8 @@ public partial class MineLayer : VnpWeapon, IPilotLure
 		int caught = enemies.CollectTouching(mine.Position, blast, _caught);
 		for (int c = 0; c < caught; c++)
 			enemies.Damage(_caught[c], mine.Damage, Source);
-		Fight.FragileShots.DestroyWithin(mine.Position, blast, Source);
+		if (Definition.Explosive)
+			Fight.FragileShots.DestroyWithin(mine.Position, blast, Source);
 
 		Fight.Effects.Blast(mine.Position, Mines.Color, blast, Power);
 		Fight.Sounds.Play(Sound.MineExplode);

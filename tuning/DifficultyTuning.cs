@@ -28,6 +28,11 @@ public partial class DifficultyTuning : Resource
 	/// <summary>Extra Grey Goo damage per minute: contact damage, and how fast it drains drones.</summary>
 	[Export] public float RampGreyGooDamagePerMinute;
 
+	/// <summary>Extra speed per minute for newly spawned enemies, every type, chasing and wandering. Each keeps the
+	/// speed it spawned with. Enemies start just below the VNP's speed, so with enough of this, ones spawned late
+	/// outrun a VNP that hasn't taken Movement speed upgrades.</summary>
+	[Export] public float RampEnemySpeedPerMinute;
+
 	// At the limit, and again every step after it, difficulty rises by these amounts, on top of the
 	// ramp during the fight. Each is the fraction added per step: 0.6 means +60% at the limit,
 	// +120% a step later, and so on. Every step flashes the screen edges red with a "!".

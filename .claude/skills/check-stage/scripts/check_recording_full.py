@@ -25,6 +25,8 @@ import sys
 PROJECT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 OUT = os.path.join(PROJECT, 'playtests', 'check_recording_full')
 FIGHT_SECONDS = 330  # past the 5:00 limit, so escalation is recorded when a fight lasts
+# The fight kept alive, so escalation is always recorded however hard the enemies are; the others can lose.
+ESCALATING = 'fight2'
 SPAWN_GROUPS = 2     # groups of every enemy type spawned around the VNP as each fight starts
 FAILS = 0
 
@@ -87,7 +89,7 @@ def run(godot, f):
     cmd = [godot, '--headless', '--path', PROJECT, '--fixed-fps', '60', 'res://scripts/cheats/scenario.tscn', '--',
            'pilot=expert', 'build=designer', f'seed={f["seed"]}', f'maxtime={FIGHT_SECONDS}', 'record=yes', 'mute=yes',
            f'weapon={f["weapons"][0]}', f'drone_weapon={f["drone"]}', f'asteroids={f["asteroids"]}', f'spawn=all:{SPAWN_GROUPS}',
-           f'log=res://playtests/check_recording_full/{f["name"]}'] + ([f'take={",".join(take)}'] if take else [])
+           f'log=res://playtests/check_recording_full/{f["name"]}'] + ([f'take={",".join(take)}'] if take else [])         + (['invulnerable'] if f['name'] == ESCALATING else [])
     result = subprocess.run(cmd, cwd=PROJECT, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=900)
     return f, result.returncode
 

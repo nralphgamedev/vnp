@@ -28,4 +28,8 @@ public partial class SeekerMissilesDefinition : WeaponDefinition
 
 	/// <summary>Scale of a missile.</summary>
 	[Export] public float MissileSize;
+
+	/// <summary>How far from where a missile hits its explosion reaches, damaging every enemy within it (and, since
+	/// it is explosive, breaking fragile enemy shots there). Area of effect upgrades widen it.</summary>
+	[Export] public float BlastRadius;
 }

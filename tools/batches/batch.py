@@ -133,6 +133,9 @@ def main():
     parser.add_argument('--rendered', action='store_true',
                         help='run the fights in a window at normal speed, with effects, instead of headless')
     parser.add_argument('--name', default='', help='a short name added to the batch folder\'s name')
+    parser.add_argument('--no-build', action='store_true',
+                        help='skip building the game first, for a caller that has just built it, such as the stage '
+                             'check, which runs other fights at the same time')
     args = parser.parse_args()
 
     settings = read_tres_values(SETTINGS)
@@ -184,12 +187,13 @@ def main():
 
     print(f'Batch {batch_id}: {len(combos)} combination(s) x {seeds} seed(s) = {len(fights)} fights, '
           f'{at_once} at once, {"rendered" if args.rendered else "headless"}, cap {cap:.0f}s')
-    print('Building the game...')
-    build = subprocess.run(['dotnet', 'build', 'VNP.sln', '-nologo', '-v', 'q'], cwd=PROJECT,
-                           capture_output=True, text=True)
-    if build.returncode != 0:
-        print(build.stdout[-3000:])
-        sys.exit('The build failed; fix it first.')
+    if not args.no_build:
+        print('Building the game...')
+        build = subprocess.run(['dotnet', 'build', 'VNP.sln', '-nologo', '-v', 'q'], cwd=PROJECT,
+                               capture_output=True, text=True)
+        if build.returncode != 0:
+            print(build.stdout[-3000:])
+            sys.exit('The build failed; fix it first.')
 
     def run(fight):
         (pilot, build_id, weapon, drone, variant, amount), seed = fight

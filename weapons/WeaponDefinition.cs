@@ -24,6 +24,10 @@ public partial class WeaponDefinition : Resource
 	/// <summary>Colour of the weapon's shots or shapes.</summary>
 	[Export] public Color Color;
 
+	/// <summary>Its damage is explosive, so it breaks fragile enemy shots it reaches, such as a Quiller's spikes and a
+	/// Burster's blobs. Nothing else breaks them, except Orbital Shards with blocking.</summary>
+	[Export] public bool Explosive;
+
 	/// <summary>How a pilot plays to this weapon's strengths, usually pilot_profile.tres in the weapon's folder.
 	/// None leaves the pilot to fight its own way. See pilots/WeaponPilotProfile.cs.</summary>
 	[Export] public WeaponPilotProfile PilotProfile;

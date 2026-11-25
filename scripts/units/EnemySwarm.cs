@@ -182,6 +182,7 @@ public partial class EnemySwarm : Node3D
 		Spawn(dt, vnpPosition);
 		Simulate(dt, vnpPosition, Fight.Vnp.Velocity, vnpAlive: !Fight.Vnp.IsDestroyed);
 		SplitQueued();
+		SpawnQueued();
 		Draw();
 	}
 
@@ -654,6 +655,34 @@ public partial class EnemySwarm : Node3D
 
 	private readonly List<int> _otherTypes = new();
 
+	private readonly List<(EnemyDefinition Definition, Vector2 At, Vector2 Velocity)> _queuedSpawns = new();
+
+	/// <summary>
+	/// Adds an enemy of a type, awake, at a point and moving at a velocity, once the enemies' update is done, so one
+	/// enemy can make another during its own update, as a Devourer produces a basic goo. It then moves as usual,
+	/// slowing to its own speed at its own acceleration. Nothing happens if the fight has no such type.
+	/// </summary>
+	public void QueueSpawn(EnemyDefinition definition, Vector2 at, Vector2 velocity) =>
+		_queuedSpawns.Add((definition, at, velocity));
+
+	private void SpawnQueued()
+	{
+		foreach ((EnemyDefinition definition, Vector2 at, Vector2 velocity) in _queuedSpawns)
+		{
+			if (definition == null || !_typeIndex.TryGetValue(definition, out int type))
+				continue;
+			Enemy enemy = NewAwake(type, at);
+			enemy.Velocity = velocity;
+			if (velocity.LengthSquared() > 0.0001f)
+			{
+				enemy.Yaw = PlaneMath.YawFacing(velocity.Normalized());
+				enemy.TrackDirection = velocity.Normalized();
+			}
+			Append(enemy);
+		}
+		_queuedSpawns.Clear();
+	}
+
 	private void Append(in Enemy enemy)
 	{
 		if (Count == _enemies.Length)
@@ -739,12 +768,12 @@ public partial class EnemySwarm : Node3D
 					keptDrone = true;
 				}
 			}
-			if (!keptDrone && (enemy.TargetDroneId != 0 || enemy.TargetTimer <= 0f))
+			if (!keptDrone && type.Targets != EnemyTargets.VnpOnly && (enemy.TargetDroneId != 0 || enemy.TargetTimer <= 0f))
 			{
 				// Look again: the hold ran out, or the drone it was chasing is gone or out of reach.
 				enemy.TargetDroneId = 0;
 				enemy.TargetTimer = type.TargetHoldSeconds * Rng.Range(0.8f, 1.2f);
-				float searchRange = type.TargetsDronesFirst ? noticeRange : Mathf.Min(distance, noticeRange);
+				float searchRange = type.Targets == EnemyTargets.DronesFirst ? noticeRange : Mathf.Min(distance, noticeRange);
 				// Skip the drone search when even the farthest drone could not be near enough.
 				if (vnpDistance - drones.Reach <= noticeRange
 					&& drones.FindNearest(enemy.Position, searchRange,
@@ -814,7 +843,7 @@ public partial class EnemySwarm : Node3D
 					goal -= fromHome / homeDistance * homePull;
 			}
 
-			Vector2 steer = goal + Flocking(i, type, speed);
+			Vector2 steer = goal + Flocking(i, type, speed, aggro ? type.ChaseFlocking : 1f);
 			Vector2 wantedVelocity = steer.LimitLength(1f) * speed;
 			enemy.Velocity = enemy.Velocity.MoveToward(wantedVelocity, type.Acceleration * dt);
 			enemy.Position += enemy.Velocity * dt;
@@ -852,7 +881,8 @@ public partial class EnemySwarm : Node3D
 	/// Flocking: push away from any close enemy, and match the heading of and drift toward the middle of
 	/// nearby enemies of the same type. Large enemies push apart before they overlap.
 	/// </summary>
-	private Vector2 Flocking(int index, EnemyDefinition type, float speed)
+	/// <param name="flock">How much alignment and cohesion count: ChaseFlocking while chasing, 1 otherwise.</param>
+	private Vector2 Flocking(int index, EnemyDefinition type, float speed, float flock)
 	{
 		ref Enemy enemy = ref _enemies[index];
 		float neighborRadius = type.NeighborRadius;
@@ -895,8 +925,8 @@ public partial class EnemySwarm : Node3D
 		Vector2 steer = separation * type.Separation;
 		if (flockmates > 0)
 		{
-			steer += (flockVelocity / flockmates / speed).LimitLength(1f) * type.Alignment;
-			steer += (flockCenter / flockmates - enemy.Position) / neighborRadius * type.Cohesion;
+			steer += (flockVelocity / flockmates / speed).LimitLength(1f) * type.Alignment * flock;
+			steer += (flockCenter / flockmates - enemy.Position) / neighborRadius * type.Cohesion * flock;
 		}
 		return steer;
 	}

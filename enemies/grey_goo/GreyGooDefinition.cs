@@ -35,6 +35,16 @@ public partial class GreyGooDefinition : EnemyDefinition
 	/// destroying one that grew wins back some of what it took.</summary>
 	[Export] public float DebrisMassPerDrone;
 
+	/// <summary>While chasing, it keeps this far from its target, measured from its edge: closing in when farther,
+	/// backing off when nearer, such as a Lancer or Quiller waiting in range to attack. 0 closes in all the way, as
+	/// a type that hurts by touch does. Keep it inside the type's attack range.</summary>
+	[ExportGroup("Holding")]
+	[Export] public float HoldDistance;
+
+	/// <summary>Over this many units either side of the hold distance it blends from closing in to backing off,
+	/// rather than switching at one exact distance, so it doesn't twitch as its target moves.</summary>
+	[Export] public float HoldBlendDistance;
+
 	/// <summary>How far each wobble squashes and stretches the blob, as a fraction of its size.</summary>
 	[ExportGroup("Look")]
 	[Export] public float Wobble;

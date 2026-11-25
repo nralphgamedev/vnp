@@ -3,8 +3,8 @@ using Godot;
 /// <summary>
 /// The asteroid mimic, awake. Asleep, it isn't an enemy at all but an asteroid that Harvestables.cs marks as a
 /// mimic, so it looks, moves and records exactly like one, and pilots see an asteroid. Harvestables wakes it, taking
-/// the rock away and spawning this in its place (EnemySwarm.SpawnAwake), when the VNP or a drone comes within its
-/// aggro range or tries to harvest it.
+/// the rock away and spawning this in its place (EnemySwarm.SpawnAwake), when the VNP comes within its wake range,
+/// or the VNP or a drone tries to harvest it.
 ///
 /// Awake, everything shared by Grey Goo (GreyGoo.cs) applies: it drains and absorbs drones and grows with each, but
 /// never splits. Its own part is its shot: once every FireCooldown it fires one at the nearest of the VNP or a drone

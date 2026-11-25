@@ -9,7 +9,7 @@ using Godot;
 [GlobalClass]
 public partial class QuillerDefinition : GreyGooDefinition
 {
-	/// <summary>It forms a volley once the VNP is this close and its cooldown is done.</summary>
+	/// <summary>It forms a volley once the VNP is this close to its edge and its cooldown is done.</summary>
 	[ExportGroup("Volley")]
 	[Export] public float VolleyRange;
 

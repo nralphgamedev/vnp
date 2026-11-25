@@ -52,13 +52,14 @@ public sealed class Lancer : GreyGoo
 		enemy.AttackTimer = _type.LaunchCooldown * Rng.Range(0.3f, 1f); // So a group doesn't launch at once.
 	}
 
-	/// <summary>It drifts straight after the VNP between launches, and holds still otherwise: its launch moves it.</summary>
+	/// <summary>Between launches it keeps HoldDistance from the VNP (GreyGoo.Hold), waiting in range; it holds still
+	/// otherwise: its launch moves it.</summary>
 	public override Vector2 Chase(ref EnemySwarm.Enemy enemy, Vector2 track, float distance)
 	{
 		if (enemy.AttackPhase != Drifting)
 			return Vector2.Zero;
 		Vector2 toVnp = Fight.Vnp.PlanePosition - enemy.Position;
-		return toVnp.LengthSquared() > 0.01f ? toVnp.Normalized() : track;
+		return toVnp.LengthSquared() > 0.01f ? Hold(enemy, toVnp.Normalized(), toVnp.Length()) : track;
 	}
 
 	protected override bool ActOwn(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
@@ -74,7 +75,7 @@ public sealed class Lancer : GreyGoo
 					return false;
 				Face(ref enemy, vnp.PlanePosition - enemy.Position, dt);
 				if (enemy.AttackTimer <= 0f && !vnp.IsDestroyed
-					&& enemy.Position.DistanceTo(vnp.PlanePosition) <= _type.LaunchRange)
+					&& enemy.Position.DistanceTo(vnp.PlanePosition) <= enemy.Radius + _type.LaunchRange)
 					StartForming(ref enemy, vnp);
 				break;
 			case Forming:
@@ -112,7 +113,7 @@ public sealed class Lancer : GreyGoo
 	{
 		Vector2 vnpLater = vnp.PlanePosition + vnp.Velocity * _type.FormSeconds;
 		Vector2 meeting = PlaneMath.AimAhead(enemy.Position, vnpLater, vnp.Velocity, _type.LaunchSpeed,
-			SecondsFor(_type.LaunchRange + _type.LaunchBeyond));
+			SecondsFor(enemy.Radius + _type.LaunchRange + _type.LaunchBeyond));
 		float lead = Mathf.Lerp(_type.AimLeadMin, _type.AimLeadMax, enemy.Accuracy);
 		Vector2 aimAt = vnp.PlanePosition.Lerp(meeting, lead);
 		Vector2 aim = aimAt.DistanceSquaredTo(enemy.Position) > 0.0001f

@@ -80,8 +80,9 @@ public partial class Shockwave : VnpWeapon
 			Ring ring = _rings[r];
 			float before = ring.Radius;
 			ring.Radius = Mathf.Min(ring.MaxRadius, ring.Radius + Wave.RingSpeed * dt);
-			// It breaks fragile enemy shots it passes over this frame, such as a Quiller's spikes.
-			Fight.FragileShots.DestroyInBand(ring.Center, before, ring.Radius, Source);
+			// Only if explosive: it breaks fragile enemy shots it passes over this frame, such as a Quiller's spikes.
+			if (Definition.Explosive)
+				Fight.FragileShots.DestroyInBand(ring.Center, before, ring.Radius, Source);
 
 			// Everything the ring has reached so far, that it has not hit yet.
 			int caught = enemies.CollectTouching(ring.Center, ring.Radius, _caught);

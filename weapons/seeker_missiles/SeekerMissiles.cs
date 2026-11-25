@@ -132,18 +132,16 @@ public partial class SeekerMissiles : VnpWeapon
 			int hit = enemies.FindHit(before, missile.Position);
 			if (hit >= 0)
 			{
-				Vector2 at = missile.Position;
-				enemies.Damage(hit, missile.Damage, Source);
-				Fight.Effects.Explosion(at, Seekers.Color, Power);
-				Fight.Sounds.Play(Sound.SeekerHit);
+				Explode(missile.Position, missile.Damage, hit);
 				_missiles[i] = _missiles[--_count];
 				continue;
 			}
 
-			// A missile that flies into a fragile enemy shot, such as a Quiller's spike, breaks it and is used up.
-			if (Fight.FragileShots.DestroyAlong(before, missile.Position, 0.3f, Source))
+			// An explosive missile that flies into a fragile enemy shot, such as a Quiller's spike, breaks it and
+			// explodes there.
+			if (Definition.Explosive && Fight.FragileShots.DestroyAlong(before, missile.Position, 0.3f, Source))
 			{
-				Fight.Effects.Explosion(missile.Position, Seekers.Color, Power * 0.5f);
+				Explode(missile.Position, missile.Damage, -1);
 				_missiles[i] = _missiles[--_count];
 				continue;
 			}
@@ -175,11 +173,42 @@ public partial class SeekerMissiles : VnpWeapon
 		_batch.Commit(_count);
 	}
 
+	/// <summary>How far an explosion reaches, with area of effect upgrades.</summary>
+	private float BlastRadius => Seekers.BlastRadius * Area;
+
+	private readonly int[] _caught = new int[1024];
+
+	/// <summary>
+	/// A missile explodes: the enemy it hit, if any, and every other enemy within its blast take its damage, and,
+	/// since it is explosive, fragile enemy shots there break.
+	/// </summary>
+	private void Explode(Vector2 at, float damage, int hit)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+		if (hit >= 0)
+			enemies.Damage(hit, damage, Source);
+		float blast = BlastRadius;
+		if (blast > 0f)
+		{
+			int caught = enemies.CollectTouching(at, blast, _caught);
+			for (int c = 0; c < caught; c++)
+			{
+				if (_caught[c] != hit)
+					enemies.Damage(_caught[c], damage, Source);
+			}
+			if (Definition.Explosive)
+				Fight.FragileShots.DestroyWithin(at, blast, Source);
+			Fight.Effects.Blast(at, Seekers.Color, blast, Power);
+		}
+		Fight.Effects.Explosion(at, Seekers.Color, Power);
+		Fight.Sounds.Play(Sound.SeekerHit);
+	}
+
 #if RECORDING
 	public override void CollectPlaced(System.Collections.Generic.List<PlacedObject> placed)
 	{
 		for (int i = 0; i < _count; i++)
-			placed.Add(PlacedObject.Point(_missiles[i].Position, 0.5f));
+			placed.Add(PlacedObject.Point(_missiles[i].Position, Mathf.Max(0.5f, BlastRadius)));
 	}
 #endif
 }

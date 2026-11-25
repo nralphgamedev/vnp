@@ -1,5 +1,6 @@
-[gd_resource type="Resource" script_class="DevourerDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="DevourerDefinition" load_steps=3 format=3]
 
+[ext_resource type="Resource" path="res://enemies/grey_goo/basic_goo/basic_goo.tres" id="2_basic_goo"]
 [ext_resource type="Script" path="res://enemies/grey_goo/devourer/DevourerDefinition.cs" id="1_script"]
 
 [resource]
@@ -20,7 +21,7 @@ IdleTurnDeadband = 10.0
 WanderRadius = 10.0
 AggroRange = 12.0
 LoseAggroRange = 20.0
-TargetsDronesFirst = true
+Targets = 1
 TargetHoldSeconds = 1.5
 DroneKeepBack = 1.5
 DroneAvoidDistance = 3.0
@@ -29,6 +30,7 @@ SeparationRadius = 3.5
 Separation = 1.6
 Alignment = 0.6
 Cohesion = 0.5
+ChaseFlocking = 0.0
 WanderWeight = 0.5
 Size = 2.4
 Color = Color(0.3, 0.3, 0.32, 1)
@@ -46,3 +48,8 @@ ConsumePerSecond = 3.0
 BulkPerMass = 0.05
 MaxBulk = 12.0
 DebrisShareOfConsumed = 0.5
+Produces = ExtResource("2_basic_goo")
+AttackRange = 25.0
+ProduceMass = 20.0
+ProduceCooldown = 8.0
+ProducePushSpeed = 35.0

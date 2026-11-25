@@ -35,6 +35,7 @@ public partial class FragileShots : Node3D
 		public float OutLeft;           // Seconds left flying out (once past its target point, if it has one).
 		public bool Steering;           // Still steering toward its target point.
 		public bool Homing;             // Turns toward the VNP the whole time, and pops on its first hit; drawn as a blob.
+		public float Blast;             // A homing one explodes as it pops, hurting the VNP and drones this close.
 		public Vector2 TargetPoint;
 		public float OutTurnRate;       // Radians a second it can turn while steering toward its target point.
 		public float Beyond;            // How far it flies on past its target point.
@@ -122,13 +123,15 @@ public partial class FragileShots : Node3D
 	/// Fires one from an enemy that homes on the VNP, such as a Burster's blob: it leaves along
 	/// <paramref name="direction"/>, turns toward the VNP at up to <paramref name="turnDegrees"/> a second, pops on
 	/// the first thing it hits, and fizzles out after <paramref name="life"/> seconds. Breaking it costs no one health.
+	/// With a <paramref name="blast"/>, it explodes as it pops, hurting the VNP and every drone that close, never enemies.
 	/// </summary>
 	public void FireHoming(int owner, Vector2 from, Vector2 direction, float speed, float turnDegrees, float life,
-		float damage, float radius, DamageSource source, Color color)
+		float damage, float radius, DamageSource source, Color color, float blast = 0f)
 	{
 		Fire(owner, from, direction, speed, speed * life, speed, turnDegrees, damage, radius, 0f, source, color);
 		ref Shot shot = ref _shots[Count - 1];
 		shot.Homing = true;
+		shot.Blast = blast;
 		shot.OutLeft = float.MaxValue;
 		shot.Life = life;
 	}
@@ -223,9 +226,13 @@ public partial class FragileShots : Node3D
 			}
 			else
 			{
-				// Arc back: turn toward the enemy at the turn rate, at the return speed.
+				// Arc back: turn toward the enemy at the turn rate, at the return speed. Once nearer home than it could
+				// turn round to reach, it heads straight in, so it never circles its enemy.
 				Vector2 toHome = home - shot.Position;
-				float heading = Mathf.RotateToward(shot.Velocity.Angle(), toHome.Angle(), shot.TurnRate * dt);
+				float turnCircle = shot.ReturnSpeed / Mathf.Max(0.01f, shot.TurnRate);
+				float heading = toHome.Length() <= 2f * turnCircle
+					? toHome.Angle()
+					: Mathf.RotateToward(shot.Velocity.Angle(), toHome.Angle(), shot.TurnRate * dt);
 				shot.Velocity = Vector2.FromAngle(heading) * shot.ReturnSpeed;
 				if (toHome.Length() <= shot.ReturnSpeed * dt + 1f)
 				{
@@ -241,6 +248,11 @@ public partial class FragileShots : Node3D
 			if (!vnp.IsDestroyed && shot.LastHit != -1
 				&& PlaneMath.DistanceToSegment(vnp.PlanePosition, before, shot.Position) <= shot.Radius + Tuning.Vnp.HitRadius)
 			{
+				if (shot.Homing && shot.Blast > 0f)
+				{
+					Explode(ref shot); // A blob explodes, the VNP and drones near it caught.
+					continue;
+				}
 				vnp.TakeDamage(shot.Damage, shot.Source);
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.6f);
 				shot.LastHit = -1;
@@ -252,6 +264,11 @@ public partial class FragileShots : Node3D
 			int drone = Fight.Drones.FindHit(before, shot.Position);
 			if (drone >= 0 && Fight.Drones.IdOf(drone) != shot.LastHit)
 			{
+				if (shot.Homing && shot.Blast > 0f)
+				{
+					Explode(ref shot);
+					continue;
+				}
 				shot.LastHit = Fight.Drones.IdOf(drone);
 				Fight.Drones.Damage(drone, shot.Damage, shot.Source);
 				Fight.Effects.Impact(shot.Position, shot.Color, 0.5f);
@@ -290,6 +307,24 @@ public partial class FragileShots : Node3D
 		}
 		_batch.Commit(slot);
 		_blobBatch.Commit(blobs);
+	}
+
+	private readonly int[] _blastDrones = new int[256];
+
+	/// <summary>A blob explodes where it is: the VNP, if close enough, and every drone within its blast take its
+	/// damage. It never hurts enemies.</summary>
+	private void Explode(ref Shot shot)
+	{
+		Vnp vnp = Fight.Vnp;
+		if (!vnp.IsDestroyed && vnp.PlanePosition.DistanceTo(shot.Position) <= shot.Blast + Tuning.Vnp.HitRadius)
+			vnp.TakeDamage(shot.Damage, shot.Source);
+		int caught = Fight.Drones.CollectNear(shot.Position, shot.Blast + Tuning.Drones.HitRadius, _blastDrones);
+		for (int c = 0; c < caught; c++)
+			Fight.Drones.Damage(_blastDrones[c], shot.Damage, shot.Source);
+		Fight.Effects.Blast(shot.Position, shot.Color, shot.Blast, 0.6f);
+		Fight.Effects.Explosion(shot.Position, shot.Color, 0.5f);
+		Fight.Sounds.Play(Sound.MineExplode, 0.4f);
+		Finish(ref shot);
 	}
 
 	/// <summary>The ones the grid files near a circle, living ones only, into _nearby; returns how many.</summary>
@@ -395,7 +430,9 @@ public partial class FragileShots : Node3D
 			float lasts = shot.Homing ? shot.Life : shot.Returning
 				? (_homes.TryGetValue(shot.Owner, out Vector2 home) ? home.DistanceTo(shot.Position) / Mathf.Max(0.01f, shot.ReturnSpeed) : 0f)
 				: shot.OutLeft;
-			var path = Arbiter.Area.Circle(shot.Position.ToArbiter(), shot.Radius, shot.Velocity.ToArbiter());
+			// An exploding blob hurts anything within its blast when it pops.
+			float size = shot.Homing ? Mathf.Max(shot.Radius, shot.Blast) : shot.Radius;
+			var path = Arbiter.Area.Circle(shot.Position.ToArbiter(), size, shot.Velocity.ToArbiter());
 			situation.Add(Arbiter.Hazard.Timed(path, 0f, Mathf.Max(0f, lasts), shot.Damage, Arbiter.Endangers.Both, shot.Owner));
 		}
 	}

@@ -281,7 +281,7 @@ The highlighted card has a thicker, full-strength border and a stronger tint. Th
 
 | Category | Colour (`look.tres`) | What belongs in it | Upgrades now |
 |---|---|---|---|
-| VNP Weapon | Orange, `VnpWeaponCardColor` | New VNP Weapons and upgrades to a VNP Weapon | Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, Mine Layer; Pulse Laser damage and cooldown; Orbital Shards damage, area of effect and speed; Scatter Shot damage, cooldown, projectile count and range; Seeker Missiles damage, cooldown and missiles per volley; Shockwave and Mine Layer damage, cooldown and area of effect; Orbital Shards count and blocking; Orbital Shards harvesting (phase 3) |
+| VNP Weapon | Orange, `VnpWeaponCardColor` | New VNP Weapons and upgrades to a VNP Weapon | Pulse Laser, Orbital Shards, Scatter Shot, Seeker Missiles, Shockwave, Mine Layer; Pulse Laser damage and cooldown; Orbital Shards damage, area of effect and speed; Scatter Shot damage, cooldown, projectile count and range; Seeker Missiles damage, cooldown and missiles per volley; Seeker Missiles area of effect (phase 4); Shockwave and Mine Layer damage, cooldown and area of effect; Orbital Shards count and blocking; Orbital Shards harvesting (phase 3) |
 | Drone Weapon | Blue, `DroneWeaponCardColor` | New Drone Weapons and upgrades to how drones attack | Projectile, Beam, Ram, Drone damage, Drone attack rate |
 | Stats | Green, `StatsCardColor` | The VNP's own stats, and harvesting | Health, Armor, Movement speed, Harvest rate, Debris reward |
 | Drones | Pink, `DronesCardColor` | How many drones there are | Drone cap, New drones |

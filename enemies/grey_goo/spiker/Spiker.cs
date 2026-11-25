@@ -5,14 +5,15 @@ using System.Collections.Generic;
 /// <summary>
 /// The Spiker, a Grey Goo type. Everything shared by Grey Goo (GreyGoo.cs) applies; it drains no drones by touch,
 /// but grows with each drone it absorbs, and never splits. Its own part is its thrust:
-/// - drifting: a bristling blob drifting after the VNP;
+/// - drifting: a caltrop-shaped blob drifting after the VNP, which it hurts by touch;
 /// - forming: once a drone or the VNP is within its reach and its cooldown is done, it stops, swells and glows
-///   paler, picking one or two targets (MinSpikes to MaxSpikes): the nearest drones in reach, or the VNP if too
-///   few drones are. A spike at the VNP has its line set now, so moving off it dodges;
-/// - thrusting: the spikes shoot out, those at drones aimed again as they go, ahead of where each drone is heading
-///   (AimLead), and swing toward their drone as they extend (TrackDegrees), so they rarely miss. The first drone a spike's tip meets is impaled on it: it
-///   stops fighting and is drawn back in at PullSpeed, then absorbed. A spike that crosses the VNP damages it
-///   once and carries on, since the VNP can't be impaled. An empty spike comes back at once.
+///   paler, and picks its targets (MinSpikes to MaxSpikes): the nearest drones in reach that no other spike is
+///   after, or the VNP if too few drones are. A spike at the VNP has its line set now, so moving off it dodges;
+/// - thrusting: the spikes shoot out, those at drones aimed again as they go and swinging toward their drone as
+///   they extend (TrackDegrees). Every spike leads its target and strays by the Spiker's accuracy, which it rolls as
+///   it spawns and the difficulty ramp raises, as the Lancer does. The first drone a spike's tip meets is impaled
+///   on it: it stops fighting and is drawn back in at PullSpeed, then absorbed. A spike that crosses the VNP damages it once and carries on,
+///   since the VNP can't be impaled. An empty spike comes back at once.
 /// It forms again once every spike is back in. If it is destroyed first, its impaled drones are freed.
 /// While forming and thrusting it declares each spike's line to pilots. Its numbers are in spiker.tres.
 /// </summary>
@@ -54,7 +55,9 @@ public sealed class Spiker : GreyGoo
 		base.Spawned(ref enemy);
 		enemy.AttackDamage = _type.SpikeDamage * Fight.GreyGooDamageScale;
 		enemy.AttackPhase = Drifting;
-		enemy.AttackTimer = _type.Cooldown * Rng.Range(0.3f, 1f); // So a group doesn't thrust at once.
+		enemy.AttackTimer = _type.ThrustCooldown * Rng.Range(0.3f, 1f); // So a group doesn't thrust at once.
+		float roll = Mathf.Pow(Rng.Value(), Mathf.Max(0.01f, _type.SharpshooterRarity));
+		enemy.Accuracy = Mathf.Clamp(roll + Fight.EnemyAccuracyBonus, 0f, 1f);
 	}
 
 	/// <summary>It drifts straight after its target, and holds still while forming and thrusting.</summary>
@@ -86,7 +89,8 @@ public sealed class Spiker : GreyGoo
 		return false;
 	}
 
-	/// <summary>Picks its targets and sets each spike's line, or does nothing if no drone or VNP is in reach.</summary>
+	/// <summary>Picks its targets, drones first, and sets each spike's line, or does nothing if no drone or the VNP
+	/// is in reach.</summary>
 	private void StartForming(ref EnemySwarm.Enemy enemy)
 	{
 		float reach = enemy.Radius + _type.Reach;
@@ -111,36 +115,54 @@ public sealed class Spiker : GreyGoo
 		spikes.Clear();
 		int count = Rng.Int(Mathf.Max(1, _type.MinSpikes), Mathf.Max(1, Mathf.Max(_type.MinSpikes, _type.MaxSpikes)));
 		for (int n = 0; n < _nearest.Count && spikes.Count < count; n++)
-			AddSpike(spikes, enemy, _nearest[n].Position, _nearest[n].Id);
+		{
+			// Aimed properly as the thrust starts (AimAtDrones); for now, at where the drone is.
+			var spike = new Spike { Target = _nearest[n].Id };
+			_claimed.Add(spike.Target);
+			Aim(ref spike, enemy, _nearest[n].Position);
+			spikes.Add(spike);
+		}
 		if (spikes.Count < count && vnpInReach)
-			AddSpike(spikes, enemy, vnp, 0);
+			AimAtVnp(spikes, enemy);
 		_spikeCount += spikes.Count;
 		enemy.AttackPhase = Forming;
 		enemy.AttackTimer = _type.FormSeconds;
 	}
 
-	private void AddSpike(List<Spike> spikes, in EnemySwarm.Enemy enemy, Vector2 at, int target)
+	/// <summary>
+	/// A spike at the VNP, its line set now, so moving off it dodges: it leads the VNP by the Spiker's accuracy,
+	/// toward where the VNP will be when the spike gets there (it moves on while the Spiker forms, then while the tip
+	/// shoots out), and strays by it too.
+	/// </summary>
+	private void AimAtVnp(List<Spike> spikes, in EnemySwarm.Enemy enemy)
 	{
-		var spike = new Spike { Target = target };
-		if (target != 0)
-			_claimed.Add(target);
-		Aim(ref spike, enemy, at);
+		Vnp vnp = Fight.Vnp;
+		float speed = Mathf.Max(0.01f, _type.SpikeSpeed);
+		Vector2 vnpLater = vnp.PlanePosition + vnp.Velocity * _type.FormSeconds;
+		Vector2 meeting = PlaneMath.AimAhead(enemy.Position, vnpLater, vnp.Velocity, speed, Farthest(enemy) / speed);
+		Vector2 aimAt = vnp.PlanePosition.Lerp(meeting, Lead(enemy));
+		var spike = new Spike();
+		Aim(ref spike, enemy, enemy.Position + (aimAt - enemy.Position).Rotated(Stray(enemy)));
 		spikes.Add(spike);
 	}
 
-	/// <summary>Points a spike at a point, reaching a little past it.</summary>
-	private void Aim(ref Spike spike, in EnemySwarm.Enemy enemy, Vector2 at)
+	/// <summary>How far it leads a moving target, and a random stray, both by its accuracy.</summary>
+	private float Lead(in EnemySwarm.Enemy enemy) => Mathf.Lerp(_type.AimLeadMin, _type.AimLeadMax, enemy.Accuracy);
+
+	private float Stray(in EnemySwarm.Enemy enemy)
 	{
-		Vector2 toward = at - enemy.Position;
-		spike.Direction = toward.LengthSquared() > 0.0001f ? toward.Normalized() : Vector2.Up;
-		spike.Length = enemy.Radius;
-		spike.MaxLength = Mathf.Max(enemy.Radius, toward.Length()) + _type.SpikeBeyond;
+		float spread = Mathf.DegToRad(Mathf.Lerp(_type.AimSpreadMax, _type.AimSpreadMin, enemy.Accuracy));
+		return Rng.Range(-spread, spread);
 	}
 
+	/// <summary>The farthest a spike can reach from its centre.</summary>
+	private float Farthest(in EnemySwarm.Enemy enemy) => enemy.Radius + _type.Reach + _type.SpikeBeyond;
+
 	/// <summary>
-	/// As the spikes go out, each one at a drone is aimed again, ahead of where the drone is heading by AimLead of
-	/// the way it will move before the tip gets there, and strayed a little. One whose drone is gone, or already
-	/// caught, goes for the nearest other drone in reach that no spike is after, or keeps its line if there is none.
+	/// As the spikes go out, each one at a drone is aimed again, ahead of where the drone is heading by the Spiker's
+	/// lead of the way it will move before the tip gets there, and strayed a little. One whose drone is gone, or
+	/// already caught, goes for the nearest other drone in reach that no spike is after, or keeps its line if there
+	/// is none.
 	/// </summary>
 	private void AimAtDrones(in EnemySwarm.Enemy enemy)
 	{
@@ -148,7 +170,6 @@ public sealed class Spiker : GreyGoo
 			return;
 		DroneSwarm drones = Fight.Drones;
 		float speed = Mathf.Max(0.01f, _type.SpikeSpeed);
-		float spread = Mathf.DegToRad(_type.AimSpreadDegrees);
 		for (int s = 0; s < spikes.Count; s++)
 		{
 			Spike spike = spikes[s];
@@ -171,11 +192,58 @@ public sealed class Spiker : GreyGoo
 			float time = (at.DistanceTo(enemy.Position) - enemy.Radius) / speed;
 			for (int pass = 0; pass < 2; pass++)
 				time = Mathf.Max(0f, ((at + velocity * time).DistanceTo(enemy.Position) - enemy.Radius) / speed);
-			Vector2 led = at + velocity * time * _type.AimLead;
-			Vector2 toward = (led - enemy.Position).Rotated(Rng.Range(-spread, spread));
-			Aim(ref spike, enemy, enemy.Position + toward);
+			Vector2 led = at + velocity * time * Lead(enemy);
+			Aim(ref spike, enemy, enemy.Position + (led - enemy.Position).Rotated(Stray(enemy)));
 			spikes[s] = spike;
 		}
+	}
+
+	/// <summary>The nearest drone within its reach that isn't held and no spike is after, or -1.</summary>
+	private int NearestFree(in EnemySwarm.Enemy enemy)
+	{
+		DroneSwarm drones = Fight.Drones;
+		int found = drones.CollectNear(enemy.Position, enemy.Radius + _type.Reach, _drones);
+		int best = -1;
+		float bestDistance = float.MaxValue;
+		for (int c = 0; c < found; c++)
+		{
+			int d = _drones[c];
+			if (drones.IsHeld(d) || _claimed.Contains(drones.IdOf(d)))
+				continue;
+			float distance = drones.PositionOf(d).DistanceSquaredTo(enemy.Position);
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				best = d;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>A spike at a drone swings toward it, at up to TrackDegrees a second, and reaches past it.</summary>
+	private void Track(ref Spike spike, in EnemySwarm.Enemy enemy, float dt)
+	{
+		if (spike.Target == 0 || _type.TrackDegrees <= 0f)
+			return;
+		DroneSwarm drones = Fight.Drones;
+		int drone = drones.IndexOfId(spike.Target);
+		if (drone < 0 || drones.IsHeld(drone))
+			return;
+		Vector2 toward = drones.PositionOf(drone) - enemy.Position;
+		if (toward.LengthSquared() < 0.0001f)
+			return;
+		float angle = Mathf.RotateToward(spike.Direction.Angle(), toward.Angle(), Mathf.DegToRad(_type.TrackDegrees) * dt);
+		spike.Direction = Vector2.FromAngle(angle);
+		spike.MaxLength = Mathf.Min(Farthest(enemy), Mathf.Max(spike.MaxLength, toward.Length() + _type.SpikeBeyond));
+	}
+
+	/// <summary>Points a spike at a point, reaching a little past it, but no farther than its reach allows.</summary>
+	private void Aim(ref Spike spike, in EnemySwarm.Enemy enemy, Vector2 at)
+	{
+		Vector2 toward = at - enemy.Position;
+		spike.Direction = toward.LengthSquared() > 0.0001f ? toward.Normalized() : Vector2.Up;
+		spike.Length = enemy.Radius;
+		spike.MaxLength = Mathf.Min(Mathf.Max(enemy.Radius, toward.Length()) + _type.SpikeBeyond, Farthest(enemy));
 	}
 
 	/// <summary>Moves each spike out or back, impaling, hitting the VNP and absorbing as it goes.</summary>
@@ -246,50 +314,10 @@ public sealed class Spiker : GreyGoo
 			EndThrust(ref enemy);
 	}
 
-	/// <summary>The nearest drone within its reach that isn't held and no spike is after, or -1.</summary>
-	private int NearestFree(in EnemySwarm.Enemy enemy)
-	{
-		DroneSwarm drones = Fight.Drones;
-		int found = drones.CollectNear(enemy.Position, enemy.Radius + _type.Reach, _drones);
-		int best = -1;
-		float bestDistance = float.MaxValue;
-		for (int c = 0; c < found; c++)
-		{
-			int d = _drones[c];
-			if (drones.IsHeld(d) || _claimed.Contains(drones.IdOf(d)))
-				continue;
-			float distance = drones.PositionOf(d).DistanceSquaredTo(enemy.Position);
-			if (distance < bestDistance)
-			{
-				bestDistance = distance;
-				best = d;
-			}
-		}
-		return best;
-	}
-
-	/// <summary>A spike at a drone swings toward it, at up to TrackDegrees a second, and reaches past it.</summary>
-	private void Track(ref Spike spike, in EnemySwarm.Enemy enemy, float dt)
-	{
-		if (spike.Target == 0 || _type.TrackDegrees <= 0f)
-			return;
-		DroneSwarm drones = Fight.Drones;
-		int drone = drones.IndexOfId(spike.Target);
-		if (drone < 0 || drones.IsHeld(drone))
-			return;
-		Vector2 toward = drones.PositionOf(drone) - enemy.Position;
-		if (toward.LengthSquared() < 0.0001f)
-			return;
-		float angle = Mathf.RotateToward(spike.Direction.Angle(), toward.Angle(), Mathf.DegToRad(_type.TrackDegrees) * dt);
-		spike.Direction = Vector2.FromAngle(angle);
-		float farthest = enemy.Radius + _type.Reach + _type.SpikeBeyond;
-		spike.MaxLength = Mathf.Min(farthest, Mathf.Max(spike.MaxLength, toward.Length() + _type.SpikeBeyond));
-	}
-
 	private void EndThrust(ref EnemySwarm.Enemy enemy)
 	{
 		enemy.AttackPhase = Drifting;
-		enemy.AttackTimer = _type.Cooldown * Rng.Range(0.85f, 1.15f);
+		enemy.AttackTimer = _type.ThrustCooldown * Rng.Range(0.85f, 1.15f);
 	}
 
 	/// <summary>

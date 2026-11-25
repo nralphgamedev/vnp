@@ -2,7 +2,9 @@
 # Runs every mechanical check on the VNP project and prints a summary at the end.
 #
 #   bash check_stage.sh                                  # every check
-#   bash check_stage.sh --full                           # every check, plus the full recording check: run before each commit
+#   bash check_stage.sh --full                           # every check, plus the full recording check and the
+#                                                        # performance tests: run just before each push
+#   bash check_stage.sh --full --crowd                   # also measures the tenfold crowd (report only)
 #   bash check_stage.sh --scenario [--window] ARGS...   # only a fight set up by the scenario harness
 #
 # --scenario runs res://scripts/cheats/scenario.tscn with its arguments (see ScenarioRunner.cs), such as
@@ -45,7 +47,12 @@ run_scenario() {
 }
 
 full=0
-if [ "$1" = "--full" ]; then full=1; shift; fi
+crowd=0
+while [ "$1" = "--full" ] || [ "$1" = "--crowd" ]; do
+	[ "$1" = "--full" ] && full=1
+	[ "$1" = "--crowd" ] && crowd=1
+	shift
+done
 
 if [ "$1" = "--scenario" ]; then
 	shift
@@ -108,11 +115,52 @@ else
 	fail "data check (see the lines above)"
 fi
 
+echo "== Headless fights, all at once"
+# Every check below plays its fights headless on a fixed time step, so they don't depend on each other or on how
+# busy the computer is, and they all start together here; each is then judged in turn. The performance tests,
+# which do depend on the computer being otherwise idle, run alone afterwards.
+work="$(mktemp -d)"
+rm -rf playtests/check playtests/check_repeat
+
+# The headless fight: through the scenario harness, since a plain run would sit on the paused starting weapon
+# menu and test nothing. It writes a fight log, to a folder of its own that is removed afterwards.
+run_scenario headless spawn=all:2 invulnerable frames=1800 report=600 seed=1 log=res://playtests/check maps=yes strip=20 \
+	> "$work/fight.txt" &
+
+# Repeatability: two copies of the same pilot fight print the fight's exact state every half second; any
+# difference means something outside the seed changes how a fight plays. Past causes: the camera shake and the
+# window size moving where enemies spawn. One copy writes a fight log, which also runs the run review's
+# detectors, so anything the log or a detector does that changes the fight is caught too.
+repeat_args=(seed=7 pilot=average build=greedy frames=5400 report=100000 trace=30)
+run_scenario headless "${repeat_args[@]}" log=none | grep "^TRACE" > "$work/repeat_a.txt" &
+run_scenario headless "${repeat_args[@]}" log=res://playtests/check_repeat | grep "^TRACE" > "$work/repeat_b.txt" &
+
+# Clean quit: a full pilot fight that wins, carries on into endless and ends, which must quit cleanly. A long
+# fight that ends leaves the most garbage for .NET to clean up, and quitting once crashed with it (see
+# ShutdownCleanup.cs). Exit code 0 is a clean quit; 139 was that crash.
+( timeout 600 "$GODOT" --headless --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- \
+	seed=3 pilot=average build=greedy frames=14400 report=100000 log=none > "$work/exit.txt" 2>&1
+  echo $? > "$work/exit_code.txt" ) &
+
+# The quick batch: a few short pilot fights through the batch command. It skips its own build, since the
+# builds above have just made it and other fights are running from it.
+( python tools/batches/batch.py --size quick --builds greedy --cap 60 --name check-stage --no-build > "$work/batch.txt" 2>&1
+  echo $? > "$work/batch_code.txt" ) &
+
+# Recording covers every weapon: one short recorded fight per starting VNP Weapon (see check_recording.py).
+( python "$SKILL_DIR/check_recording.py" "$GODOT" > "$work/record.txt" 2>&1
+  echo $? > "$work/record_code.txt" ) &
+
+# The full recording check, with --full: a few recorded fights into escalation that between them use every
+# weapon, Drone Weapon, mod and asteroid amount, each checked field by field (see check_recording_full.py).
+if [ $full -eq 1 ]; then
+	( python "$SKILL_DIR/check_recording_full.py" "$GODOT" > "$work/full.txt" 2>&1
+	  echo $? > "$work/full_code.txt" ) &
+fi
+wait
+
 echo "== Headless fight, 30 seconds, with every enemy type"
-# Through the scenario harness: a plain run would sit on the paused starting weapon menu and test nothing.
-# It also writes a fight log, to a folder of its own that is removed afterwards, and checks the log adds up.
-rm -rf playtests/check
-fight="$(run_scenario headless spawn=all:2 invulnerable frames=1800 report=600 seed=1 log=res://playtests/check maps=yes strip=20)"
+fight="$(cat "$work/fight.txt")"
 echo "$fight" | grep -E "^SCENARIO|^t |^TIMING"
 fight_errors="$(echo "$fight" | grep -iE "error|exception" | sort | uniq -c | head -20)"
 if ! echo "$fight" | grep -q "^TIMING"; then
@@ -149,46 +197,31 @@ fight_warnings="$(echo "$fight" | grep -E "^WARNING" | sort | uniq -c | head -10
 [ -n "$fight_warnings" ] && { echo "$fight_warnings"; note "Fight warnings (check whether they are new): $(echo "$fight_warnings" | wc -l)"; }
 
 echo "== Repeatability: the same seed must give the same fight"
-# Two copies of the same pilot fight, run at once (load once exposed a bug), print the fight's exact state
-# every half second; any difference means something outside the seed changes how a fight plays. Past causes:
-# the camera shake and the window size moving where enemies spawn. One copy writes a fight log, which also runs
-# the run review's detectors, so anything the log or a detector does that changes the fight is caught too.
-repeat_args=(seed=7 pilot=average build=greedy frames=5400 report=100000 trace=30)
-run_scenario headless "${repeat_args[@]}" log=none | grep "^TRACE" > /tmp/vnp_repeat_a.txt &
-run_scenario headless "${repeat_args[@]}" log=res://playtests/check_repeat | grep "^TRACE" > /tmp/vnp_repeat_b.txt &
-# Meanwhile, a full pilot fight that wins, carries on into endless and ends, which must quit cleanly. A long
-# fight that ends leaves the most garbage for .NET to clean up, and quitting once crashed with it (see
-# ShutdownCleanup.cs). Exit code 0 is a clean quit; 139 was that crash.
-timeout 600 "$GODOT" --headless --path . --fixed-fps 60 res://scripts/cheats/scenario.tscn -- \
-	seed=3 pilot=average build=greedy frames=14400 report=100000 log=none > /tmp/vnp_exit.txt 2>&1
-exit_code=$?
-wait
-trace_lines="$(wc -l < /tmp/vnp_repeat_a.txt)"
+trace_lines="$(wc -l < "$work/repeat_a.txt")"
+exit_code="$(cat "$work/exit_code.txt" 2>/dev/null || echo missing)"
 if [ "$trace_lines" -lt 100 ]; then
 	fail "the repeatability fights didn't run long enough to compare ($trace_lines trace lines)"
-elif ! diff -q /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt > /dev/null; then
-	diff /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt | head -4
+elif ! diff -q "$work/repeat_a.txt" "$work/repeat_b.txt" > /dev/null; then
+	diff "$work/repeat_a.txt" "$work/repeat_b.txt" | head -4
 	fail "the same seed gave two different fights; the first differing line above shows when they parted"
 else
 	note "Repeatability: two runs of the same 90-second pilot fight, one with its fight log and detectors, matched at all $trace_lines checkpoints"
 fi
-rm -f /tmp/vnp_repeat_a.txt /tmp/vnp_repeat_b.txt
 rm -rf playtests/check_repeat
-if [ "$exit_code" -eq 0 ]; then
+if [ "$exit_code" = "0" ]; then
 	note "Clean quit: a full pilot fight that ended quit cleanly"
 else
-	grep -m3 "Fatal\|   at " /tmp/vnp_exit.txt
+	grep -m3 "Fatal\|   at " "$work/exit.txt"
 	fail "a full pilot fight that ended didn't quit cleanly (exit code $exit_code)"
 fi
-rm -f /tmp/vnp_exit.txt
 
 echo "== Quick batch (smoke test of the batch tools)"
-# A few short pilot fights through the batch command: every fight must finish without errors and write its
-# log, and the report must be written. Its balance numbers are shown, not judged.
-batch_out="$(python tools/batches/batch.py --size quick --builds greedy --cap 60 --name check-stage 2>&1)"
-batch_code=$?
+# Every fight must finish without errors and write its log, and the report must be written. Its balance numbers
+# are shown, not judged.
+batch_out="$(cat "$work/batch.txt")"
+batch_code="$(cat "$work/batch_code.txt" 2>/dev/null || echo 1)"
 batch_dir="$(ls -td playtests/batches/*_check-stage 2>/dev/null | head -1)"
-if [ $batch_code -eq 0 ] && [ -f "$batch_dir/report.md" ]; then
+if [ "$batch_code" = "0" ] && [ -f "$batch_dir/report.md" ]; then
 	note "Quick batch: $(echo "$batch_out" | grep -o '[0-9]* of [0-9]* fights ok'), report written"
 else
 	echo "$batch_out" | tail -8
@@ -197,11 +230,10 @@ fi
 [ -n "$batch_dir" ] && rm -rf "$batch_dir"
 
 echo "== Recording covers every weapon"
-# One short recorded fight per starting VNP Weapon, each paired with a Drone Weapon in turn: every weapon must
-# show up in the whole-fight recording (a shot, or something from its CollectPlaced), so the designer's fights
-# can be drawn in full. See check_recording.py.
-record_out="$(python "$SKILL_DIR/check_recording.py" "$GODOT" 2>&1)"
-if [ $? -eq 0 ]; then
+# Every weapon must show up in the whole-fight recording (a shot, or something from its CollectPlaced), so the
+# designer's fights can be drawn in full.
+record_out="$(cat "$work/record.txt")"
+if [ "$(cat "$work/record_code.txt" 2>/dev/null)" = "0" ]; then
 	note "Recording: every weapon shows up ($(echo "$record_out" | grep -c '^PASS') checks)"
 else
 	echo "$record_out" | grep -E "FAIL|Traceback|Error"
@@ -209,20 +241,19 @@ else
 fi
 
 if [ $full -eq 1 ]; then
-	echo "== Full recording check (before each commit)"
-	# A few recorded fights into escalation that between them use every weapon, Drone Weapon, mod and asteroid
-	# amount, each recording checked field by field against the fight's own statistics. See check_recording_full.py.
-	full_out="$(python "$SKILL_DIR/check_recording_full.py" "$GODOT" 2>&1)"
-	if [ $? -eq 0 ]; then
+	echo "== Full recording check (just before each push)"
+	full_out="$(cat "$work/full.txt")"
+	if [ "$(cat "$work/full_code.txt" 2>/dev/null)" = "0" ]; then
 		note "Full recording check: $(echo "$full_out" | grep -c '^  PASS') checks passed in $(echo "$full_out" | grep -c '^== fight') fights"
 	else
 		echo "$full_out" | grep -E "^==|FAIL|Traceback|Error"
 		fail "the full recording check failed (see above)"
 	fi
 fi
+rm -rf "$work"
 
 if [ $full -eq 1 ]; then
-	echo "== Performance requirement (before each commit; opens a window)"
+	echo "== Performance requirement (just before each push; opens a window)"
 	# The stress case for CLAUDE.md's performance requirement: a Rich field, a full swarm of Beam drones, Orbital
 	# Shards with extra shards and Mine Layer for effects, eight groups of every enemy type plus six more of Goos,
 	# and an expert pilot flying, kept alive, for a minute of fight, in a window with vsync off (perf=). plain judges
@@ -255,12 +286,17 @@ if [ $full -eq 1 ]; then
 		fail "the performance requirement is not met in the late fight (see the PERF lines above)"
 	fi
 
-	# The tenfold crowd, report only: about ten times a late fight's enemies (360 groups of each type, about
-	# 2,500), for where crowds may go (the designer's "full Vampire Survivors"). It doesn't meet the logic budget
-	# yet and doesn't fail the check; it shows progress until it becomes a requirement.
-	crowd=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam spawn=all:360
+fi
+
+if [ $crowd -eq 1 ]; then
+	echo "== Tenfold crowd (report only; opens a window)"
+	# About ten times a late fight's enemies (360 groups of each type, about 2,500), for where crowds may go (the
+	# designer's "full Vampire Survivors"). It doesn't meet the logic budget yet and doesn't fail the check; it shows
+	# progress until it becomes a requirement. Only with --crowd, at the designer's choice: it took 40% of --full's
+	# time and can never fail it, so it runs when performance work is under way.
+	crowd_args=(pilot=expert build=greedy seed=4 asteroids=rich weapon=orbital_shards drone_weapon=beam spawn=all:360
 		drones=40 invulnerable maxtime=30 perf=detail profile=yes mute=yes log=none close=yes)
-	perf_out="$(run_scenario window "${crowd[@]}")"
+	perf_out="$(run_scenario window "${crowd_args[@]}")"
 	alive="$(echo "$perf_out" | grep -E "^t [0-9.]+s" | tail -1 | grep -oE "enemies [0-9]+" | awk '{print $2}')"
 	note "Tenfold crowd (report only, ${alive:-?} enemies alive at the end): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps)' | head -1); $(echo "$perf_out" | grep -o 'game logic [0-9.]* ms (budget [0-9.]*)'); enemies $(echo "$perf_out" | grep -oE 'PROFILE: +enemies +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms; pilot $(echo "$perf_out" | grep -oE 'PROFILE: +pilot +[0-9.]+ / +[0-9.]+' | grep -oE '[0-9.]+ / +[0-9.]+') ms (average / slowest 1%)"
 fi

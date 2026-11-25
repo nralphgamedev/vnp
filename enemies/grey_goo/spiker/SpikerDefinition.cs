@@ -1,10 +1,10 @@
 using Godot;
 
 /// <summary>
-/// The Spiker, a Grey Goo type: it pushes out one or two spikes at a time, aimed well at drones within its reach,
-/// leading them as they move, or at the VNP when no drone is in reach. Each spike can impale a drone, which it
-/// then draws back in and absorbs, growing larger and tougher; spikes damage the VNP but can't impale it. Everything else, touch damage, growth per absorbed drone,
-/// debris and the wobbling look, is shared by the Grey Goo types (GreyGooDefinition). Spiker.cs runs it.
+/// The Spiker, a Grey Goo type: it moves after the VNP, hurting it by touch, and thrusts spikes at drones within its
+/// reach, nearest first, or at the VNP when no drone is in reach. A drone a spike meets is impaled, drawn back in
+/// and absorbed, so the Spiker grows larger and tougher; spikes damage the VNP but can't impale it. Everything else, touch damage, growth per absorbed drone, debris and the wobbling look, is
+/// shared by the Grey Goo types (GreyGooDefinition). Spiker.cs runs it.
 /// </summary>
 [GlobalClass]
 public partial class SpikerDefinition : GreyGooDefinition
@@ -15,7 +15,7 @@ public partial class SpikerDefinition : GreyGooDefinition
 	[Export] public float Reach;
 
 	/// <summary>Seconds it bristles before the spikes go out: the player's warning. A spike at the VNP has its line
-	/// set as it starts; one at a drone is aimed again as it goes out.</summary>
+	/// set as it starts, so moving off it dodges; one at a drone is aimed again as it goes out.</summary>
 	[Export] public float FormSeconds;
 
 	/// <summary>How many spikes one thrust has, picked at random between these, each at a different drone, the
@@ -23,18 +23,30 @@ public partial class SpikerDefinition : GreyGooDefinition
 	[Export] public int MinSpikes;
 	[Export] public int MaxSpikes;
 
-	/// <summary>How far ahead of a moving drone a spike aims, from 0 (where it is) to 1 (exactly where it will be
-	/// when the tip gets there, if it keeps going), and how far it strays either side, in degrees.</summary>
-	[Export] public float AimLead;
-	[Export] public float AimSpreadDegrees;
-
-	/// <summary>How fast a spike at a drone can swing toward it as it shoots out, in degrees a second, so a drone
-	/// turning away is still caught. 0 for a straight thrust.</summary>
-	[Export] public float TrackDegrees;
-
 	/// <summary>Seconds between thrusts, counted once every spike of the last is back in, varied a little. Each
 	/// Spiker's first comes sooner, at random.</summary>
-	[Export] public float Cooldown;
+	[Export] public float ThrustCooldown;
+
+	/// <summary>How rare accurate ones are: each Spiker rolls its accuracy from 0 to 1 as it spawns, leaning low by
+	/// this power, then the difficulty ramp's accuracy is added, as for the Lancer. Higher makes accurate ones
+	/// rarer.</summary>
+	[ExportGroup("Aiming")]
+	[Export] public float SharpshooterRarity;
+
+	/// <summary>How far ahead of a moving target it aims, from its least accurate (min) to its most (max): 0 aims
+	/// where the target is (the VNP as it starts forming, a drone as the thrust starts), 1 where it will be when the
+	/// spike gets there if it keeps going.</summary>
+	[Export] public float AimLeadMin;
+	[Export] public float AimLeadMax;
+
+	/// <summary>How far each spike strays at random either side, in degrees, from its most accurate (min) to its
+	/// least (max), so several spikes fan out.</summary>
+	[Export] public float AimSpreadMin;
+	[Export] public float AimSpreadMax;
+
+	/// <summary>How fast a spike at a drone can swing toward it as it shoots out, in degrees a second, so a drone
+	/// turning away is still caught. A spike at the VNP never swings, so it can be dodged. 0 for a straight thrust.</summary>
+	[Export] public float TrackDegrees;
 
 	/// <summary>How fast a spike's tip shoots out, in units a second.</summary>
 	[ExportGroup("Spikes")]

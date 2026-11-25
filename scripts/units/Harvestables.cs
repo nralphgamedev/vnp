@@ -47,7 +47,6 @@ public partial class Harvestables : Node3D
 	// Mimics woken this frame, spawned at the start of the next update, so an enemy is never added while the enemies
 	// are updating (a Devourer can wake one by touching it).
 	private readonly System.Collections.Generic.List<(Vector2 At, bool Hurt)> _wakes = new();
-	private readonly int[] _nearDrones = new int[1];
 
 	// Farthest point of the debris mesh from its centre at scale 1. Debris tumbles, so any point can face
 	// up; this is used to sit it below the units.
@@ -275,13 +274,9 @@ public partial class Harvestables : Node3D
 
 	// ───────────── Asteroid mimics ─────────────
 
-	/// <summary>Whether the VNP or a drone is within a sleeping mimic's aggro range.</summary>
-	private bool WakesUp(Vector2 at)
-	{
-		float range = Mimic.AggroRange;
-		return (!Fight.Vnp.IsDestroyed && Fight.Vnp.PlanePosition.DistanceTo(at) <= range)
-			|| Fight.Drones.CollectNear(at, range, _nearDrones) > 0;
-	}
+	/// <summary>Whether the VNP is within a sleeping mimic's wake range. Drones coming near don't wake it.</summary>
+	private bool WakesUp(Vector2 at) =>
+		!Fight.Vnp.IsDestroyed && Fight.Vnp.PlanePosition.DistanceTo(at) <= Mimic.WakeRange;
 
 	/// <summary>The rock is gone at once, and the mimic appears in its place at the start of the next update.</summary>
 	private void Wake(ref Item item, bool hurt)

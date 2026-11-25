@@ -132,8 +132,8 @@ public partial class Fight : Node3D
 	public float GreyGooHealthScale => (1f + Tuning.Difficulty.RampGreyGooHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooHealthPerStep * EscalationSteps);
 	public float GreyGooDamageScale => (1f + Tuning.Difficulty.RampGreyGooDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooDamagePerStep * EscalationSteps);
 	public float EnemyAggroScale => 1f + Tuning.Difficulty.EscalationAggroRangePerStep * EscalationSteps;
-	/// <summary>Speed of enemies spawned now, as a multiple of their type's: escalation only, every type.</summary>
-	public float EnemySpeedScale => 1f + Tuning.Difficulty.EscalationEnemySpeedPerStep * EscalationSteps;
+	/// <summary>Speed of enemies spawned now, as a multiple of their type's, every type.</summary>
+	public float EnemySpeedScale => (1f + Tuning.Difficulty.RampEnemySpeedPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemySpeedPerStep * EscalationSteps);
 
 	/// <summary>Accuracy added to enemies spawned now, from the ramp and escalation, on the 0 to 1 scale.</summary>
 	public float EnemyAccuracyBonus => Tuning.Difficulty.RampEnemyAccuracyPerMinute * Minutes

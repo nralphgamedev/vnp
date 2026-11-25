@@ -48,15 +48,15 @@ All of it is in the scenario harness (`scripts/cheats/ScenarioRunner.cs`), edito
 
 ## The tests
 
-Run by the check-stage skill with `--full`, before every commit, in a window. The stage check runs fights on a fixed step of 1/60 of a second, so the measured fights repeat, and each frame carries a full step of fight.
+Run by the check-stage skill with `--full`, just before every push (before every commit until the designer moved it), in a window. The stage check runs fights on a fixed step of 1/60 of a second, so the measured fights repeat, and each frame carries a full step of fight.
 
 | Test | What it is | What it guards | Fails the check |
 |---|---|---|---|
 | Stress | A Rich field, a full swarm of Beam drones, Orbital Shards with extra shards and Mine Layer for effects, eight groups of every enemy type plus six more of Goos, and an invulnerable expert pilot, for a minute; once with `perf=plain` and once with `perf=detail` | a heavy early crowd with every effect on | yes |
 | Late fight | An invulnerable expert on a Rich field, played to 6:00 fast forwarded, then 6:00 to 7:00 measured with recording on, `perf=detail` and `profile=yes` | costs that grow over a long fight: escalation's crowds, and anything that piles up as the VNP explores | yes |
-| Tenfold crowd | 360 groups of each enemy type, about 2,500 enemies, around an invulnerable expert for 30 seconds, `perf=detail` and `profile=yes` | progress toward much larger crowds | no, reported only |
+| Tenfold crowd | 360 groups of each enemy type, about 2,500 enemies, around an invulnerable expert for 30 seconds, `perf=detail` and `profile=yes`; only with `--full --crowd` | progress toward much larger crowds | no, reported only |
 
-The stress test and late fight take about two and a half minutes together; the tenfold crowd half a minute.
+The stress test and late fight take about 20 seconds together, since their frames run uncapped; the tenfold crowd about half a minute. At the designer's choice, the tenfold crowd runs only when asked for (`--crowd`), when performance work is under way, since it can't fail the check and was 40% of `--full`'s time.
 
 ## What it has found
 

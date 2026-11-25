@@ -37,7 +37,8 @@ public sealed class Burster : GreyGoo
 		{
 			Vector2 out_ = Vector2.FromAngle(start + Mathf.Tau * b / count);
 			Fight.FragileShots.FireHoming(enemy.Id, enemy.Position + out_ * enemy.Radius, out_, _type.BlobSpeed,
-				_type.BlobTurnDegrees, _type.BlobLife, enemy.AttackDamage, _type.BlobRadius, Source, _type.Color);
+				_type.BlobTurnDegrees, _type.BlobLife, enemy.AttackDamage, _type.BlobRadius, Source, _type.Color,
+				_type.BlobBlastRadius);
 		}
 	}
 

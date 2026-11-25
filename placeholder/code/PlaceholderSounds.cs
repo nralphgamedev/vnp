@@ -280,13 +280,9 @@ public static class PlaceholderSounds
 			for (int i = 0; i < 4; i++)
 				Tone(b, 0.06f + i * 0.05f, 0.04f, 900f - i * 120f, 500f, Wave.Sine, 0.18f);
 		}));
-		// The Devourer consuming: a low, wet gulp: a deep tone that bends down and back, under a soft crunch.
-		Save(folder, "devourer_consume", Make(0.4f, b =>
-		{
-			Tone(b, 0f, 0.18f, 110f, 70f, Wave.Sine, 0.6f);
-			Tone(b, 0.16f, 0.16f, 70f, 95f, Wave.Sine, 0.45f);
-			Noise(b, random, 0f, 0.25f, 900f, 400f, 0.25f);
-		}));
+		// The Devourer's gulp was removed at the designer's choice. Its noise is still drawn, and thrown away, so the
+		// shared generator gives every later sound the same noise as before and rebaking doesn't change them.
+		Make(0.4f, b => Noise(b, random, 0f, 0.25f, 900f, 400f, 0.25f));
 		// An asteroid mimic waking: a sudden crack of stone, then a wet, rising hiss as the goo inside comes out.
 		Save(folder, "mimic_wake", Make(0.55f, b =>
 		{

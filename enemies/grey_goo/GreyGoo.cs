@@ -61,7 +61,24 @@ public abstract class GreyGoo : EnemyBehavior
 	}
 
 	/// <summary>It heads straight for its target, so it can touch it.</summary>
-	public override Vector2 Chase(ref EnemySwarm.Enemy enemy, Vector2 track, float distance) => track;
+	/// <summary>Heads straight for its target, or keeps HoldDistance from it if its type has one.</summary>
+	public override Vector2 Chase(ref EnemySwarm.Enemy enemy, Vector2 track, float distance) =>
+		Hold(enemy, track, distance);
+
+	/// <summary>
+	/// Toward its target, at full strength while farther than HoldDistance from it (from its edge), away from it while
+	/// nearer, blended over HoldBlendDistance. With no hold distance, straight toward it.
+	/// </summary>
+	protected Vector2 Hold(in EnemySwarm.Enemy enemy, Vector2 toward, float distance)
+	{
+		if (GooType.HoldDistance <= 0f)
+			return toward;
+		float gap = distance - enemy.Radius - GooType.HoldDistance;
+		float pull = GooType.HoldBlendDistance > 0f
+			? Mathf.Clamp(gap / GooType.HoldBlendDistance, -1f, 1f)
+			: Mathf.Sign(gap);
+		return toward * pull;
+	}
 
 	public override bool Act(ref EnemySwarm.Enemy enemy, int index, in EnemySwarm.Target target, float dt)
 	{
@@ -127,6 +144,21 @@ public abstract class GreyGoo : EnemyBehavior
 			return;
 		enemy.Bulk += bulk;
 		enemy.Health += enemy.BaseHealth * bulk;
+		Resize(ref enemy);
+	}
+
+	/// <summary>
+	/// Shrinks by <paramref name="bulk"/>, never below the size it spawned at (bulk 1): smaller, and weaker by the same
+	/// share, so a hurt goo stays as hurt and shrinking never destroys it.
+	/// </summary>
+	protected void Shrink(ref EnemySwarm.Enemy enemy, float bulk)
+	{
+		bulk = Mathf.Min(bulk, enemy.Bulk - 1f);
+		if (bulk <= 0f)
+			return;
+		float before = enemy.Bulk;
+		enemy.Bulk -= bulk;
+		enemy.Health *= enemy.Bulk / before;
 		Resize(ref enemy);
 	}
 
