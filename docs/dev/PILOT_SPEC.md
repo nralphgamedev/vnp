@@ -207,7 +207,7 @@ The prototype now does the following; any of it can still change.
     - Orbital Shards declare the band their shards sweep;
     - Mine Layer declares each mine as a trap the width of its blast.
 
-  The current pilot still reads mines through `IPilotLure` until it is replaced.
+  The first pilot read mines through `IPilotLure` until its code was removed (stage 7).
 - **The decision core (stage 2):** `Arbiter.Decision`.
   - **Terms:** named terms, each worked out for every option and added up by its weight. Weights can change from one choice to the next. A term at weight 0 isn't worked out.
   - **Noise:** optional, drawn from the game's randomness through `IRandom`, so fights stay repeatable.
@@ -220,7 +220,7 @@ The prototype now does the following; any of it can still change.
     - **danger to allies:** taken as riding within an ally radius of the path.
   - **Noticing:** `Situation.Overlook` drops fleeting hazards (shots, attacks being readied) by a notice chance; lasting ones are always noticed.
   - **Cost:** it looks only at its **attention**'s worth of the nearest hazards, and checks each only against the paths it could come near. A body's touch and drain share one area, so they are measured once.
-- **The planning pilot (stage 2):** `pilots/Pilot.Planning.cs`, flown when a skill level's `Planner` is on, as it now is for every level.
+- **The planning pilot (stage 2):** `pilots/Pilot.Planning.cs`, flown by every skill level (it was chosen by a `Planner` setting until the first pilot's code was removed).
   - **Judgements:** the first pilot's, kept in the same order: affording a fight, regrouping, withdrawing, the harvest target, committing, holding still.
   - **Moving:** instead of adding wants up, each want is a term on whole paths:
     - harm, as a share of its health now, so the same hit matters more at low health;
@@ -263,7 +263,14 @@ The prototype now does the following; any of it can still change.
   - **Why the gap could wait:** the gap measures closeness to the designer's fights on the phase 3 mix, which phase 4 no longer plays. And the first pilot couldn't react to the Lancer without the per-type code this rebuild avoids.
   - **The gap moves to stage 5:** calibrating the designer-like pilot against the designer's recorded Grey Goo fights.
   - **Meanwhile:** batches run a pilot that survives better than the designer, so balance reads easier than it is.
-  - **What changed:** `Planner` is on in every skill level. Variant `first_pilot` flies the first pilot for comparison until its code is removed (stage 7).
+  - **What changed:** `Planner` was turned on in every skill level, with variant `first_pilot` flying the first pilot for comparison, until its code was removed (stage 7).
+- **The first pilot's code removed (stage 7):** at the designer's go-ahead, once the planner had replaced it.
+  - **Removed:** the first pilot's `Decide`, which added its wants up into one direction, and the steering only it used: `Dodge`, `KeepClearOfTouch`, `FightMove`, `CircleTarget`, `LeadAcrossSpots` with `IPilotLure` (and Mine Layer's `CollectLureSpots`). Also the `Planner` switch and the two settings only the first pilot read, `DodgeWeight` and `TouchLookAhead`. The planning pilot notices shots by `DodgeChance` and predicts contact enemies along its paths instead.
+  - **Kept:** every judgement the planner makes, in `Pilot.cs`: affording a fight, pressure, regrouping and withdrawing, the weapon profiles' blend, the harvest choice with clusters and danger, committing and holding still, remembering material and exploring. Also `EnemyAhead` and the upgrade picks.
+  - **Variants:** `first_pilot` was deleted. `no_low_health_care` lost its `TouchLookAhead` lines and keeps `LowHealthBelow`. The others change settings the planner still reads, so they stay. `calibrate_pilot.py` no longer searches `DodgeWeight`.
+  - **Checked:** four 2½-minute expert fights, one starting with Mine Layer, traced identically before and after at every checkpoint, with the first pilot's one random draw at the start (which way it circled) kept for the comparison.
+  - **Seeds:** that draw was then removed, so a seed now plays out differently from the same seed before this change, as after any tuning change. Replay commands in older batch reports no longer match.
+  - **Cost:** `Pilot.cs` went from 921 lines to 565.
 - **Recorded and drawn (stage 1):** every picture of a recording holds the hazards and zones, as a pilot would perceive them around the VNP.
   - **On strips:** hazards are drawn yellow if they hurt the VNP and pink if they hurt drones, dimmer if not yet landed, each with a line to where it moves in the next second. Weapons' reach shows as faint rings.
   - **Size:** this added about half to a recording in a dense fight, about 830 KB for a 5-minute fight instead of 560 KB.
@@ -312,7 +319,7 @@ Build one stage at a time, and stop after each so the designer can try it.
    - the guards for staying general, as settled with the designer.
 5. **Calibrating to the designer's Grey Goo fights,** for the designer-like target, with automatic calibration, once the designer has played a few recorded Grey Goo fights. (Fitting weights to recorded moments was planned here; deferred at the designer's choice, see Like the designer.)
 6. **The ceiling pilot,** and reports with both targets side by side.
-7. **Removing the old pilot's code.**
+7. **Removing the old pilot's code.** (Done, see Settled during the build.)
 
 ## Out of scope
 

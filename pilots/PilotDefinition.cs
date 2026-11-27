@@ -74,12 +74,6 @@ public partial class PilotDefinition : Resource
 	/// end the fight is worth a wider margin.</summary>
 	[Export] public float LowHealthTouchScale;
 
-	/// <summary>Seconds ahead it judges enemies that damage by touch, by where they and it are heading, so one
-	/// closing in head-on is avoided while there is still room. 0 judges them only where they are. Added after a
-	/// replay (seed 30) showed three Goos and the VNP closing at about 25 units a second: the 5-unit margin gave
-	/// a fifth of a second, one decision, and it was touched and destroyed.</summary>
-	[Export] public float TouchLookAhead;
-
 	/// <summary>From 0 to 1: how much it closes in on an enemy farther than its preferred distance. 1 goes after
 	/// enemies to fight them; near 0 keeps its distance and lets enemies come to it and its drones, as the
 	/// designer does, so a fight it can afford never pulls it away from harvesting.</summary>
@@ -188,9 +182,6 @@ public partial class PilotDefinition : Resource
 	/// <summary>How strongly it pulls away from a fight it can't afford.</summary>
 	[Export] public float BackOffWeight;
 
-	/// <summary>How strongly it moves aside from a shot it noticed.</summary>
-	[Export] public float DodgeWeight;
-
 	/// <summary>The distance it likes to keep from the enemy it is fighting: it closes in from farther, and edges
 	/// away from closer.</summary>
 	[Export] public float PreferredEnemyDistance;
@@ -220,14 +211,9 @@ public partial class PilotDefinition : Resource
 	/// chasing it, at full TacticSkill and a profile's full LeadChasers.</summary>
 	[Export] public float LeadWeight;
 
-	/// <summary>Plans its moves (docs/dev/PILOT_SPEC.md): perceives the threats enemies and shots declare, and scores
-	/// candidate paths through them with Arbiter, instead of adding up its wants into one direction. On for every
-	/// skill level since it replaced the first pilot; off flies the first pilot, kept for comparison (variant
-	/// first_pilot) until its code is removed. The judgements above, of affording a fight, regrouping, harvest worth
-	/// and so on, are shared by both.</summary>
+	// How it plans its moves (docs/dev/PILOT_SPEC.md): it perceives the threats enemies and shots declare, and
+	// scores candidate paths through them with Arbiter, by the judgements above.
 	[ExportGroup("Planning")]
-	[Export] public bool Planner;
-
 	/// <summary>Seconds ahead each candidate path looks, predicting where it and the hazards will be.</summary>
 	[Export] public float LookAheadSeconds = 1f;
 

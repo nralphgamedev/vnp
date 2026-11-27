@@ -5,23 +5,13 @@ using System.Collections.Generic;
 /// Flies a VNP in place of a player: it chooses a direction to move each moment, and picks from level-up
 /// offers. How skilled it is comes from a PilotDefinition, and what it picks from a BuildDefinition.
 ///
-/// It sees only what a player could: enemies, enemy shots and material within its awareness, which is never
-/// farther than the screen shows, plus its own health, drones and level. It never reads hidden information,
-/// such as when the next wave comes.
+/// It sees only what a player could: what enemies, shots and its weapons declare within its awareness and on
+/// screen, plus its own health, drones and level. It never reads hidden information, such as when the next wave
+/// comes.
 ///
-/// Each decision weighs four wants:
-/// - Back off: pull away from a fight it can't afford. Threat comes from each enemy near it, closer ones more,
-///   and an enemy that eats drones counts for more while it relies on drones. What it can afford grows with
-///   its health, drones and level, and shrinks with caution.
-/// - Dodge: move aside from a shot it noticed coming at it.
-/// - Fight: while the fight is affordable, keep its preferred distance from the nearest enemy, circling it.
-///   It wants this less the fewer drones it has: without them, it would rather rebuild than fight alone.
-/// - Harvest: head for the most worthwhile material that is affordable to reach, preferring clusters, and hold
-///   still beside it while the beam works. It wants this most while its drones are below their cap, since
-///   harvesting builds them, and less at the cap.
-/// With nothing to harvest or fight, it either returns to material it remembers seeing, choosing where by the
-/// mass there, or explores for more: the more mass it remembers, the likelier it returns.
-/// It never retreats through the gateway.
+/// Each decision makes its judgements here (whether it can afford the fight, whether to regroup or withdraw, what
+/// to harvest, whether to commit or hold still, where to explore), then scores short candidate paths by them and
+/// follows the best (Pilot.Planning.cs, docs/dev/PILOT_SPEC.md). It never retreats through the gateway.
 ///
 /// It flies any VNP it is given, and doesn't assume it is the player's or the only one. For now it only flies
 /// the player's VNP in the scenario harness and batches; nothing in a normal fight uses it. Rival VNPs and
@@ -57,7 +47,6 @@ public partial class Pilot : Node, IVnpController
 	private float _decisionTimer;
 	private int _harvestTargetId;
 	private Vector2 _exploreHeading = Vector2.Up;
-	private float _orbitSign = 1f;
 	private bool _regrouping;
 	private bool _withdrawing;
 	private float _withdrawingFor;
@@ -75,7 +64,6 @@ public partial class Pilot : Node, IVnpController
 
 	private readonly int[] _enemies = new int[512];
 	private readonly int[] _material = new int[512];
-	private readonly List<(Vector2 Position, Vector2 Velocity)> _shots = new();
 
 	// How quickly the pilot's "stick" moves to a new direction, in full turns of the stick a second, so its
 	// movement is smooth rather than snapping between decisions.
@@ -95,7 +83,6 @@ public partial class Pilot : Node, IVnpController
 			ProcessPriority = UpdateOrder.Pilots,
 		};
 		pilot._exploreHeading = Rng.Direction();
-		pilot._orbitSign = Rng.Sign();
 		vnp.Controller = pilot;
 		fight.AddChild(pilot);
 		return pilot;
@@ -114,10 +101,7 @@ public partial class Pilot : Node, IVnpController
 		_sinceDecision += dt;
 		if (_decisionTimer <= 0f)
 		{
-			if (Skill.Planner)
-				DecideByPlanning(_sinceDecision);
-			else
-				Decide(_sinceDecision);
+			Decide(_sinceDecision);
 			_sinceDecision = 0f;
 			_decisionTimer = Skill.ReactionSeconds * Rng.Range(0.8f, 1.2f);
 		}
@@ -126,202 +110,10 @@ public partial class Pilot : Node, IVnpController
 
 	// ───────────── Moving ─────────────
 
-	private void Decide(float sinceLast)
-	{
-		Vector2 me = _vnp.PlanePosition;
-		float awareness = Mathf.Min(Skill.AwarenessRadius, ScreenReach(me));
-		EnemySwarm enemies = _fight.Enemies;
-		int enemyCount = OnScreenOnly(enemies.CollectNear(me, awareness, _enemies), _enemies, i => enemies.PositionOf(i));
-
-		// Threat, and which way it comes from.
-		float droneReliance = _drones.Cap > 0 ? Mathf.Clamp((float)_drones.Count / _drones.Cap, 0f, 1f) : 0f;
-		float threat = 0f;
-		Vector2 away = Vector2.Zero;
-		int nearest = -1;
-		float nearestDistance = float.MaxValue;
-		float nearestAnyThreat = float.MaxValue;
-		for (int c = 0; c < enemyCount; c++)
-		{
-			int e = _enemies[c];
-			Vector2 offset = me - enemies.PositionOf(e);
-			float distance = Mathf.Max(0.5f, offset.Length() - enemies.RadiusOf(e));
-			float closeness = Mathf.Clamp(1f - distance / Mathf.Max(1f, Skill.ThreatRange), 0f, 1f);
-			nearestAnyThreat = Mathf.Min(nearestAnyThreat, distance);
-			float weight = enemies.AbsorbsDronesOf(e) ? Mathf.Lerp(1f, Skill.DroneEaterThreat, droneReliance) : 1f;
-			threat += weight * closeness * closeness;
-			away += offset / distance * weight * closeness;
-			// Fight the nearest enemy, but leave drone eaters to the weapons while the drones matter.
-			bool worthApproaching = !enemies.AbsorbsDronesOf(e) || droneReliance < 0.25f;
-			if (worthApproaching && distance < nearestDistance)
-			{
-				nearestDistance = distance;
-				nearest = e;
-			}
-		}
-
-		float pressure = threat / Mathf.Max(0.01f, Affordable());
-		// Pressure rises at once but falls only at PressureFall a second, so it follows through on backing off.
-		if (Skill.PressureFall > 0f)
-			pressure = Mathf.Max(pressure, _heldPressure - Skill.PressureFall * sinceLast);
-		_heldPressure = pressure;
-		BlendWeaponProfiles(out float preferredDistance, out float keepMoving, out float leadChasers);
-		// Back off more and more as the fight stops being affordable, fully once it is well past.
-		float backOff = Mathf.Clamp((pressure - 0.75f) / 0.5f, 0f, 1f);
-		// Regrouping: with few drones, once it backs off it gets well clear and rebuilds drones from a cluster,
-		// rather than staying at the edge of the fight flicking between backing off and fighting.
-		if (!_regrouping && backOff > 0.5f && droneReliance < Skill.RegroupBelow)
-			_regrouping = true;
-		else if (_regrouping && droneReliance >= Skill.RegroupUntil)
-			_regrouping = false;
-		if (_regrouping && Skill.RegroupClearRange > 0f)
-			backOff = nearestAnyThreat < Skill.RegroupClearRange ? 1f : backOff;
-		// With drones that matter, all or nothing: stay with them, or withdraw far enough that they break off.
-		if (Skill.CommitOrWithdraw && !_regrouping && droneReliance >= Skill.RegroupBelow)
-		{
-			float dronesLetGo = Tuning.Drones.EngageRange * DroneSwarm.KeepTargetFactor + Skill.WithdrawMargin;
-			if (!_withdrawing && backOff >= 0.5f)
-			{
-				_withdrawing = true;
-				_withdrawingFor = 0f;
-			}
-			else if (_withdrawing)
-			{
-				_withdrawingFor += sinceLast;
-				if (nearestAnyThreat > dronesLetGo || _withdrawingFor > Skill.WithdrawMaxSeconds)
-					_withdrawing = false;
-			}
-			backOff = _withdrawing ? 1f : 0f;
-		}
-		else
-			_withdrawing = false;
-		float engage = _regrouping ? 0f : 1f - backOff;
-
-		Vector2 want = Vector2.Zero;
-		if (backOff > 0f && away != Vector2.Zero)
-			want += away.Normalized() * Skill.BackOffWeight * backOff;
-
-		Vector2 dodge = Dodge(me, awareness);
-		want += dodge * Skill.DodgeWeight;
-		// Keep clear of enemies that damage by touch, such as Goos, whatever else it wants: even a fight it can
-		// afford is no reason to bump into one.
-		Vector2 keepClear = KeepClearOfTouch(me, enemyCount) * Skill.TouchAvoidWeight;
-		want += keepClear;
-
-		// An enemy beyond about its weapons' reach (twice its preferred distance) isn't a fight yet: it doesn't go
-		// after enemies, so it would only creep toward one on a weak want. Without this, with no material in sight
-		// it crept at about 60% speed toward a distant enemy instead of exploring at full speed, which the designer
-		// saw as it slowing down. Backing off still answers the threat of enemies farther out.
-		bool fighting = nearest >= 0 && engage > 0f && nearestDistance < preferredDistance * 2f;
-		float fightWeight = Skill.FightWeight * Mathf.Lerp(Skill.FightWithoutDrones, 1f, droneReliance);
-		// With little danger it holds still, as the designer does, rather than circling: fully below
-		// HoldStillPressure, blending back to circling by half as much again.
-		float still = Skill.HoldStillPressure > 0f
-			? Mathf.Clamp((Skill.HoldStillPressure * 1.5f - pressure) / (Skill.HoldStillPressure * 0.5f), 0f, 1f)
-			: 0f;
-		if (fighting)
-			want += FightMove(me, enemies.PositionOf(nearest), nearestDistance, preferredDistance, still) * fightWeight * engage;
-
-		// Weapons that leave spots behind, such as mines, want the enemies chasing it led across them.
-		if (leadChasers > 0.01f && away != Vector2.Zero && nearestDistance < Skill.ThreatRange)
-			want += LeadAcrossSpots(me, away.Normalized()) * Skill.LeadWeight * leadChasers;
-
-		// Harvesting: toward the best material, and holding still beside it once the beam reaches. It carries on
-		// while backing off, since material near enemies is already scored down: a hurt pilot keeps harvesting
-		// rocks away from the fight, as a player would, rather than only fleeing.
-		Vector2 harvest = HarvestMove(me, awareness, enemyCount, droneReliance, out bool holding, out float targetWorth,
-			out float targetEdge, out float targetDanger);
-		float harvestWeight = Skill.HarvestWeight * (_drones.Count < _drones.Cap ? 1f : Skill.HarvestAtCap);
-		// Harvest rate upgrades make harvesting worth more of its time.
-		float rateMultiplier = _drones.HarvestRate / Mathf.Max(0.001f, Tuning.Harvesting.DroneRate);
-		harvestWeight *= Mathf.Max(0f, 1f + Skill.HarvestRateInfluence * (rateMultiplier - 1f));
-		// A rich concentration pulls harder than a lone rock.
-		harvestWeight *= 1f + Skill.ConcentrationPull * Mathf.Clamp(targetWorth / Mathf.Max(1f, Skill.ConcentrationMass), 0f, 1f);
-		// While backing off, material with enemies around it stops pulling: it keeps harvesting rocks away from the
-		// fight, but doesn't head into the danger it is backing away from for the rich debris inside it. Before
-		// this, it flew into a crowd of Goos for the debris among them, and was destroyed in half a second.
-		harvestWeight /= 1f + backOff * targetDanger * Skill.HarvestDangerWhenBackingOff;
-		// An enemy inside half its preferred distance: harvesting pulls less the closer it is, so keeping back
-		// wins. Before, a pull toward material past an enemy carried it right up to the enemy, which the designer
-		// saw as it moving closer to enemies for no reason.
-		// Every enemy counts here, drone eaters too: it doesn't fight those while its drones matter, but it mustn't
-		// harvest beside one either. Before, a Goo 2.6 away didn't count and it committed to a rock next to it.
-		float tooClose = Mathf.Clamp(nearestAnyThreat / (preferredDistance * 0.5f), 0f, 1f);
-		harvestWeight *= tooClose;
-		want += harvest * harvestWeight;
-
-		// Close to its target and not backing off: commit, and close the last few units into beam reach. Blended
-		// with the other wants, the pull toward a nearby rock could balance against keeping fighting distance,
-		// leaving it hovering just out of reach in the middle of a concentration.
-		bool committing = harvest != Vector2.Zero && backOff <= 0f && tooClose >= 1f
-			&& targetEdge <= _fight.Harvestables.BeamRange + Skill.HarvestCommitDistance
-			&& !EnemyAhead(me, harvest.Normalized(), enemyCount, preferredDistance * 1.5f);
-		if (committing)
-			want = harvest + dodge * Skill.DodgeWeight + keepClear;
-
-		// Harvesting with little danger about: keep holding at the rock, leaving the fight to the drones and weapons.
-		// Weapons that need movement then circle the rock, below.
-		if (holding && still >= 1f)
-		{
-			want = dodge * Skill.DodgeWeight + keepClear;
-			// Still keep back from an enemy closer than its preferred distance. Without this, holding still dropped
-			// the fight's keeping back, and the designer saw the pilot let enemies come right up to it.
-			if (nearest >= 0 && nearestDistance < preferredDistance)
-			{
-				Vector2 fromEnemy = me - enemies.PositionOf(nearest);
-				if (fromEnemy.LengthSquared() > 0.0001f)
-					want += fromEnemy.Normalized() * (1f - nearestDistance / preferredDistance) * fightWeight;
-			}
-		}
-
-		// Weapons that only work while moving, such as Mine Layer, want it circling the rock it harvests rather
-		// than holding still beside it.
-		bool circling = false;
-		if (holding && keepMoving > 0.01f && want.LengthSquared() < 0.01f)
-		{
-			want = CircleTarget(me, nearest >= 0 ? enemies.PositionOf(nearest) : (Vector2?)null);
-			circling = want != Vector2.Zero;
-		}
-
-		bool idle = want.LengthSquared() < 0.01f && !holding && !fighting;
-		if (idle)
-			want = WhenIdle(me, awareness);
-		else
-			_returnTo = null;
-		_wasIdle = idle;
-
-		_lastTargetDanger = targetDanger;
-		Decisions++;
-#if TOOLS
-		if (Explaining)
-			Reasoning = Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
-				harvest, targetWorth, targetEdge, holding, committing, idle, dodge, want, enemyCount, me);
-#endif
-
-		if (want.LengthSquared() > 0.0001f)
-		{
-			// The weights above decide which way to go. How fast: full speed, as a player holds the stick right
-			// over, with two exceptions. It eases off as it arrives at the material it is about to harvest, so it
-			// doesn't overshoot. And when its wants balance out, with no clear direction, it slows to match.
-			// Speed used to follow the strength of its wants, and wants pulling different ways, such as rocks
-			// ahead and enemies behind, left it crawling: below 80% of top speed for two-thirds of a fight.
-			bool arriving = harvest != Vector2.Zero && (committing || (!fighting && backOff <= 0f && dodge == Vector2.Zero));
-			const float ClearDirection = 0.25f;
-			// Circling a rock goes slowly, just fast enough for weapons that need movement (Mine Layer drops mines
-			// above 3 units a second), so the beam stays on the rock. Faster circling, at up to 45% of top speed,
-			// cost about a tenth of the fight experience by 2:00 in a batch.
-			float speed = circling ? CircleSpeed
-				: arriving ? harvest.Length()
-				: Mathf.Min(1f, want.Length() / ClearDirection);
-			float wander = Mathf.DegToRad(Skill.WanderDegrees);
-			want = want.Normalized().Rotated(Rng.Range(-wander, wander)) * speed;
-		}
-		_wanted = want.LimitLength(1f);
-	}
-
 #if TOOLS
 	private string Explain(float threat, float pressure, float backOff, float droneReliance, int fightTarget,
 		float fightDistance, Vector2 harvest, float targetWorth, float targetEdge, bool holding, bool committing,
-		bool idle, Vector2 dodge, Vector2 want, int enemyCount, Vector2 me)
+		bool idle, Vector2 want, int enemyCount, Vector2 me)
 	{
 		EnemySwarm enemies = _fight.Enemies;
 		int drainers = 0;
@@ -350,7 +142,7 @@ public partial class Pilot : Node, IVnpController
 		string fight = fightTarget >= 0 ? $"fighting {enemies.TypeIdOf(fightTarget)} at {fightDistance:0.0}" : "not fighting";
 		return $"threat {threat:0.00} / affordable {Affordable():0.00} = pressure {pressure:0.00}, back off {backOff:0.00}" +
 			(_regrouping ? " | regrouping" : "") + (_withdrawing ? " | withdrawing" : "") +
-			$" | {fight} | {doing}" + (dodge != Vector2.Zero ? " | dodging" : "") +
+			$" | {fight} | {doing}" +
 			$" | drones {_drones.Count} (reliance {droneReliance:0.00}) | drone eaters on screen {drainers}" +
 			(drainers > 0 ? $", nearest edge {nearestDrainer:0.0}" : "") +
 			$" | health {_vnp.Health:0} | stick {want.Length():0.00}" +
@@ -414,74 +206,9 @@ public partial class Pilot : Node, IVnpController
 	private (float Distance, float KeepMoving, float Lead) _lastProfile;
 #endif
 
-	// Stick strength while circling a rock: 0.2 of top speed, about 4 units a second at the VNP's base speed.
+	// How far a path goes while circling a rock, as a share of top speed: about 4 units a second at the VNP's base
+	// speed, just above what Mine Layer needs to drop mines, so the beam stays on the rock.
 	private const float CircleSpeed = 0.2f;
-	private readonly List<Vector2> _lureSpots = new();
-
-	/// <summary>
-	/// Toward one of its weapons' lure spots, such as a mine, that lies ahead as it moves away from the enemies
-	/// chasing it, so they follow it across. Nearer spots, and ones more squarely ahead, are better. Nothing if
-	/// no spot lies ahead.
-	/// </summary>
-	private Vector2 LeadAcrossSpots(Vector2 me, Vector2 awayFromEnemies)
-	{
-		_lureSpots.Clear();
-		foreach (VnpWeapon weapon in _fight.Weapons)
-		{
-			if (weapon is IPilotLure lure)
-				lure.CollectLureSpots(_lureSpots);
-		}
-		Vector2 best = Vector2.Zero;
-		float bestScore = 0f;
-		foreach (Vector2 spot in _lureSpots)
-		{
-			Vector2 toSpot = spot - me;
-			float distance = toSpot.Length();
-			if (distance < 2f || distance > 30f)
-				continue; // On top of it already, or too far to lead anything across.
-			float ahead = (toSpot / distance).Dot(awayFromEnemies);
-			if (ahead < 0.2f)
-				continue;
-			float score = ahead / (1f + distance / 15f);
-			if (score > bestScore)
-			{
-				bestScore = score;
-				best = toSpot / distance;
-			}
-		}
-		return best;
-	}
-
-	/// <summary>Around the rock it is harvesting, staying within beam reach, instead of holding still.</summary>
-	private Vector2 CircleTarget(Vector2 me, Vector2? enemy)
-	{
-		Harvestables harvestables = _fight.Harvestables;
-		int count = harvestables.CollectNear(me, harvestables.BeamRange + 20f, _material);
-		for (int c = 0; c < count; c++)
-		{
-			int m = _material[c];
-			if (harvestables.IdOf(m) != _harvestTargetId)
-				continue;
-			Vector2 fromRock = me - harvestables.PositionOf(m);
-			float distance = fromRock.Length();
-			if (distance < 0.01f)
-				return Vector2.Right;
-			Vector2 outward = fromRock / distance;
-			// Keep about half the beam's reach from its edge: drift in or out toward that while going round.
-			float wanted = harvestables.RadiusOf(m) + harvestables.BeamRange * 0.5f;
-			float radial = Mathf.Clamp((wanted - distance) / 3f, -1f, 1f);
-			// Go round whichever way leads away from the nearest enemy, rather than always the same way, which
-			// could carry it round the rock straight toward an enemy.
-			Vector2 around = new Vector2(-outward.Y, outward.X) * _orbitSign;
-			if (enemy is Vector2 threat && around.Dot(threat - me) > 0f)
-			{
-				_orbitSign = -_orbitSign;
-				around = -around;
-			}
-			return (around + outward * radial).Normalized();
-		}
-		return Vector2.Zero;
-	}
 
 	/// <summary>The threat it can afford right now: more with health, drones and level, less with caution.</summary>
 	private float Affordable()
@@ -498,47 +225,6 @@ public partial class Pilot : Node, IVnpController
 			return 0f;
 		float health = _vnp.Health / _vnp.MaxHealth;
 		return Mathf.Clamp((Skill.LowHealthBelow - health) / Skill.LowHealthBelow, 0f, 1f);
-	}
-
-	/// <summary>
-	/// Away from the enemies it sees that damage by touch, such as Goos, from each within its keep-clear distance
-	/// of its edge, harder the closer it is, fully once touching. The distance is TouchAvoidDistance, wider at low
-	/// health (LowHealthTouchScale). Each is judged where it is and where it will be TouchLookAhead seconds on,
-	/// with the VNP where it is heading then too, by whichever is closer, so an enemy closing in head-on is
-	/// avoided in time. At most length 1.
-	/// </summary>
-	private Vector2 KeepClearOfTouch(Vector2 me, int enemyCount)
-	{
-		if (Skill.TouchAvoidDistance <= 0f || Skill.TouchAvoidWeight <= 0f)
-			return Vector2.Zero;
-		float keepClear = Skill.TouchAvoidDistance * (1f + Mathf.Max(0f, Skill.LowHealthTouchScale) * LowHealth());
-		float ahead = Mathf.Max(0f, Skill.TouchLookAhead);
-		Vector2 meAhead = me + _vnp.Velocity * ahead;
-		EnemySwarm enemies = _fight.Enemies;
-		Vector2 push = Vector2.Zero;
-		for (int c = 0; c < enemyCount; c++)
-		{
-			int e = _enemies[c];
-			if (!enemies.DamagesByTouchOf(e))
-				continue;
-			Vector2 away = me - enemies.PositionOf(e);
-			float distance = away.Length();
-			if (ahead > 0f)
-			{
-				Vector2 awayAhead = meAhead - (enemies.PositionOf(e) + enemies.VelocityOf(e) * ahead);
-				if (awayAhead.Length() < distance)
-				{
-					away = awayAhead;
-					distance = awayAhead.Length();
-				}
-			}
-			float edge = distance - enemies.RadiusOf(e);
-			if (edge >= keepClear)
-				continue;
-			Vector2 direction = distance > 0.001f ? away / distance : Vector2.Right;
-			push += direction * (1f - Mathf.Max(0f, edge) / keepClear);
-		}
-		return push.LimitLength(1f);
 	}
 
 	/// <summary>Whether an enemy lies close ahead in a direction, within a distance of its edge.</summary>
@@ -565,49 +251,6 @@ public partial class Pilot : Node, IVnpController
 		return point.DistanceTo(from + along * t);
 	}
 
-	/// <summary>Sideways away from a shot it noticed that would hit it soon, or nothing.</summary>
-	private Vector2 Dodge(Vector2 me, float awareness)
-	{
-		Vector2 dodge = Vector2.Zero;
-		_fight.Projectiles.CollectEnemyShots(me, awareness, _shots);
-		foreach ((Vector2 position, Vector2 velocity) in _shots)
-		{
-			if (!OnScreen(position))
-				continue;
-			float speedSquared = velocity.LengthSquared();
-			if (speedSquared < 0.01f)
-				continue;
-			// When the shot passes closest, and how close.
-			Vector2 toMe = me - position;
-			float time = toMe.Dot(velocity) / speedSquared;
-			if (time <= 0f || time > 1.2f)
-				continue;
-			Vector2 miss = toMe - velocity * time;
-			if (miss.Length() > Tuning.Vnp.HitRadius + 1.5f || Rng.Value() > Skill.DodgeChance)
-				continue;
-			Vector2 side = miss.LengthSquared() > 0.01f ? miss.Normalized() : new Vector2(-velocity.Y, velocity.X).Normalized();
-			dodge += side * (1f - time / 1.2f);
-		}
-		return dodge.LimitLength(1f);
-	}
-
-	/// <summary>Keep the preferred distance from an enemy: close in from farther, edge away from closer, circling it.</summary>
-	private Vector2 FightMove(Vector2 me, Vector2 enemy, float distance, float preferred, float still)
-	{
-		Vector2 toEnemy = enemy - me;
-		Vector2 direction = toEnemy.LengthSquared() > 0.0001f ? toEnemy.Normalized() : Vector2.Up;
-		float radial = Mathf.Clamp((distance - preferred) / (preferred * 0.5f), -1f, 1f);
-		// Closing in on an enemy farther than its preferred distance is scaled by ApproachEnemies; keeping back
-		// from one that is too close is not.
-		if (radial > 0f)
-			radial *= Skill.ApproachEnemies;
-		Vector2 circle = new Vector2(-direction.Y, direction.X) * _orbitSign * 0.6f;
-		Vector2 moving = direction * radial + circle;
-		// Holding still: only close in on an enemy well beyond its preferred distance, so the weapons reach it.
-		Vector2 holdingStill = distance > preferred * 1.5f ? direction * radial : Vector2.Zero;
-		return moving.Lerp(holdingStill, still);
-	}
-
 	/// <summary>
 	/// Toward the best material it can afford to reach: more mass is better, farther is worse, and material
 	/// with enemies around it is discounted by caution. Once the beam reaches it, it holds still.
@@ -627,7 +270,7 @@ public partial class Pilot : Node, IVnpController
 		Harvestables harvestables = _fight.Harvestables;
 		int count = OnScreenOnly(harvestables.CollectNear(me, awareness, _material), _material, i => harvestables.PositionOf(i));
 		Remember(harvestables, me, awareness, count);
-		// The planning pilot considers only the nearest material (considerAtMost), after remembering all it sees.
+		// It considers only the nearest material (considerAtMost), after remembering all it sees.
 		if (considerAtMost > 0 && count > considerAtMost)
 			count = KeepNearest(_material, count, considerAtMost, i => harvestables.EdgeDistance(i, me));
 		int best = -1;
@@ -672,8 +315,7 @@ public partial class Pilot : Node, IVnpController
 		for (int i = 0; i < count; i++)
 		{
 			float score = -_harvestBound[i];
-			// The planning pilot weighs the danger of only its attention's worth of the most promising (weighAtMost);
-			// the first pilot weighs them all.
+			// It weighs the danger of only its attention's worth of the most promising (weighAtMost; 0 weighs them all).
 			if (score <= bestScore || (weighAtMost > 0 && i >= weighAtMost))
 				break;
 			int c = _harvestOrder[i];
@@ -838,7 +480,7 @@ public partial class Pilot : Node, IVnpController
 	private float[] _nearestKeys = new float[512];
 
 	/// <summary>Keeps the <paramref name="keep"/> items nearest by <paramref name="distanceOf"/>, nearest first, and
-	/// returns how many are left. For the planning pilot's attention.</summary>
+	/// returns how many are left. For its attention.</summary>
 	private int KeepNearest(int[] items, int count, int keep, System.Func<int, float> distanceOf)
 	{
 		if (count <= keep)

@@ -6,7 +6,7 @@ An entry belongs here only if, without it, the AI would do something differently
 
 ## Status
 
-- Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, none are done yet: upgrade picks on the decision core, calibrating the designer-like pilot, the ceiling pilot, and removing the old pilot.
+- Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, only removing the old pilot is done; still to do: upgrade picks on the decision core, calibrating the designer-like pilot, and the ceiling pilot.
 - Done when: met, except the pilot items above. Each type's performance cost was measured at its stage; all were close to the basic goo's.
 - The designer is reworking how fights feel. Recorded-fight calibration of pilots waits until they are happy with it.
 
@@ -117,7 +117,7 @@ An entry belongs here only if, without it, the AI would do something differently
   - upgrade picks on the decision core, with the guards that keep it general;
   - calibration against the designer's recorded Grey Goo fights;
   - the ceiling pilot;
-  - removing the old pilot.
+  - removing the old pilot (done).
 - **Done when** gains: "Pilots react to each type's attacks through its threat declaration, with no pilot code for the type."
 - **The planner replaced the first pilot on results alone,** at the designer's choice. It outlives the designer, so batches read the game as easier than it plays. Comparisons between options still hold.
 - **Fitting pilot weights to individual recorded moments is deferred,** at the designer's choice. Calibrating settings against recorded fights replaces it.

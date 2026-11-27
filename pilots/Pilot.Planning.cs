@@ -2,10 +2,9 @@ using Godot;
 using NVector2 = System.Numerics.Vector2;
 
 /// <summary>
-/// The pilot that plans (docs/dev/PILOT_SPEC.md), switched on by its skill level's Planner. It makes the same
-/// judgements as the first pilot (whether it can afford the fight, whether to regroup or withdraw, what to harvest,
-/// whether to commit or hold still), but instead of adding its wants up into one direction, it turns each want into
-/// a term that scores whole candidate paths, and follows the best path:
+/// How the pilot decides (docs/dev/PILOT_SPEC.md). It makes its judgements (whether it can afford the fight,
+/// whether to regroup or withdraw, what to harvest, whether to commit or hold still), then turns each want into a
+/// term that scores whole candidate paths, and follows the best path:
 /// - perception: the hazards and zones that enemies, shots and its weapons declare, on screen and within its
 ///   awareness, with fleeting hazards noticed by its dodge chance;
 /// - paths: Arbiter's planner tries directions at a few speeds, and stopping, over its look-ahead, with the VNP's
@@ -13,7 +12,8 @@ using NVector2 = System.Numerics.Vector2;
 /// - terms: harm it would take (as a share of its health), how close it comes to hazards, danger to its drones,
 ///   progress toward its harvest target, keeping its fighting distance, circling or holding still, backing off,
 ///   leading chasers over its traps, exploring, and a small cost for turning sharply.
-/// Its weights come from the same judgements and settings as the first pilot's wants, so the two can be compared.
+/// The first pilot added its wants up into one direction instead, which averaged conflicting wants into weak,
+/// in-between moves; its code was removed once this replaced it (git history keeps it).
 /// </summary>
 public partial class Pilot
 {
@@ -114,11 +114,8 @@ public partial class Pilot
 
 	// ───────────── Deciding ─────────────
 
-	/// <summary>
-	/// One decision of the planning pilot. The judgements are the first pilot's (Decide), in the same order; the
-	/// moving is by path scoring. The first pilot's Decide stays as it was, as the baseline.
-	/// </summary>
-	private void DecideByPlanning(float sinceLast)
+	/// <summary>One decision: the judgements, then the moving, by path scoring.</summary>
+	private void Decide(float sinceLast)
 	{
 		if (_move == null)
 			SetUpPlanning();
@@ -130,7 +127,7 @@ public partial class Pilot
 		if (Skill.Attention > 0)
 			enemyCount = KeepNearest(_enemies, enemyCount, Skill.Attention, i => enemies.PositionOf(i).DistanceTo(me) - enemies.RadiusOf(i));
 
-		// Threat, and which way it comes from: as the first pilot judges it.
+		// Threat, and which way it comes from.
 		float droneReliance = _drones.Cap > 0 ? Mathf.Clamp((float)_drones.Count / _drones.Cap, 0f, 1f) : 0f;
 		float threat = 0f;
 		Vector2 away = Vector2.Zero;
@@ -241,7 +238,7 @@ public partial class Pilot
 		float keepClear = Skill.TouchAvoidDistance * (1f + Mathf.Max(0f, Skill.LowHealthTouchScale) * LowHealth());
 		_planner.Assess(_situation, Tuning.Vnp.HitRadius, keepClear, Tuning.Drones.FlockRadius * 1.5f);
 
-		// What each term aims at, and how much it counts now, from the same judgements as the first pilot's wants.
+		// What each term aims at, and how much it counts now, from the judgements above.
 		_aimAway = away != Vector2.Zero ? away.Normalized().ToArbiter() : NVector2.Zero;
 		if (fighting)
 		{
@@ -308,12 +305,12 @@ public partial class Pilot
 #if TOOLS
 		if (Explaining)
 			Reasoning = $"PLANNER {goal} | " + Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
-				harvest, targetWorth, targetEdge, holding, committing, idle, Vector2.Zero, _wanted, enemyCount, me) +
+				harvest, targetWorth, targetEdge, holding, committing, idle, _wanted, enemyCount, me) +
 				$" | hazards {_situation.Hazards.Length} | paths: {_move.Explain(3, _planner.Describe)}";
 #endif
 	}
 
-	/// <summary>Where the harvest target is, and how near it must get: within beam reach, as the first pilot holds.</summary>
+	/// <summary>Where the harvest target is, and how near it must get: within beam reach, where it holds.</summary>
 	private void AimAtHarvestTarget(Vector2 me)
 	{
 		Harvestables harvestables = _fight.Harvestables;
@@ -330,9 +327,8 @@ public partial class Pilot
 	}
 
 	/// <summary>
-	/// A trap its weapons declared, such as a mine, that lies ahead as it moves away from the enemies chasing it:
-	/// the first pilot's choice of lure spot, from the declared zones. Nearer spots, and ones more squarely ahead,
-	/// are better.
+	/// A trap its weapons declared, such as a mine, that lies ahead as it moves away from the enemies chasing it.
+	/// Nearer spots, and ones more squarely ahead, are better.
 	/// </summary>
 	private bool PickLureSpot(Vector2 me, Vector2 awayFromEnemies, out NVector2 spot)
 	{

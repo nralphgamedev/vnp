@@ -45,7 +45,6 @@ SEARCH = {
     'HarvestWeight': ('scale', 1.25),
     'HarvestAtCap': ('add', 0.1, 0.0, 1.0),
     'BackOffWeight': ('scale', 1.25),
-    'DodgeWeight': ('scale', 1.25),
     'PreferredEnemyDistance': ('scale', 1.2),
     'HoldStillPressure': ('add', 0.1, 0.1, 1.5),
     'PressureFall': ('scale', 1.5),
