@@ -34,12 +34,18 @@ public partial class Pilot : Node, IVnpController
 
 	public Vector2 Move { get; private set; }
 
+#if TOOLS
 	/// <summary>
 	/// Why it moved as it did at its latest decision, in a line a person can read: the threat it felt against what
-	/// it could afford, and which wants won. For checking its behavior, such as with the scenario harness's
-	/// explain option. Nothing in the game reads it.
+	/// it could afford, and which wants won. A testing aid for the scenario harness's explain option, so it is
+	/// editor-only, and written only while <see cref="Explaining"/> is on: building it at every decision was the
+	/// pilot's largest garbage. Nothing in the game reads it.
 	/// </summary>
 	public string Reasoning { get; private set; } = "";
+
+	/// <summary>Whether to write <see cref="Reasoning"/> at each decision. The harness turns it on for explain=.</summary>
+	public bool Explaining { get; set; }
+#endif
 
 	/// <summary>How many decisions it has made, so a reader can tell when there is a new one.</summary>
 	public int Decisions { get; private set; }
@@ -285,8 +291,11 @@ public partial class Pilot : Node, IVnpController
 
 		_lastTargetDanger = targetDanger;
 		Decisions++;
-		Reasoning = Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
-			harvest, targetWorth, targetEdge, holding, committing, idle, dodge, want, enemyCount, me);
+#if TOOLS
+		if (Explaining)
+			Reasoning = Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
+				harvest, targetWorth, targetEdge, holding, committing, idle, dodge, want, enemyCount, me);
+#endif
 
 		if (want.LengthSquared() > 0.0001f)
 		{
@@ -309,6 +318,7 @@ public partial class Pilot : Node, IVnpController
 		_wanted = want.LimitLength(1f);
 	}
 
+#if TOOLS
 	private string Explain(float threat, float pressure, float backOff, float droneReliance, int fightTarget,
 		float fightDistance, Vector2 harvest, float targetWorth, float targetEdge, bool holding, bool committing,
 		bool idle, Vector2 dodge, Vector2 want, int enemyCount, Vector2 me)
@@ -349,6 +359,7 @@ public partial class Pilot : Node, IVnpController
 				: "") +
 			$" | weapons: distance {_lastProfile.Distance:0}, keep moving {_lastProfile.KeepMoving:0.00}, lead {_lastProfile.Lead:0.00}";
 	}
+#endif
 
 	/// <summary>
 	/// Blends the pilot profiles of the VNP Weapons it has equipped, each weighted by how invested it is in that
@@ -394,10 +405,14 @@ public partial class Pilot : Node, IVnpController
 		preferredDistance = Mathf.Lerp(Skill.PreferredEnemyDistance, weaponsDistance, tactic);
 		keepMoving = total > 0f ? keepSum / total * tactic : 0f;
 		leadChasers = total > 0f ? leadSum / total * tactic : 0f;
+#if TOOLS
 		_lastProfile = (preferredDistance, keepMoving, leadChasers);
+#endif
 	}
 
+#if TOOLS
 	private (float Distance, float KeepMoving, float Lead) _lastProfile;
+#endif
 
 	// Stick strength while circling a rock: 0.2 of top speed, about 4 units a second at the VNP's base speed.
 	private const float CircleSpeed = 0.2f;

@@ -14,6 +14,13 @@ public partial class FightHud : Control
 
 	private float _alertLeft;
 
+	// The clock and kill count are drawn every frame but change rarely, so their text is made again only when what
+	// it shows changes, rather than every frame.
+	private long _clockKey = long.MinValue;
+	private string _clock = "";
+	private long _killsKey = long.MinValue;
+	private string _kills = "";
+
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Hud;
@@ -40,21 +47,22 @@ public partial class FightHud : Control
 
 		// Clock: counts down to the limit, then counts up the time past it.
 		double left = Tuning.Fight.TimeLimitSeconds - Fight.Elapsed;
-		string clock;
-		Color clockColor;
-		if (left > 0)
+		Color clockColor = left > 0 ? (left <= 30 ? Warning : Colors.White) : Danger;
+		// Whole seconds shown, negative past the limit, where the clock counts up.
+		long clockKey = left > 0 ? (long)System.Math.Ceiling(left) : -1 - (long)(-left);
+		if (clockKey != _clockKey)
 		{
-			clock = Ui.Clock(System.Math.Ceiling(left));
-			clockColor = left <= 30 ? Warning : Colors.White;
+			_clockKey = clockKey;
+			_clock = left > 0 ? Ui.Clock(System.Math.Ceiling(left)) : $"PAST LIMIT  +{Ui.Clock(-left)}";
 		}
-		else
+		DrawString(font, new Vector2(0f, 104f), _clock, HorizontalAlignment.Center, width, 48, clockColor);
+		long killsKey = Fight.Kills * 2L + (Fight.IsEndless ? 1 : 0);
+		if (killsKey != _killsKey)
 		{
-			clock = $"PAST LIMIT  +{Ui.Clock(-left)}";
-			clockColor = Danger;
+			_killsKey = killsKey;
+			_kills = Fight.IsEndless ? $"Kills {Fight.Kills}  ·  Endless" : $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}";
 		}
-		DrawString(font, new Vector2(0f, 104f), clock, HorizontalAlignment.Center, width, 48, clockColor);
-		string kills = Fight.IsEndless ? $"Kills {Fight.Kills}  ·  Endless" : $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}";
-		DrawString(font, new Vector2(0f, 146f), kills,
+		DrawString(font, new Vector2(0f, 146f), _kills,
 			HorizontalAlignment.Center, width, 28, new Color(1f, 1f, 1f, 0.85f));
 
 		// Retreat prompt, while on the gateway.

@@ -239,6 +239,10 @@ public partial class Fight : Node3D
 		_weaponHolder = GetNode<Node3D>("Weapons");
 		VnpHarvester = GetNode<VnpHarvester>("VnpHarvester");
 		_debugLabel = GetNode<Label>("Hud/DebugLabel");
+#if !DEBUG
+		// The debug line is for development: shown in the editor and debug exports, never in a release build.
+		_debugLabel.Visible = false;
+#endif
 
 		// The fight starts at the gateway.
 		Vnp.PlaceAt(Gateway.PlanePosition);
@@ -312,7 +316,9 @@ public partial class Fight : Node3D
 		}
 
 		// Nothing updates while frozen, so bring the readouts up to date first.
+#if DEBUG
 		RefreshDebugLabel();
+#endif
 		_healthBar.QueueRedraw();
 		_fightHud.QueueRedraw();
 
@@ -448,7 +454,7 @@ public partial class Fight : Node3D
 		// Retreat: stay on the gateway long enough and the option appears.
 		OnGateway = Vnp.PlanePosition.DistanceTo(Gateway.PlanePosition) <= Tuning.Fight.GatewayRadius;
 		GatewayTime = OnGateway ? GatewayTime + (float)delta : 0f;
-		if (CanRetreat && Input.IsActionJustPressed("menu_select"))
+		if (CanRetreat && Input.IsActionJustPressed(InputActions.MenuSelect))
 		{
 			End(Outcome.Retreat);
 			return;
@@ -467,13 +473,17 @@ public partial class Fight : Node3D
 			_levelUpMenu.Open(Level - _pendingLevelUps);
 		}
 
+#if DEBUG
 		_debugRefresh -= delta;
 		if (_debugRefresh > 0)
 			return;
 		_debugRefresh = 0.25;
 		RefreshDebugLabel();
+#endif
 	}
 
+#if DEBUG
+	/// <summary>The debug line at the top of the screen. Development only: release builds leave it out.</summary>
 	private void RefreshDebugLabel()
 	{
 		int seconds = (int)Elapsed;
@@ -494,6 +504,7 @@ public partial class Fight : Node3D
 			$"gateway {Vnp.PlanePosition.DistanceTo(Gateway.PlanePosition):0} away    " +
 			$"camera: {cameraMode} (F1)";
 	}
+#endif
 
 	private void OnVnpDestroyed() => End(Outcome.Loss);
 

@@ -27,7 +27,7 @@ This spec interrupts phase 3 (`docs/design/PROTOTYPE_3_SPEC.md`). Phase 3's dama
 ## Seeds
 
 - All gameplay randomness already comes from one generator (`Rng`, in `scripts/core/Rng.cs`). Each fight now seeds it at the start. A normal fight picks a seed at random; a batch sets it. One exception, added in phase 3: the fight's asteroid amount is picked from its own generator, seeded from the fight's seed, so adding it didn't change the fights that already existed; it still follows the seed.
-- The seed is shown on the result screen and in the debug line at the top of the screen, and saved in the fight log.
+- The seed is shown on the result screen and in the debug line at the top of the screen (in the editor and debug builds only), and saved in the fight log.
 - Effects and sound variation use their own randomness, so turning effects up or down never changes a fight.
 - A batch fight runs at a fixed time step, so the same seed, pilot and tuning give the same fight, and a surprising result can be run again in a window to watch it.
 - A fight played by a person, whose frame times vary, is not reproduced exactly by its seed. Exact replays are out of scope (see Out of scope).

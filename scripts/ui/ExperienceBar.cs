@@ -10,6 +10,12 @@ public partial class ExperienceBar : Control
 
 	public Fight Fight;
 
+	// Drawn every frame, but made again only when the numbers shown change, so the bar makes no garbage most frames.
+	private int _levelShown = -1;
+	private string _levelText = "";
+	private long _experienceShown = long.MinValue;
+	private string _experienceText = "";
+
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Hud;
@@ -33,10 +39,22 @@ public partial class ExperienceBar : Control
 		DrawRect(new Rect2(bar.Position, new Vector2(bar.Size.X * filled, bar.Size.Y)), Tuning.Look.ExperienceColor);
 
 		Font font = ThemeDB.FallbackFont;
-		DrawString(font, bar.Position + new Vector2(0f, -12f), $"Level {Fight.Level}",
+		if (Fight.Level != _levelShown)
+		{
+			_levelShown = Fight.Level;
+			_levelText = $"Level {Fight.Level}";
+		}
+		DrawString(font, bar.Position + new Vector2(0f, -12f), _levelText,
 			HorizontalAlignment.Left, -1, FontSize, Tuning.Look.ExperienceColor);
-		DrawString(font, bar.Position + new Vector2(0f, -12f),
-			$"{Fight.ExperienceIntoLevel:0} / {Fight.ExperienceForNextLevel:0}",
+		// The two numbers as they are shown, rounded to whole numbers, packed into one key.
+		long experienceKey = (long)System.Math.Round(Fight.ExperienceIntoLevel) * 1_000_000_000L
+			+ (long)System.Math.Round(Fight.ExperienceForNextLevel);
+		if (experienceKey != _experienceShown)
+		{
+			_experienceShown = experienceKey;
+			_experienceText = $"{Fight.ExperienceIntoLevel:0} / {Fight.ExperienceForNextLevel:0}";
+		}
+		DrawString(font, bar.Position + new Vector2(0f, -12f), _experienceText,
 			HorizontalAlignment.Right, bar.Size.X, FontSize - 6, new Color(1f, 1f, 1f, 0.6f));
 	}
 }

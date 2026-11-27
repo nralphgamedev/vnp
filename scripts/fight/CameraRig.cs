@@ -119,11 +119,9 @@ public partial class CameraRig : Camera3D
 			? distance * Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f)
 			: Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f);
 
-		// Top left, top right, bottom right, bottom left: around the screen in order.
-		Vector2[] corners = { new(-1f, 1f), new(1f, 1f), new(1f, -1f), new(-1f, -1f) };
 		for (int i = 0; i < 4; i++)
 		{
-			Vector3 across = right * corners[i].X * halfHeight * aspect + up * corners[i].Y * halfHeight;
+			Vector3 across = right * Corners[i].X * halfHeight * aspect + up * Corners[i].Y * halfHeight;
 			// A perspective camera fans its rays out from one point; an orthographic one sends them in parallel.
 			Vector3 origin = Tuning.Camera.Orthographic ? position + across : position;
 			Vector3 ray = Tuning.Camera.Orthographic ? forward : forward + across;
@@ -133,12 +131,23 @@ public partial class CameraRig : Camera3D
 		_cornersReady = true;
 	}
 
-	/// <summary>The screen shape the game is made for: width over height, from the project's viewport size.</summary>
+	// Top left, top right, bottom right, bottom left: around the screen in order. Made once, not every frame.
+	private static readonly Vector2[] Corners = { new(-1f, 1f), new(1f, 1f), new(1f, -1f), new(-1f, -1f) };
+
+	private static float _referenceAspect;
+
+	/// <summary>
+	/// The screen shape the game is made for: width over height, from the project's viewport size. Read once,
+	/// since reading a project setting by name makes garbage, and the setting doesn't change while playing.
+	/// </summary>
 	private static float ReferenceAspect()
 	{
+		if (_referenceAspect > 0f)
+			return _referenceAspect;
 		float width = ProjectSettings.GetSetting("display/window/size/viewport_width", 1920).AsSingle();
 		float height = ProjectSettings.GetSetting("display/window/size/viewport_height", 1080).AsSingle();
-		return height > 0f ? width / height : 16f / 9f;
+		_referenceAspect = height > 0f ? width / height : 16f / 9f;
+		return _referenceAspect;
 	}
 
 	/// <summary>A random nudge sideways on the plane. Squaring the shake makes it die away smoothly.</summary>

@@ -102,7 +102,7 @@ public partial class Vnp : Node3D
 		// and a partly tilted stick gives a partial speed. A controller, such as a pilot, steers it instead.
 		Vector2 input = Controller != null
 			? Controller.Move.LimitLength(1f)
-			: Input.GetVector("move_left", "move_right", "move_up", "move_down", Tuning.Vnp.StickDeadzone);
+			: Input.GetVector(InputActions.MoveLeft, InputActions.MoveRight, InputActions.MoveUp, InputActions.MoveDown, Tuning.Vnp.StickDeadzone);
 		Vector2 wantedVelocity = input * MoveSpeed;
 		float rate = input == Vector2.Zero ? Tuning.Vnp.Deceleration : Tuning.Vnp.Acceleration;
 

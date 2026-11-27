@@ -30,5 +30,11 @@ public partial class PerformanceSettings : Resource
 	/// <summary>Seconds at the start left out as loading: the first frames compile code and build what the fight
 	/// needs.</summary>
 	[Export] public float SkipSeconds = 2f;
+
+	/// <summary>The most the main thread may allocate a frame, on average over the judged frames, in kilobytes.
+	/// Garbage is what makes .NET collect, and a full collection paused the game for several milliseconds, so a
+	/// change that starts allocating every frame fails here when it is made rather than as a rare slow frame
+	/// later. Testing code's allocations count too, so keep the harness's own work light.</summary>
+	[Export] public float AllocationBudgetKb = 1f;
 }
 #endif

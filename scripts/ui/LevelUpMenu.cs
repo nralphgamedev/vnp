@@ -168,11 +168,11 @@ public partial class LevelUpMenu : Control
 		if (!Visible)
 			return;
 
-		if (Input.IsActionJustPressed("move_left")) MoveSelection(-1, 0);
-		if (Input.IsActionJustPressed("move_right")) MoveSelection(1, 0);
-		if (Input.IsActionJustPressed("move_down")) MoveSelection(0, 1);
-		if (Input.IsActionJustPressed("move_up")) MoveSelection(0, -1);
-		if (Input.IsActionJustPressed("menu_select")) Confirm();
+		if (Input.IsActionJustPressed(InputActions.MoveLeft)) MoveSelection(-1, 0);
+		if (Input.IsActionJustPressed(InputActions.MoveRight)) MoveSelection(1, 0);
+		if (Input.IsActionJustPressed(InputActions.MoveDown)) MoveSelection(0, 1);
+		if (Input.IsActionJustPressed(InputActions.MoveUp)) MoveSelection(0, -1);
+		if (Input.IsActionJustPressed(InputActions.MenuSelect)) Confirm();
 #if TOOLS
 		// Editor only: show the free reroll as soon as Alt is pressed or let go.
 		if (InGameCheats.FreeRerolls != _cheatShown)

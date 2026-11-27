@@ -91,7 +91,7 @@ public partial class PauseMenu : Control
 
 		if (!Visible)
 		{
-			if (Input.IsActionJustPressed("pause") && Fight.CanPause)
+			if (Input.IsActionJustPressed(InputActions.Pause) && Fight.CanPause)
 				Open();
 			return;
 		}
@@ -102,7 +102,7 @@ public partial class PauseMenu : Control
 			return;
 		}
 
-		if (Input.IsActionJustPressed("pause"))
+		if (Input.IsActionJustPressed(InputActions.Pause))
 		{
 			if (_page == Page.Settings)
 				GoBack();
@@ -110,11 +110,11 @@ public partial class PauseMenu : Control
 				Close();
 			return;
 		}
-		if (Input.IsActionJustPressed("move_up")) Move(-1);
-		if (Input.IsActionJustPressed("move_down")) Move(1);
-		if (Input.IsActionJustPressed("move_left")) Adjust(-1);
-		if (Input.IsActionJustPressed("move_right")) Adjust(1);
-		if (Input.IsActionJustPressed("menu_select")) Rows[_selected].Activate?.Invoke();
+		if (Input.IsActionJustPressed(InputActions.MoveUp)) Move(-1);
+		if (Input.IsActionJustPressed(InputActions.MoveDown)) Move(1);
+		if (Input.IsActionJustPressed(InputActions.MoveLeft)) Adjust(-1);
+		if (Input.IsActionJustPressed(InputActions.MoveRight)) Adjust(1);
+		if (Input.IsActionJustPressed(InputActions.MenuSelect)) Rows[_selected].Activate?.Invoke();
 	}
 
 	// ───────────── Moving around ─────────────

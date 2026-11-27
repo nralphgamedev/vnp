@@ -133,10 +133,10 @@ public partial class ResultScreen : Control
 
 		if (_offerEndless)
 		{
-			if (Input.IsActionJustPressed("move_left")) Select(0);
-			if (Input.IsActionJustPressed("move_right")) Select(1);
+			if (Input.IsActionJustPressed(InputActions.MoveLeft)) Select(0);
+			if (Input.IsActionJustPressed(InputActions.MoveRight)) Select(1);
 		}
-		if (Input.IsActionJustPressed("menu_select"))
+		if (Input.IsActionJustPressed(InputActions.MenuSelect))
 			Choose(_offerEndless ? _selected : 0);
 	}
 

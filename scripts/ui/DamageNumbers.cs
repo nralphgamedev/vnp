@@ -12,6 +12,8 @@ public partial class DamageNumbers : Control
 		public Vector3 World;   // Where it started, so it stays over the spot while the camera moves.
 		public float Value;
 		public float Age;
+		public string Text;      // Value as shown, made again only when Value changes, not every frame.
+		public float TextValue;
 	}
 
 	public Fight Fight;
@@ -89,7 +91,12 @@ public partial class DamageNumbers : Control
 			float alpha = t < 0.6f ? 1f : 1f - (t - 0.6f) / 0.4f;
 			int fontSize = Mathf.RoundToInt(size * pop);
 			Vector2 screen = camera.UnprojectPosition(number.World) + new Vector2(-Width * 0.5f, -Feedback.DamageNumberRise * number.Age);
-			string text = number.Value >= 1f ? Mathf.RoundToInt(number.Value).ToString() : number.Value.ToString("0.#");
+			if (number.Text == null || number.TextValue != number.Value)
+			{
+				number.TextValue = number.Value;
+				number.Text = number.Value >= 1f ? Mathf.RoundToInt(number.Value).ToString() : number.Value.ToString("0.#");
+			}
+			string text = number.Text;
 
 			DrawStringOutline(font, screen, text, HorizontalAlignment.Center, Width, fontSize, 5,
 				new Color(0f, 0f, 0f, 0.8f * alpha));

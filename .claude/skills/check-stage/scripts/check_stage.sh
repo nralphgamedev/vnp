@@ -63,6 +63,15 @@ if [ "$1" = "--scenario" ]; then
 	exit $?
 fi
 
+# Every run's whole output is kept, so a failure can be read in full afterwards, however little of it was shown
+# at the time: playtests/checks/check_<date>.txt (the last 30 runs) and latest.txt. playtests/ is out of git.
+checks_dir="playtests/checks"
+mkdir -p "$checks_dir"
+check_log="$checks_dir/check_$(date +%Y-%m-%d_%H%M%S).txt"
+exec > >(tee "$check_log" "$checks_dir/latest.txt") 2>&1
+ls -t "$checks_dir"/check_*.txt 2>/dev/null | tail -n +31 | xargs -r rm -f
+echo "Full output: $check_log (and $checks_dir/latest.txt)"
+
 summary=()
 problems=0
 note() { summary+=("$1"); }
@@ -252,6 +261,28 @@ if [ $full -eq 1 ]; then
 fi
 rm -rf "$work"
 
+# A performance test, run with what else is using the computer sampled alongside it (sample_processes.ps1), then
+# each slow frame explained by perf_context.py: garbage collection in it, and which programs were busy then. A
+# failure is also added to playtests/checks/perf_failures.txt, one line each, to compare across runs. Leaves the
+# harness's output in perf_out.
+perf_test() {
+	local name="$1"; shift
+	local stop="$perf_tmp/stop_$name" samples="$perf_tmp/procs_$name.txt"
+	rm -f "$stop"
+	powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$SKILL_DIR/sample_processes.ps1")" \
+		-Out "$(cygpath -w "$samples")" -StopFile "$(cygpath -w "$stop")" > /dev/null 2>&1 &
+	local sampler=$!
+	perf_out="$(run_scenario window "$@")"
+	touch "$stop"
+	wait "$sampler" 2>/dev/null
+	printf '%s\n' "$perf_out" > "$perf_tmp/out_$name.txt"
+	perf_context="$(python "$SKILL_DIR/perf_context.py" "$name" "$perf_tmp/out_$name.txt" "$samples" "$checks_dir/perf_failures.txt")"
+}
+
+if [ $full -eq 1 ] || [ $crowd -eq 1 ]; then
+	perf_tmp="$(mktemp -d)"
+fi
+
 if [ $full -eq 1 ]; then
 	echo "== Performance requirement (just before each push; opens a window)"
 	# The stress case for CLAUDE.md's performance requirement: a Rich field, a full swarm of Beam drones, Orbital
@@ -263,12 +294,13 @@ if [ $full -eq 1 ]; then
 		take=orbital_shards_count,orbital_shards_count,orbital_shards_area,mine_layer,drone_cap,drone_cap
 		spawn=all:8 spawn=basic_goo:6 drones=40 invulnerable maxtime=60 mute=yes log=none close=yes)
 	for mode in plain detail; do
-		perf_out="$(run_scenario window "${stress[@]}" perf=$mode)"
+		perf_test "stress_$mode" "${stress[@]}" perf=$mode
 		echo "$perf_out" | grep "^PERF"
+		[ -n "$perf_context" ] && echo "$perf_context"
 		if echo "$perf_out" | grep -q "^PERF: requirement MET"; then
 			note "Performance ($mode): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps), worst [0-9.]* ms')"
 		else
-			fail "the performance requirement is not met in the stress test ($mode; see the PERF lines above)"
+			fail "the performance requirement is not met in the stress test ($mode; see the PERF lines above). $(echo "$perf_context" | grep 'slow frame(s);' | sed 's/^PERF CONTEXT: //')"
 		fi
 	done
 
@@ -278,12 +310,13 @@ if [ $full -eq 1 ]; then
 	# doesn't reach. About 100 seconds.
 	late=(pilot=expert build=designer seed=8 asteroids=rich weapon=orbital_shards drone_weapon=beam invulnerable
 		maxtime=420 perfstart=360 record=yes perf=detail profile=yes mute=yes log=none close=yes)
-	perf_out="$(run_scenario window "${late[@]}")"
+	perf_test late "${late[@]}"
 	echo "$perf_out" | grep -E "^PERF|^PROFILE"
+	[ -n "$perf_context" ] && echo "$perf_context"
 	if echo "$perf_out" | grep -q "^PERF: requirement MET"; then
 		note "Performance (late fight, 6:00 to 7:00): $(echo "$perf_out" | grep -o 'slowest 1% [0-9.]* ms ([0-9]* fps), worst [0-9.]* ms'); $(echo "$perf_out" | grep -o 'game logic [0-9.]* ms (budget [0-9.]*)')"
 	else
-		fail "the performance requirement is not met in the late fight (see the PERF lines above)"
+		fail "the performance requirement is not met in the late fight (see the PERF lines above). $(echo "$perf_context" | grep 'slow frame(s);' | sed 's/^PERF CONTEXT: //')"
 	fi
 
 fi
@@ -337,6 +370,8 @@ if git status --porcelain | grep -q 'placeholder/models/'; then
 	fi
 fi
 note "Changed files: $(git status --porcelain | wc -l)"
+
+[ -n "$perf_tmp" ] && rm -rf "$perf_tmp"
 
 echo
 echo "================ SUMMARY ================"

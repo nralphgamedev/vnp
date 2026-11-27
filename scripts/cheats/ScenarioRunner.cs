@@ -98,7 +98,7 @@ public partial class ScenarioRunner : Node
 	private string _weaponId;
 	private string _droneWeaponId;
 	private ulong _lastTicks;
-	private readonly List<double> _frameMs = new();
+	private readonly List<double> _frameMs = new(MeasuredFramesExpected);
 	private bool _quitting;
 	private int? _seed;
 	private int _overFrame;
@@ -145,7 +145,17 @@ public partial class ScenarioRunner : Node
 	};
 	private long _profileStart;
 	private readonly long[] _profileMarks = new long[ProfileParts.Length];
-	private readonly List<double>[] _profileTimes = ProfileParts.Select(_ => new List<double>()).ToArray();
+	private readonly List<double>[] _profileTimes = ProfileParts.Select(_ => new List<double>(MeasuredFramesExpected)).ToArray();
+	// Room for this many frames in the measuring lists from the start, so their growth doesn't count as the
+	// game's garbage in a profile or a measurement.
+	private const int MeasuredFramesExpected = 16384;
+	// profile=: bytes the main thread allocated in each part, totalled over the profiled frames, and between the
+	// last part of one frame and the start of the next (the engine's own work, drawing and callbacks), so
+	// garbage collection can be traced to what allocates.
+	private long _profileAllocStart;
+	private readonly long[] _profileAllocMarks = new long[ProfileParts.Length];
+	private readonly long[] _profileAllocTotals = new long[ProfileParts.Length];
+	private long _profileAllocBetween;
 
 	/// <summary>profile=: marks the end of one update priority's nodes, or with Index -1 the start of the frame.</summary>
 	private sealed partial class ProfileMark : Node
@@ -156,29 +166,42 @@ public partial class ScenarioRunner : Node
 		public override void _Process(double delta)
 		{
 			long now = System.Diagnostics.Stopwatch.GetTimestamp();
+			long allocated = GC.GetAllocatedBytesForCurrentThread();
 			if (Index < 0)
 			{
-				Runner.CollectProfile();
+				Runner.CollectProfile(allocated);
 				Runner._profileStart = now;
+				Runner._profileAllocStart = GC.GetAllocatedBytesForCurrentThread();
 			}
 			else
+			{
 				Runner._profileMarks[Index] = now;
+				Runner._profileAllocMarks[Index] = allocated;
+			}
 		}
 	}
 
 	/// <summary>The last frame's time in each part, from its markers, while the fight was running.</summary>
-	private void CollectProfile()
+	private void CollectProfile(long allocatedNow)
 	{
 		if (_profileStart == 0 || _fight == null || GetTree().Paused || _fight.Elapsed < Math.Max(2, _perfStart))
 			return;
 		long previous = _profileStart;
+		long previousAlloc = _profileAllocStart;
 		for (int i = 0; i < ProfileParts.Length; i++)
 		{
 			long mark = _profileMarks[i];
 			_profileTimes[i].Add(mark > previous ? (mark - previous) * 1000.0 / System.Diagnostics.Stopwatch.Frequency : 0);
 			if (mark > previous)
+			{
 				previous = mark;
+				_profileAllocTotals[i] += Math.Max(0, _profileAllocMarks[i] - previousAlloc);
+				previousAlloc = _profileAllocMarks[i];
+			}
 		}
+		// From the last part's end to this frame's start, measured before this bookkeeping allocates anything: the
+		// engine's work outside the fight's nodes.
+		_profileAllocBetween += Math.Max(0, allocatedNow - previousAlloc);
 	}
 
 	private void StartProfile()
@@ -201,6 +224,12 @@ public partial class ScenarioRunner : Node
 			if (slowest >= 0.01)
 				Say($"PROFILE:   {ProfileParts[i].Name,-30} {average,6:0.00} / {slowest,6:0.00}");
 		}
+		int frames = _profileTimes[0].Count;
+		var parts = ProfileParts.Select((p, i) => (p.Name, Bytes: _profileAllocTotals[i]))
+			.Append((Name: "between frames (engine, drawing, callbacks)", Bytes: _profileAllocBetween))
+			.Where(p => p.Bytes > 0).OrderByDescending(p => p.Bytes);
+		Say("PROFILE: allocated on the main thread, a frame on average: " +
+			string.Join(", ", parts.Select(p => $"{p.Name} {p.Bytes / 1024.0 / frames:0.00} KB")));
 	}
 
 	/// <summary>Marks a moment in each frame for perf=detail's logic timing: the first node to update, or the last.</summary>
@@ -224,7 +253,49 @@ public partial class ScenarioRunner : Node
 			}
 		}
 	}
-	private readonly List<(double Ms, double Time, bool Paused, double Logic, double Cpu, double Gpu, double Testing)> _perfFrames = new();
+	private readonly List<(double Ms, double Time, bool Paused, double Logic, double Cpu, double Gpu, double Testing, PerfContext Context)> _perfFrames = new(MeasuredFramesExpected);
+
+	/// <summary>
+	/// perf=: what else happened in a frame, to explain a slow one: .NET's garbage collections that ended in it and
+	/// how long they paused the game, and the clock time, so a slow frame can be matched against what else the
+	/// computer was doing then (the stage check samples that). All cheap to read every frame.
+	/// </summary>
+	private readonly struct PerfContext
+	{
+		public readonly int Gen0, Gen1, Gen2;
+		public readonly double PauseMs;
+		public readonly DateTime Clock;
+
+		public PerfContext(int gen0, int gen1, int gen2, double pauseMs, DateTime clock)
+		{
+			Gen0 = gen0; Gen1 = gen1; Gen2 = gen2; PauseMs = pauseMs; Clock = clock;
+		}
+
+		public bool Collected => Gen0 + Gen1 + Gen2 > 0;
+
+		public string Describe() => Collected
+			? $"garbage collection gen0 {Gen0}, gen1 {Gen1}, gen2 {Gen2}, paused {PauseMs:0.0} ms"
+			: "no garbage collection";
+	}
+
+	private int _gcGen0, _gcGen1, _gcGen2;
+	private double _gcPauseMs;
+	private long _gcAllocatedAtStart;
+	private long _gcMainThreadAtStart;
+	private int _gcGen0AtStart, _gcGen1AtStart, _gcGen2AtStart;
+	private double _gcPauseAtStart;
+
+	/// <summary>Collections and pause time since the last call.</summary>
+	private PerfContext TakePerfContext()
+	{
+		int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
+		double pause = GC.GetTotalPauseDuration().TotalMilliseconds;
+		// A gen1 collection also counts as gen0, and gen2 as both, so each is told apart by what it adds.
+		var context = new PerfContext(gen0 - _gcGen0 - (gen1 - _gcGen1), gen1 - _gcGen1 - (gen2 - _gcGen2), gen2 - _gcGen2,
+			pause - _gcPauseMs, DateTime.Now);
+		_gcGen0 = gen0; _gcGen1 = gen1; _gcGen2 = gen2; _gcPauseMs = pause;
+		return context;
+	}
 
 	public override void _Ready()
 	{
@@ -273,6 +344,11 @@ public partial class ScenarioRunner : Node
 		if (_profile)
 			StartProfile();
 		// perfstart=: play fast up to the measuring start (see PerformanceSettings.FastForwardScale).
+		if (_perf != null)
+		{
+			var perfSettings = GD.Load<PerformanceSettings>("res://scripts/cheats/playtesting/performance.tres") ?? new PerformanceSettings();
+			_perfCountFrom = Math.Max(perfSettings.SkipSeconds, _perfStart);
+		}
 		if (_perfStart > 0 && (_perf != null || _profile))
 		{
 			var settings = GD.Load<PerformanceSettings>("res://scripts/cheats/playtesting/performance.tres") ?? new PerformanceSettings();
@@ -745,7 +821,11 @@ public partial class ScenarioRunner : Node
 	private void ExplainPilot()
 	{
 		Pilot pilot = _fight.Pilot;
-		if (pilot == null || _explainFrom < 0f || pilot.Decisions == _decisionsExplained)
+		if (pilot == null || _explainFrom < 0f)
+			return;
+		// The pilot writes its reasoning only when asked, from the first frame so the window's first decision has it.
+		pilot.Explaining = true;
+		if (pilot.Decisions == _decisionsExplained)
 			return;
 		_decisionsExplained = pilot.Decisions;
 		double time = _fight.Elapsed;
@@ -805,6 +885,9 @@ public partial class ScenarioRunner : Node
 	}
 
 	private bool _finishedMeasuring;
+	private bool _gcCounting;
+	// The fight time the requirement starts judging from: the later of the loading seconds and perfstart=.
+	private double _perfCountFrom;
 
 	/// <summary>perf=: frames as fast as the computer allows, and in detail Godot's render timing.</summary>
 	private void StartPerf()
@@ -821,6 +904,7 @@ public partial class ScenarioRunner : Node
 		}
 		Vector2I size = DisplayServer.WindowGetSize();
 		GD.Print($"PERF: measuring ({_perf}) at {size.X}x{size.Y}, vsync off, no frame cap; the harness's own lines follow afterwards");
+		TakePerfContext();
 		RunReview.Say = Say;
 	}
 
@@ -835,7 +919,17 @@ public partial class ScenarioRunner : Node
 			cpu = RenderingServer.ViewportGetMeasuredRenderTimeCpu(viewport) + RenderingServer.GetFrameSetupTimeCpu();
 			gpu = RenderingServer.ViewportGetMeasuredRenderTimeGpu(viewport);
 		}
-		_perfFrames.Add((ms, _fight.Elapsed, GetTree().Paused, logic, cpu, gpu, _lastTestingMs));
+		var context = TakePerfContext();
+		_perfFrames.Add((ms, _fight.Elapsed, GetTree().Paused, logic, cpu, gpu, _lastTestingMs, context));
+		if (!_gcCounting && !GetTree().Paused && _fight.Elapsed >= _perfCountFrom)
+		{
+			// Garbage collection is totalled over the same frames the requirement judges.
+			_gcCounting = true;
+			_gcAllocatedAtStart = GC.GetTotalAllocatedBytes();
+			_gcMainThreadAtStart = GC.GetAllocatedBytesForCurrentThread();
+			_gcGen0AtStart = GC.CollectionCount(0); _gcGen1AtStart = GC.CollectionCount(1); _gcGen2AtStart = GC.CollectionCount(2);
+			_gcPauseAtStart = GC.GetTotalPauseDuration().TotalMilliseconds;
+		}
 	}
 
 	/// <summary>The PERF lines: the slowest 1% of frames against the budget, hitches, the worst frames with their
@@ -848,6 +942,13 @@ public partial class ScenarioRunner : Node
 		_heldLines.Clear();
 		var settings = GD.Load<PerformanceSettings>("res://scripts/cheats/playtesting/performance.tres") ?? new PerformanceSettings();
 		var frames = _perfFrames.Where(f => !f.Paused && f.Time >= Math.Max(settings.SkipSeconds, _perfStart)).ToList();
+		long allocated = _gcCounting ? GC.GetTotalAllocatedBytes() - _gcAllocatedAtStart : 0;
+		long mainThread = _gcCounting ? GC.GetAllocatedBytesForCurrentThread() - _gcMainThreadAtStart : 0;
+		// Each count includes the older generations' collections, so each is told apart by what it adds.
+		int all0 = GC.CollectionCount(0) - _gcGen0AtStart, all1 = GC.CollectionCount(1) - _gcGen1AtStart,
+			gen2Total = GC.CollectionCount(2) - _gcGen2AtStart;
+		int gen0Total = all0 - all1, gen1Total = all1 - gen2Total;
+		double pauseTotal = GC.GetTotalPauseDuration().TotalMilliseconds - _gcPauseAtStart;
 		if (frames.Count == 0)
 		{
 			Say("PERF: no frames counted (all paused or within the loading seconds)");
@@ -875,8 +976,27 @@ public partial class ScenarioRunner : Node
 			frames.OrderByDescending(f => f.Ms).Take(8).Select(f => $"{f.Time:0.00}s {f.Ms:0.0} ms" +
 				(f.Testing >= 0.5 ? $" of which testing {f.Testing:0.0}" : "") +
 				(_perf == "detail" ? $" (logic {f.Logic:0.0}, CPU {f.Cpu:0.0}, GPU {f.Gpu:0.0})" : "") +
+				(f.Context.Collected ? $" [GC paused {f.Context.PauseMs:0.0}]" : "") +
 				(f.Ms > settings.FrameBudgetMs && Game(f.Ms, f.Testing) <= settings.FrameBudgetMs ? " [testing]" : ""))));
-		bool met = slowest <= settings.FrameBudgetMs && hitches == 0;
+		// Garbage collection over the judged frames: if a slow frame lines up with a long pause, the game's own
+		// allocations are the cause, and cutting them is the fix.
+		Say($"PERF: garbage collection while judged: gen0 {gen0Total}, gen1 {gen1Total}, gen2 {gen2Total}, " +
+			$"paused {pauseTotal:0.0} ms in all, longest in one frame {frames.Max(f => f.Context.PauseMs):0.0} ms; " +
+			$"{allocated / (1024.0 * 1024.0):0.0} MB allocated ({allocated / 1024.0 / Math.Max(1, frames.Count):0.0} KB a frame)");
+		double mainKb = mainThread / 1024.0 / Math.Max(1, frames.Count);
+		bool allocationMet = mainKb <= settings.AllocationBudgetKb;
+		Say($"PERF: main thread allocated {mainKb:0.00} KB a frame (budget {settings.AllocationBudgetKb:0.##})" +
+			(allocationMet ? "" : ": over budget; profile=yes shows which part allocates"));
+		// Each frame over budget on the game's own time, with its clock time, so the stage check can match it
+		// against what else the computer was doing then. PERF SLOW lines are read by perf_context.py.
+		var slowFrames = frames.Where(f => Game(f.Ms, f.Testing) > settings.FrameBudgetMs).ToList();
+		foreach (var f in slowFrames.Take(40))
+			Say($"PERF SLOW: {f.Context.Clock:yyyy-MM-ddTHH:mm:ss.fff} fight {f.Time:0.00}s {Game(f.Ms, f.Testing):0.0} ms" +
+				(_perf == "detail" ? $" (logic {f.Logic:0.0}, CPU {f.Cpu:0.0}, GPU {f.Gpu:0.0})" : "") +
+				$"; {f.Context.Describe()}");
+		if (slowFrames.Count > 40)
+			Say($"PERF SLOW: {slowFrames.Count - 40} more not listed");
+		bool met = slowest <= settings.FrameBudgetMs && hitches == 0 && allocationMet;
 		if (_perf == "detail")
 		{
 			double logic = Slowest(frames.Select(f => Game(f.Logic, f.Testing)));

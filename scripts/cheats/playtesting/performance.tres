@@ -9,4 +9,5 @@ SlowestShare = 0.01
 HitchMs = 16.7
 LogicBudgetMs = 4.0
 SkipSeconds = 2.0
+AllocationBudgetKb = 1.0
 FastForwardScale = 10.0

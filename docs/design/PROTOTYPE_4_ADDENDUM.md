@@ -132,6 +132,7 @@ An entry belongs here only if, without it, the AI would do something differently
   - This changes phase 2's targeting.
 - **The `Explosive` flag:** each VNP Weapon's file has an `Explosive` flag, which decides whether it breaks fragile enemy shots.
 - **Sounds pause with the fight:** while a menu pauses the fight, the fight's own sounds pause and resume; menu and result sounds still play. This changes phase 2's "Sounds while paused".
+- **The debug line is for development only,** at the designer's choice. The line at the top of the screen (fps, seed, health, counts) shows in the editor and in debug exports, never in a release build (`#if DEBUG` in `Fight.cs`). The result screen still shows the seed.
 - **Result panels scroll:** the damage breakdown and upgrade list grow until they would leave the screen, then scroll by mouse wheel or scroll bar. The damage breakdown stops above the weapon icons. Scrolling by controller or keyboard isn't built.
 
 ## Still open

@@ -305,9 +305,12 @@ public partial class Pilot
 
 		_lastTargetDanger = targetDanger;
 		Decisions++;
-		Reasoning = $"PLANNER {goal} | " + Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
-			harvest, targetWorth, targetEdge, holding, committing, idle, Vector2.Zero, _wanted, enemyCount, me) +
-			$" | hazards {_situation.Hazards.Length} | paths: {_move.Explain(3, _planner.Describe)}";
+#if TOOLS
+		if (Explaining)
+			Reasoning = $"PLANNER {goal} | " + Explain(threat, pressure, backOff, droneReliance, fighting ? nearest : -1, nearestDistance,
+				harvest, targetWorth, targetEdge, holding, committing, idle, Vector2.Zero, _wanted, enemyCount, me) +
+				$" | hazards {_situation.Hazards.Length} | paths: {_move.Explain(3, _planner.Describe)}";
+#endif
 	}
 
 	/// <summary>Where the harvest target is, and how near it must get: within beam reach, as the first pilot holds.</summary>
