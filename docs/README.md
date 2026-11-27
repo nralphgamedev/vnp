@@ -19,6 +19,7 @@ Development only: the testing tools and how the game is checked, which design do
 - `RUN_REVIEW_SPEC.md`: detectors, recordings, maps and calibration.
 - `PERFORMANCE_SPEC.md`: the performance requirement, how it is measured, its tests and what they found.
 - `PILOT_SPEC.md`: pilots rebuilt to read the threats enemies declare and plan short paths, trained two ways (like the designer, and as strong as possible), with the general parts as Arbiter, a decision library meant to serve other behavior and other games.
+- `FIGHT_DIRECTOR_SPEC.md`: the Fight Director, which gives each fight its own plan and paces it, with factions as data and the galactic map in mind. It changes how the game plays, so what it changes is recorded in the current design addendum too.
 - `calibration/JOURNAL.md`: the record of unattended calibration runs.
 
 ## Where a new doc goes

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="FightDirectorTuning" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://director/FightDirectorTuning.cs" id="1_script"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/grey_goo.tres" id="2_grey_goo"]
+
+[resource]
+script = ExtResource("1_script")
+DefaultFaction = ExtResource("2_grey_goo")

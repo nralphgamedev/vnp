@@ -177,7 +177,7 @@ For design questions this file does not answer, ask the designer rather than inv
 
 The prototype now does the following; any of it can still change.
 
-- **Where a fight is seeded:** as the fight scene enters the tree, before any of its parts are ready, since the asteroids are placed as soon as they are. `Fight.NextSeed` sets the next fight's seed, for the scenario harness and batches.
+- **Where a fight is seeded:** as the fight scene enters the tree, before any of its parts are ready, since the asteroids are placed as soon as they are. `Fight.NextBrief` sets the next fight's seed, for the scenario harness and batches, with its asteroid amount (the Fight Director's brief, `docs/dev/FIGHT_DIRECTOR_SPEC.md`).
 - **Damage sources:** every hit carries what dealt it: the VNP Weapon, the Drone Weapon in use, or the enemy type, including shots in flight. Each Drone Weapon counts separately, so damage done before a switch stays with the weapon that did it.
 - **Fight logs:** written when the fight ends, again if an endless run then ends, and as "unfinished" if the fight is left by starting a new one or closing the game. Each is named by its start time and seed. The result screen shows where it went, in small text at the bottom left, in the editor only. Logging is switched off with `WriteLogs` in `fight_log.tres`.
 - **Frame times in fight logs:** the time from the start of the fight's update each frame to its end, measured by the log itself, so it is the game's own work without drawing or waiting for the screen. It works the same headless and in a window. Godot's built-in frame monitor was tried first, but it measures the whole frame, including waiting for the screen, so it read about 16.7 ms in every windowed fight.

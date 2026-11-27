@@ -1,47 +1,10 @@
-[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="EnemySpawningTuning" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://tuning/EnemySpawningTuning.cs" id="1_script"]
-[ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/basic_goo/basic_goo.tres" id="3_goo"]
-[ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/lancer/lancer.tres" id="5_lancer"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/quiller/quiller.tres" id="6_quiller"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/spiker/spiker.tres" id="7_spiker"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/burster/burster.tres" id="8_burster"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/devourer/devourer.tres" id="9_devourer"]
-[ext_resource type="Resource" path="res://enemies/grey_goo/asteroid_mimic/asteroid_mimic.tres" id="10_mimic"]
 
 [resource]
 script = ExtResource("1_script")
-StartingGroups = 5
-SpawnInterval = 4.0
 SpawnMargin = 10.0
-SpawnExtraDistance = 28.0
-MaxAlive = 200
 DespawnDistance = 180.0
-WaveFirstSeconds = 45.0
-WaveIntervalSeconds = 45.0
-WaveGroups = 5
-WaveGroupsAddedPerWave = 1
 WaveWarningSeconds = 3.0
 WaveBannerSeconds = 2.0
-GroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
-ExtResource("2_enemy"): 0.0,
-ExtResource("3_goo"): 1.0,
-ExtResource("5_lancer"): 0.35,
-ExtResource("6_quiller"): 0.3,
-ExtResource("7_spiker"): 0.3,
-ExtResource("8_burster"): 0.3,
-ExtResource("9_devourer"): 0.2,
-ExtResource("10_mimic"): 0.0
-})
-WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
-ExtResource("2_enemy"): 0.0,
-ExtResource("3_goo"): 1.0,
-ExtResource("5_lancer"): 0.35,
-ExtResource("6_quiller"): 0.3,
-ExtResource("7_spiker"): 0.3,
-ExtResource("8_burster"): 0.3,
-ExtResource("9_devourer"): 0.0,
-ExtResource("10_mimic"): 0.0
-})

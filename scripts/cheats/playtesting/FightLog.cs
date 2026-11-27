@@ -418,6 +418,8 @@ public partial class FightLog : Node
 				["startingWeapons"] = _startingWeapons ?? new List<string>(),
 				["startingDroneWeapon"] = _startingDroneWeapon,
 				["asteroidAmount"] = _fight.AsteroidAmount?.Id,
+				["faction"] = _fight.Director.Plan.Faction?.Id,
+				["fightPlan"] = _fight.Director.Plan.Definition?.Id,
 				["tuningVariant"] = _variant,
 				["tuningFingerprint"] = _variantText == null ? TuningFingerprint() : WithVariant(TuningFingerprint(), _variantText),
 				["gitVersion"] = GitVersion(),

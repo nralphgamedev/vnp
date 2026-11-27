@@ -5,7 +5,7 @@
 Examples, run from the vnp project folder:
     python tres_add.py tuning/levels.tres Upgrades res://weapons/x/upgrades/damage.tres
     python tres_add.py scripts/cheats/in_game_cheats.tres StartingWeaponChoices res://weapons/x/x.tres
-    python tres_add.py tuning/enemy_spawning.tres GroupWeights res://enemies/x/x.tres --weight 1.0
+    python tres_add.py enemies/grey_goo/grey_goo.tres GroupWeights res://enemies/x/x.tres --weight 1.0
 
 It adds an ext_resource line for RES_PATH (or reuses the one already there), raises load_steps to match,
 and appends the entry to PROPERTY, which must already exist as Array[...]([...]) or

@@ -9,6 +9,7 @@ An entry belongs here only if, without it, the AI would do something differently
 - Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, removing the old pilot, upgrade picks on the decision core with its guards, and the ceiling pilot are done; still to do: calibrating the designer-like pilot.
 - Done when: met, except the pilot items above. Each type's performance cost was measured at its stage; all were close to the basic goo's.
 - The designer is reworking how fights feel. Recorded-fight calibration of pilots waits until they are happy with it.
+- **Fight pacing comes next,** at the designer's request, before the next phase's weapons (the spec's "Next phase, planned"). It goes through a Fight Director, described in `docs/dev/FIGHT_DIRECTOR_SPEC.md`. Why: fights feel repetitive, and late fights leave running as the only answer, which is likely why Mine Layer wins nearly every fight. Each change the director makes to fights is recorded here as it is built.
 
 ## Shared traits
 
@@ -28,7 +29,7 @@ An entry belongs here only if, without it, the AI would do something differently
   - Escalation speeding enemies up changes phase 1, where escalation left speed alone.
 - **Turning and health:** every type but the Devourer accelerates and turns sharply (`Acceleration`, `TurnSpeed`) and has 30% less health than before, at the designer's request.
   - **Why:** goos slid sideways through turns, taking nearly three seconds to reverse.
-- **Shared tuning that isn't in a type's own file:** Grey Goo's health and damage ramps are in `tuning/difficulty.tres` (`RampGreyGoo…`, `EscalationGreyGoo…`). Spawn weights are in `tuning/enemy_spawning.tres`. Shared fields come from `GreyGooDefinition`, including `HoldDistance` and `HoldBlendDistance`: 0 closes in all the way.
+- **Shared tuning that isn't in a type's own file:** Grey Goo's health and damage ramps are in `tuning/difficulty.tres` (`RampGreyGoo…`, `EscalationGreyGoo…`). Spawn weights and `MaxAlive` are in the Grey Goo faction's file, `enemies/grey_goo/grey_goo.tres`; when groups and waves come, and how large waves grow, is in the fight's plan, in `director/plans/` (the Fight Director's). Shared fields come from `GreyGooDefinition`, including `HoldDistance` and `HoldBlendDistance`: 0 closes in all the way.
 - **Attack ranges:** they are measured from the enemy's edge for every type: `LaunchRange`, `VolleyRange`, `Reach` and `FireRange`.
 
 ## Basic goo
@@ -104,11 +105,11 @@ An entry belongs here only if, without it, the AI would do something differently
 - **Waking:** only the VNP coming within `WakeRange` wakes it; drones near it don't, at the designer's request. Harvesting it still wakes it, as the spec says. A Devourer touching one wakes it unhurt rather than eating it.
   - **Why it has its own range:** `AggroRange` once did both waking and noticing targets, so an awake mimic barely noticed anything. Awake, its aggro ranges work like the basic goo's.
 - **When it appears:** the waking mimic is added at the start of the next update.
-- **Spawning:** never in groups or waves; its weights are 0. It is listed in `enemy_spawning.tres` only so the fight knows the type, and its `GroupSize` is unused.
+- **Spawning:** never in groups or waves; its weights are 0. It is listed in Grey Goo's weights (`enemies/grey_goo/grey_goo.tres`) only so the fight knows the type, and its `GroupSize` is unused.
 
 ## Spawning
 
-- **The basic enemy:** its weights are 0, but its files and its entry in `enemy_spawning.tres` stay. The scenario harness can still spawn it with `spawn=basic_enemy:N`.
+- **The basic enemy:** its weights are 0, but its files and its entry in Grey Goo's weights (`enemies/grey_goo/grey_goo.tres`) stay. The scenario harness can still spawn it with `spawn=basic_enemy:N`.
 
 ## Pilots
 

@@ -312,8 +312,7 @@ public partial class ScenarioRunner : Node
 			_quitting = true;
 			return;
 		}
-		Fight.NextSeed = _seed;
-		Fight.NextAsteroidAmount = _asteroidAmount;
+		Fight.NextBrief = new FightBrief { Seed = _seed, AsteroidAmountId = _asteroidAmount };
 		if (_perf != null)
 			StartPerf();
 		FightLog.NextFolder = _logFolder == "none" ? ""
@@ -525,7 +524,8 @@ public partial class ScenarioRunner : Node
 		Check("asteroids", _asteroidAmount, Tuning.Asteroids.Amounts.Select(a => a?.Id));
 		foreach (string id in _take ?? Array.Empty<string>())
 			Check("take", id, Tuning.Levels.Upgrades.Select(u => u?.Id));
-		var enemies = Tuning.EnemySpawning.GroupWeights.Keys.Concat(Tuning.EnemySpawning.WaveGroupWeights.Keys)
+		FactionDefinition faction = Tuning.FightDirector.DefaultFaction;
+		var enemies = faction.GroupWeights.Keys.Concat(faction.WaveGroupWeights.Keys)
 			.Select(e => e?.Id).Distinct().Append("all");
 		foreach ((string id, _, _) in _spawns)
 			Check("spawn", id, enemies);

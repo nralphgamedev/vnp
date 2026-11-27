@@ -85,24 +85,13 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Enemies currently alive.</summary>
 	public int Count { get; private set; }
 
-	/// <summary>Waves sent so far.</summary>
-	public int WavesSent { get; private set; }
-
-#if RECORDING
-	/// <summary>How many groups the last wave had, for the run review's log.</summary>
-	public int LastWaveGroups { get; private set; }
-#endif
-
-	/// <summary>Fight time, in seconds, when the next wave arrives.</summary>
-	public float NextWaveTime => Tuning.EnemySpawning.WaveFirstSeconds + WavesSent * Tuning.EnemySpawning.WaveIntervalSeconds;
-
 	/// <summary>The radius of the largest enemy alive, as of the start of this frame's enemy update.</summary>
 	public float MaxRadius { get; private set; }
 
 	/// <summary>The largest DroneAvoidDistance of any enemy type, so drones know how far to look.</summary>
 	public float MaxDroneAvoid { get; private set; }
 
-	/// <summary>Every enemy type that can spawn, from the weights in enemy_spawning.tres.</summary>
+	/// <summary>Every enemy type the fight knows, from the keys of its faction's weights.</summary>
 	public IReadOnlyList<EnemyBehavior> Types => _types;
 
 	/// <summary>Debris waiting to appear while its enemy bursts apart.</summary>
@@ -126,19 +115,19 @@ public partial class EnemySwarm : Node3D
 
 	// Extra search distance for lookups made after enemies have moved this frame.
 	private const float GridSlack = 1f;
-	private float _spawnTimer;
-	private bool _startingGroupsSpawned;
 	private int _lastId;
+	private FactionDefinition _faction;
 
 	public override void _Ready()
 	{
 		ProcessPriority = UpdateOrder.Enemies;
-		_spawnTimer = Tuning.EnemySpawning.SpawnInterval;
 
-		AddTypes(Tuning.EnemySpawning.GroupWeights);
-		AddTypes(Tuning.EnemySpawning.WaveGroupWeights);
+		// The fight made its plan as it entered the tree, before this is ready.
+		_faction = GetParentOrNull<Fight>()?.Director.Plan.Faction ?? Tuning.FightDirector.DefaultFaction;
+		AddTypes(_faction?.GroupWeights);
+		AddTypes(_faction?.WaveGroupWeights);
 		if (_types.Count == 0)
-			GD.PushError("No enemy types to spawn. Give at least one a weight in res://tuning/enemy_spawning.tres.");
+			GD.PushError("No enemy types to spawn. List at least one in the faction's weights, such as res://enemies/grey_goo/grey_goo.tres.");
 
 		float cellSize = 1f;
 		foreach (EnemyBehavior type in _types)
@@ -179,7 +168,7 @@ public partial class EnemySwarm : Node3D
 
 		RemoveDeadAndDistant(vnpPosition);
 		DropPendingDebris(dt);
-		Spawn(dt, vnpPosition);
+		Fight.Director.Update(Fight, this, dt, vnpPosition);
 		Simulate(dt, vnpPosition, Fight.Vnp.Velocity, vnpAlive: !Fight.Vnp.IsDestroyed);
 		SplitQueued();
 		SpawnQueued();
@@ -483,27 +472,6 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
-	private void Spawn(float dt, Vector2 vnpPosition)
-	{
-		if (!_startingGroupsSpawned)
-		{
-			_startingGroupsSpawned = true;
-			for (int i = 0; i < Tuning.EnemySpawning.StartingGroups; i++)
-				SpawnGroup(vnpPosition);
-		}
-
-		if (Fight.Elapsed >= NextWaveTime)
-			SpawnWave(vnpPosition);
-
-		_spawnTimer -= dt;
-		if (_spawnTimer > 0f)
-			return;
-
-		// The spawn rate climbs through the fight.
-		_spawnTimer = Tuning.EnemySpawning.SpawnInterval / Fight.EnemySpawnRateScale;
-		SpawnGroup(vnpPosition, respectMaxAlive: true);
-	}
-
 	/// <summary>An enemy type picked at random, by the weights given, or -1 if none has a weight.</summary>
 	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights)
 	{
@@ -533,21 +501,15 @@ public partial class EnemySwarm : Node3D
 	}
 
 	/// <summary>
-	/// Spawns a wave: groups spaced evenly on a ring just off screen, all hunting the VNP. Each group's type
-	/// is picked by the wave weights. Each wave has more groups than the last. Waves ignore the MaxAlive limit.
+	/// Spawns a wave for the Fight Director: this many groups spaced evenly on a ring just off screen, all hunting
+	/// the VNP. Each group's type is picked by the wave weights. Waves ignore the MaxAlive limit.
 	/// </summary>
-	private void SpawnWave(Vector2 vnpPosition)
+	public void SpawnRing(Vector2 vnpPosition, int groups)
 	{
-		int groups = Tuning.EnemySpawning.WaveGroups + Tuning.EnemySpawning.WaveGroupsAddedPerWave * WavesSent;
-		WavesSent++;
-#if RECORDING
-		LastWaveGroups = groups;
-#endif
-		Fight.Camera.Shake(Tuning.Feedback.ShakeOnWave);
 		float startAngle = Rng.Range(0f, Mathf.Tau);
 		for (int g = 0; g < groups; g++)
 		{
-			int type = PickType(Tuning.EnemySpawning.WaveGroupWeights);
+			int type = PickType(_faction.WaveGroupWeights);
 			if (type < 0)
 				return;
 			float angle = startAngle + Mathf.Tau * g / groups;
@@ -557,17 +519,18 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
-	/// <summary>Spawns one group, of a type picked by the group weights, at a random spot off screen around
-	/// the VNP. That spot is the group's home.</summary>
-	private void SpawnGroup(Vector2 vnpPosition, bool respectMaxAlive = false)
+	/// <summary>Spawns one group for the Fight Director, of a type picked by the group weights, at a random spot
+	/// off screen around the VNP, up to <paramref name="extraDistance"/> beyond the margin. That spot is the group's
+	/// home. With <paramref name="respectMaxAlive"/>, it spawns nothing while the swarm is at MaxAlive.</summary>
+	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive)
 	{
-		int type = PickType(Tuning.EnemySpawning.GroupWeights);
+		int type = PickType(_faction.GroupWeights);
 		if (type < 0)
 			return;
-		if (respectMaxAlive && Count + _types[type].Definition.GroupSize > Tuning.EnemySpawning.MaxAlive)
+		if (respectMaxAlive && Count + _types[type].Definition.GroupSize > _faction.MaxAlive)
 			return;
 		Vector2 direction = Rng.Direction();
-		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, Tuning.EnemySpawning.SpawnExtraDistance));
+		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, extraDistance));
 		SpawnGroupAt(home, type, hunting: false);
 	}
 

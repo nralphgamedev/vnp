@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="FactionDefinition" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://director/FactionDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/basic_goo/basic_goo.tres" id="3_goo"]
+[ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/lancer/lancer.tres" id="5_lancer"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/quiller/quiller.tres" id="6_quiller"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/spiker/spiker.tres" id="7_spiker"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/burster/burster.tres" id="8_burster"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/devourer/devourer.tres" id="9_devourer"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/asteroid_mimic/asteroid_mimic.tres" id="10_mimic"]
+[ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="20_plan_script"]
+[ext_resource type="Resource" path="res://director/plans/classic.tres" id="21_classic"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "grey_goo"
+Name = "Grey Goo"
+GroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
+ExtResource("2_enemy"): 0.0,
+ExtResource("3_goo"): 1.0,
+ExtResource("5_lancer"): 0.35,
+ExtResource("6_quiller"): 0.3,
+ExtResource("7_spiker"): 0.3,
+ExtResource("8_burster"): 0.3,
+ExtResource("9_devourer"): 0.2,
+ExtResource("10_mimic"): 0.0
+})
+WaveGroupWeights = Dictionary[ExtResource("4_enemy_script"), float]({
+ExtResource("2_enemy"): 0.0,
+ExtResource("3_goo"): 1.0,
+ExtResource("5_lancer"): 0.35,
+ExtResource("6_quiller"): 0.3,
+ExtResource("7_spiker"): 0.3,
+ExtResource("8_burster"): 0.3,
+ExtResource("9_devourer"): 0.0,
+ExtResource("10_mimic"): 0.0
+})
+Plans = Dictionary[ExtResource("20_plan_script"), float]({
+ExtResource("21_classic"): 1.0
+})
+MaxAlive = 200

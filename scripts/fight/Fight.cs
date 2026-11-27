@@ -34,14 +34,17 @@ public partial class Fight : Node3D
 	/// The seed for the next fight to start, for repeating a fight; null picks one at random. Used once, then
 	/// cleared. Set it before the fight scene is added to the tree.
 	/// </summary>
-	public static int? NextSeed;
+	public static FightBrief NextBrief;
 
 	/// <summary>The next fight's asteroid amount, by ID, for the scenario harness and batches. Null picks one by
 	/// the amounts' weights.</summary>
-	public static string NextAsteroidAmount;
 
 	/// <summary>This fight's asteroid amount, picked as it starts. Null if asteroids.tres lists none.</summary>
-	public AsteroidAmountDefinition AsteroidAmount { get; private set; }
+	public AsteroidAmountDefinition AsteroidAmount => Director.Plan.AsteroidAmount;
+
+	/// <summary>The Fight Director, which made this fight's plan from its brief and decides when and where enemies
+	/// arrive. Made as the fight enters the tree, before any of its parts.</summary>
+	public FightDirector Director { get; private set; }
 
 	/// <summary>What has happened in this fight so far: damage by source, drones lost, kills, level-ups.</summary>
 	public readonly FightStats Stats = new();
@@ -163,49 +166,12 @@ public partial class Fight : Node3D
 	public override void _EnterTree()
 	{
 		// Seed before any part of the fight is ready, since the asteroids are placed as soon as they are.
-		Seed = NextSeed ?? Rng.NewSeed();
-		NextSeed = null;
+		FightBrief brief = NextBrief ?? new FightBrief();
+		NextBrief = null;
+		Seed = brief.Seed ?? Rng.NewSeed();
 		Rng.Seed(Seed);
-		// Before the asteroids are placed, which scale by it.
-		AsteroidAmount = PickAsteroidAmount(Seed, NextAsteroidAmount);
-		NextAsteroidAmount = null;
-	}
-
-	/// <summary>
-	/// The asteroid amount with this ID, or, for none, one picked by the amounts' weights. The pick uses its own
-	/// generator, seeded from the fight's seed, rather than the fight's random numbers: drawing one more number
-	/// from those would have changed every fight, so this way a seed with the Normal amount plays exactly as it
-	/// did before amounts were added, and older batch fights still replay.
-	/// </summary>
-	private static AsteroidAmountDefinition PickAsteroidAmount(int seed, string id)
-	{
-		Godot.Collections.Array<AsteroidAmountDefinition> amounts = Tuning.Asteroids.Amounts;
-		if (amounts == null || amounts.Count == 0)
-			return null;
-		if (id != null)
-		{
-			foreach (AsteroidAmountDefinition amount in amounts)
-			{
-				if (amount != null && amount.Id == id)
-					return amount;
-			}
-			GD.PushError($"No asteroid amount {id} in asteroids.tres; picking one at random.");
-		}
-		float total = 0f;
-		foreach (AsteroidAmountDefinition amount in amounts)
-			total += amount == null ? 0f : Mathf.Max(0f, amount.Weight);
-		if (total <= 0f)
-			return amounts[0];
-		float roll = (float)new System.Random(seed * 7919 + 3).NextDouble() * total;
-		foreach (AsteroidAmountDefinition amount in amounts)
-		{
-			if (amount == null)
-				continue;
-			roll -= Mathf.Max(0f, amount.Weight);
-			if (roll < 0f)
-				return amount;
-		}
-		return amounts[amounts.Count - 1];
+		// Before the asteroids are placed, which scale by the plan's asteroid amount.
+		Director = new FightDirector(brief, Seed);
 	}
 
 #if TOOLS
@@ -213,7 +179,7 @@ public partial class Fight : Node3D
 	/// asteroids again for it. Whether it was chosen this way is recorded in the fight log.</summary>
 	public void ChooseAsteroidAmount(AsteroidAmountDefinition amount)
 	{
-		AsteroidAmount = amount;
+		Director.Plan.AsteroidAmount = amount;
 		AsteroidAmountChosen = true;
 		Harvestables.PlaceAgain(amount);
 	}
@@ -444,10 +410,10 @@ public partial class Fight : Node3D
 		}
 
 		// The wave warning sounds once, as the warning appears on screen.
-		if (Enemies.WavesSent != _warnedWave
-			&& Enemies.NextWaveTime - Elapsed <= Tuning.EnemySpawning.WaveWarningSeconds)
+		if (Director.WavesSent != _warnedWave
+			&& Director.NextWaveTime - Elapsed <= Tuning.EnemySpawning.WaveWarningSeconds)
 		{
-			_warnedWave = Enemies.WavesSent;
+			_warnedWave = Director.WavesSent;
 			Sounds.Play(Sound.WaveWarning);
 		}
 
@@ -492,6 +458,7 @@ public partial class Fight : Node3D
 		_debugLabel.Text =
 			$"{Engine.GetFramesPerSecond():0} fps    " +
 			$"seed {Seed}    " +
+			$"plan {Director.Plan.Definition?.Name ?? "none"}    " +
 			$"time {seconds / 60}:{seconds % 60:00}    " +
 			$"health {Mathf.Ceil(Vnp.Health):0}/{Vnp.MaxHealth:0}    " +
 			$"level {Level}    " +

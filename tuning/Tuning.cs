@@ -5,7 +5,8 @@ using Godot;
 /// one per system, which can be edited in Godot's inspector. Most are in res://tuning/; a system with its
 /// own folder keeps its file there (audio in res://audio/). Weapons, Drone Weapons and enemy types are
 /// definitions in their own folders (res://weapons/, res://drone_weapons/, res://enemies/), beside their
-/// code; upgrades that belong to no feature are in res://tuning/upgrades/.
+/// code; upgrades that belong to no feature are in res://tuning/upgrades/. The Fight Director's plans are in
+/// res://director/.
 ///
 /// Each file is read the first time the fight needs it, so changes take effect from the next run.
 ///
@@ -26,6 +27,7 @@ public static class Tuning
 	public static LookTuning Look => _look ??= Load<LookTuning>("res://tuning/look.tres");
 	public static FeedbackTuning Feedback => _feedback ??= Load<FeedbackTuning>("res://tuning/feedback.tres");
 	public static AudioTuning Audio => _audio ??= Load<AudioTuning>("res://audio/audio.tres");
+	public static FightDirectorTuning FightDirector => _fightDirector ??= Load<FightDirectorTuning>("res://director/fight_director.tres");
 
 	private static VnpTuning _vnp;
 	private static DronesTuning _drones;
@@ -39,6 +41,7 @@ public static class Tuning
 	private static LookTuning _look;
 	private static FeedbackTuning _feedback;
 	private static AudioTuning _audio;
+	private static FightDirectorTuning _fightDirector;
 
 	/// <summary>Loads one tuning file by its full path, so a system can move to its own folder by changing
 	/// its line above.</summary>

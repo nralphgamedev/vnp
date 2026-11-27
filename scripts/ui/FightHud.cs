@@ -76,17 +76,17 @@ public partial class FightHud : Control
 		}
 
 		// Wave warning before a wave, then its number for a moment after it arrives.
-		double toWave = Fight.Enemies.NextWaveTime - Fight.Elapsed;
-		double sinceWave = Fight.Elapsed - (Fight.Enemies.NextWaveTime - Tuning.EnemySpawning.WaveIntervalSeconds);
+		double toWave = Fight.Director.NextWaveTime - Fight.Elapsed;
+		double sinceWave = Fight.Elapsed - Fight.Director.LastWaveTime;
 		if (!Fight.IsOver && toWave <= Tuning.EnemySpawning.WaveWarningSeconds)
 		{
 			float blink = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin((float)toWave * Mathf.Pi * 2f));
 			DrawString(font, new Vector2(0f, 214f), "WAVE INCOMING", HorizontalAlignment.Center, width, 44,
 				new Color(Warning, blink));
 		}
-		else if (!Fight.IsOver && Fight.Enemies.WavesSent > 0 && sinceWave < Tuning.EnemySpawning.WaveBannerSeconds)
+		else if (!Fight.IsOver && Fight.Director.WavesSent > 0 && sinceWave < Tuning.EnemySpawning.WaveBannerSeconds)
 		{
-			DrawString(font, new Vector2(0f, 214f), $"WAVE {Fight.Enemies.WavesSent}", HorizontalAlignment.Center, width, 44,
+			DrawString(font, new Vector2(0f, 214f), $"WAVE {Fight.Director.WavesSent}", HorizontalAlignment.Center, width, 44,
 				new Color(Danger, 1f - (float)(sinceWave / Tuning.EnemySpawning.WaveBannerSeconds)));
 		}
 

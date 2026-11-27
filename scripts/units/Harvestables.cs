@@ -38,11 +38,10 @@ public partial class Harvestables : Node3D
 		public bool IsMimic;       // A sleeping asteroid mimic: an asteroid in every way until it wakes.
 	}
 
-	// The asteroid mimic's type, if the fight has one (any entry in enemy_spawning.tres's weights, normally at 0), for
-	// hiding mimics in fields and waking them.
-	private static AsteroidMimicDefinition Mimic =>
-		_mimic ??= Tuning.EnemySpawning.GroupWeights?.Keys.OfType<AsteroidMimicDefinition>().FirstOrDefault();
-	private static AsteroidMimicDefinition _mimic;
+	// The asteroid mimic's type, if the fight's faction has one (any entry in its weights, normally at 0), for hiding
+	// mimics in fields and waking them. Found as this is ready, before the first field is placed.
+	private AsteroidMimicDefinition Mimic => _mimic;
+	private AsteroidMimicDefinition _mimic;
 
 	// Mimics woken this frame, spawned at the start of the next update, so an enemy is never added while the enemies
 	// are updating (a Devourer can wake one by touching it).
@@ -113,7 +112,10 @@ public partial class Harvestables : Node3D
 
 		// The fight's asteroid amount scales how many fields and lone asteroids there are. The fight picks it as it
 		// enters the tree, before this is ready.
-		_amount = GetParentOrNull<Fight>()?.AsteroidAmount;
+		Fight fight = GetParentOrNull<Fight>();
+		_amount = fight?.AsteroidAmount;
+		FactionDefinition faction = fight?.Director.Plan.Faction ?? Tuning.FightDirector.DefaultFaction;
+		_mimic = faction?.GroupWeights?.Keys.OfType<AsteroidMimicDefinition>().FirstOrDefault();
 		FillStartingArea();	}
 
 #if TOOLS

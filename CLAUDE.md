@@ -13,6 +13,7 @@ It builds on the earlier specs (each design spec with its addendum) and the dev 
 - Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
 - Performance: the requirement below, how it is measured, its tests and what is open: @docs/dev/PERFORMANCE_SPEC.md
 - Pilots that plan: threats enemies declare, path scoring, two training targets, and Arbiter, a generic decision library meant to serve other behavior and other games (planned): @docs/dev/PILOT_SPEC.md
+- Fight Director: fight plans picked from a brief, live pacing, factions as data, built for the galactic map to reuse (stages 1 and 2 built): @docs/dev/FIGHT_DIRECTOR_SPEC.md
 
 A design spec is the designer's intent, as given, and is never edited. Its addendum records what changed in building and testing, and wins where they disagree; a newer phase's spec and addendum win over an older one's (see "Specs and addenda" below).
 

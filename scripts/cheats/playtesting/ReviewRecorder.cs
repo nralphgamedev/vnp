@@ -227,9 +227,9 @@ public class ReviewRecorder
 		_lastLevel = _fight.Level;
 		// Each wave, numbered, with how many groups it sent, and each escalation step past the time limit, so a
 		// review can tell what arrived when, and how much harder enemies had just become.
-		int waves = _fight.Enemies.WavesSent;
+		int waves = _fight.Director.WavesSent;
 		if (waves > _lastWaves)
-			Event(now, "wave", waves, "groups", _fight.Enemies.LastWaveGroups);
+			Event(now, "wave", waves, "groups", _fight.Director.LastWaveGroups);
 		_lastWaves = waves;
 		int escalation = _fight.EscalationSteps;
 		if (escalation > _lastEscalation)
