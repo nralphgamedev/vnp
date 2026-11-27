@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://director/waves/rising_ring.tres" id="2_large"]
+[ext_resource type="Resource" path="res://director/curves/numbers.tres" id="3_curve"]
+[ext_resource type="Resource" path="res://director/waves/small_front.tres" id="4_small"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "rising"
+Name = "Rising"
+KillTarget = 160
+StartingGroups = 5
+SpawnInterval = 4.0
+SpawnExtraDistance = 28.0
+LargeWaves = ExtResource("2_large")
+SmallWaves = ExtResource("4_small")
+Curve = ExtResource("3_curve")

@@ -186,15 +186,45 @@ The prototype now does the following; any of it can still change.
   - **Who reads it:** the swarm takes its types, weights and limit from the fight's faction; the asteroid mimic hidden in fields is the faction's mimic type, found per fight rather than once for the whole game; the scenario harness checks `spawn=` against the default faction's types. Fight logs record the faction (`faction`).
   - **The basic enemy** is listed in Grey Goo's weights at 0, as it was in `enemy_spawning.tres`, so fights still know the type and `spawn=basic_enemy:N` works. It belongs to no faction; the listing is only so it can be brought back, as phase 4 left it.
   - **No fight changed:** the same four fights as stage 1 traced identically.
+- **Plans made of pieces (stage 3):**
+  - **The shape,** at the designer's choice: named plans made of reusable pieces, a fight picking a whole plan by its faction's weights. A plan (`FightPlanDefinition`, `director/plans/`) holds its kill target, how groups arrive between waves, and three pieces: its large waves, its small waves (optional) and its difficulty curve. Pieces are files that plans share: `WavesDefinition` in `director/waves/` and `DifficultyCurveDefinition` in `director/curves/`.
+  - **A waves piece** holds its timing, arrival and makeup, each a kind with its own settings (as upgrade effects are), and its size: groups in the first wave and groups added each wave.
+    - **Timing built:** steady, speeding up (each gap a set share of the last, down to a least gap), irregular (gaps straying either way from an average, from a generator of the director's own) and surge (waves close together, then a quiet stretch).
+    - **Arrival built:** ring, front and pincer, each spread across a set angle. The direction comes from the fight's random numbers, as the ring's did.
+    - **Makeup built:** mixed; growing, where each group is from a harder tier with a chance that grows each minute up to a most, and from the easiest otherwise; and swarm, the easiest tier only. Growing and swarm use only easiest against the rest so far.
+    - **Not built yet:** sweeping flocks, trickle, ambushes, themed and escort waves, and wave behaviours other than hunting at once.
+  - **Small waves** are built as the spec describes, a second wave stream beside the large one: no warning, banner, sound or shake; numbered on their own; recorded in fight logs (`small_wave` events) and marked on maps as `s1`, `s2` in a paler orange. Each stream's irregular timing has a generator of its own (streams 6 and 7).
+  - **Tiers** are in the faction's file (`Tiers`); a type not listed is tier 1. Grey Goo's, picked for now: basic goo 1; Lancer, Quiller, Burster and asteroid mimic 2; Spiker and Devourer 3, since they absorb drones.
+  - **The difficulty curve moved** from `tuning/difficulty.tres` into the plans' curves: every per-minute ramp (spawn rate, speed, Grey Goo's health and damage, and the basic enemy's health, damage and accuracy). The classic curve has the values every fight had. The numbers curve, which the new plans use, has no stat ramps, the speed ramp the designer set, and groups spawning 0.75 more a minute, from the first comparison's `numbers_a`. Escalation stays in `difficulty.tres`.
+  - **Kill target per plan,** at the designer's choice: `KillTarget` in the plan, 0 for `fight.tres`'s. The HUD, the result screen and fight logs show the fight's own.
+  - **The first plans,** starting values for the designer to play and tune, all at equal weight in Grey Goo's file:
+    - **Classic:** the fights as they were.
+    - **Swarm:** surges of three swarm waves, 6 seconds apart, from a ring, every 75 seconds; no small waves.
+    - **Pincer:** growing waves from two opposite sides every 55 seconds, two groups larger each time; small growing waves from one side about every 20 seconds.
+    - **Rising:** growing ring waves whose gaps shorten from 60 seconds to 25; the same small waves as Pincer.
+
+    Every new plan uses the numbers curve and a kill target of 160.
+  - **Tools:** the harness's `plan=ID`; batches' `--plans` (a list, `all`, or `random`, the default, for each fight's own pick); a By plan section in reports; the plan in combination labels and in watch commands when a batch sets it. Variants that changed the ramps or the classic waves now change the classic plan's pieces, so they are batched with `--plans classic`.
+  - **No classic fight changed:** the same four fights, run with `plan=classic` to 5:30, traced identically before and after.
+  - **First batch:** 25 expert fights a plan, Designer build:
+
+    | Plan | Kill target | Wins | Alive at 5:00 | Drones at 2:00 / 4:00 | Enemies at 4:00 |
+    |---|---|---|---|---|---|
+    | Classic | 120 | 68% | 17 of 25 | 8.4 / 3.4 | 44 |
+    | Swarm | 160 | 84% | 7 of 25 | 9.6 / 4.4 | 120 |
+    | Pincer | 160 | 88% | 25 of 25 | 4.8 / 2.4 | 69 |
+    | Rising | 160 | 96% | 25 of 25 | 11.0 / 9.9 | 98 |
+
+    The plans play differently: Swarm is the hardest to survive past the win, Pincer is the hardest on drones, and Rising, with the most enemies after Swarm but no stat ramps, the easiest.
 
 ## Not yet decided
 
-- **Whole plans or pieces:** whether a plan stays one file holding all of its choices, picked whole, or is put together from pieces of each kind picked separately. Whole plans are easier to tell apart while playing and to show on the galactic map; pieces give more variety from fewer files. Stage 1 made plans whole files; to be settled in stage 3.
-- Which pieces to build first.
+- Which pieces to build next, and which plans to keep.
+- **Tiers beyond two:** growing and swarm waves use only easiest against the rest; whether growing waves should bring in tier 2 before tier 3.
 - **How far to lean on numbers:** measured before stage 3 (see Settled during the build), and tuned by playing.
 - **Small waves' size and frequency,** and whether some plans have only small waves.
-- **The kill target and numbers:** a plan that grows by numbers brings the kill target sooner. In the first comparison, waves and spawning that grew faster won at a median 3:06 to 3:15 against 3:58. So more pressure also meant an earlier win. Options: the kill target belongs to the plan, or scales with how many enemies the plan sends, or counts something other than kills.
-- **How types are ranked from easy to hard** for growing and swarm waves: a tier in the faction's file for each type, or worked out from each type's stats.
+- **The kill target and numbers:** a plan that grows by numbers brings the kill target sooner. In the first comparison, waves and spawning that grew faster won at a median 3:06 to 3:15 against 3:58. So more pressure also meant an earlier win. For now each plan sets its own (stage 3, the designer's choice). Still open: whether it should instead scale with how many enemies the plan sends, or count something other than kills.
+- **How types are ranked from easy to hard:** a tier set by hand in the faction's file for now (stage 3); worked out from each type's stats is the alternative.
 - How strong easing off should be, and whether hunters giving up feels fair or strange.
 - Whether pilots need to estimate the next wave, once wave timing varies.
 - Announcing a fight's character to the player. It stays hidden for now, at the designer's choice, until the galactic map can show it.
@@ -204,7 +234,7 @@ The prototype now does the following; any of it can still change.
 
 1. **The brief and the plan,** with the classic plan only. No fight changes, checked against traces. Plans are recorded in fight logs.
 2. **Grey Goo as a faction:** a `FactionDefinition` holding the weights from `enemy_spawning.tres`. Still no fight changes.
-3. **A few pieces of each kind,** picked at fight start by the faction's weights, with the harness options, `--plans` and reports by piece. The designer plays them and cuts or tunes them. They include:
+3. **A few pieces of each kind,** (built, see Settled during the build) picked at fight start by the faction's weights, with the harness options, `--plans` and reports by piece. The designer plays them and cuts or tunes them. They include:
    - the difficulty curve moving into the plan, with the classic plan keeping today's ramps;
    - small, unannounced waves beside the large ones, with each plan's timing for both.
 4. **Live pacing.**

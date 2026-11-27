@@ -69,6 +69,8 @@ using System.Reflection;
 ///                      Each is applied as if chosen at a level up, whether or not it would be offered.
 ///   asteroids=ID       the fight's asteroid amount (sparse, normal, rich: tuning/asteroid_amounts/), in place of
 ///                      the one picked by its seed
+///   plan=ID            the Fight Director's plan (director/plans/, any of the faction's), in place of the one
+///                      picked by its seed
 ///   mute=yes           silence all sound, as batches do whenever they run more than one fight
 ///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
 ///                      Headless runs, and runs taking a screenshot, always quit when finished.
@@ -120,6 +122,7 @@ public partial class ScenarioRunner : Node
 	private LevelUpMenu _levelUpMenu;
 	private string _logFolder;
 	private string _asteroidAmount;
+	private string _planId;
 	private string[] _take;
 	private int _exitCode;
 
@@ -312,7 +315,7 @@ public partial class ScenarioRunner : Node
 			_quitting = true;
 			return;
 		}
-		Fight.NextBrief = new FightBrief { Seed = _seed, AsteroidAmountId = _asteroidAmount };
+		Fight.NextBrief = new FightBrief { Seed = _seed, PlanId = _planId, AsteroidAmountId = _asteroidAmount };
 		if (_perf != null)
 			StartPerf();
 		FightLog.NextFolder = _logFolder == "none" ? ""
@@ -379,6 +382,7 @@ public partial class ScenarioRunner : Node
 		["mute"] = "yes or no",
 		["variant"] = "a tuning variant's name, from tools/variants/NAME.txt, or base",
 		["asteroids"] = "an asteroid amount ID from tuning/asteroid_amounts/",
+		["plan"] = "a plan ID from director/plans/",
 		["take"] = "comma-separated upgrade IDs from levels.tres",
 		["explain"] = "FROM-TO, fight times in seconds",
 		["pilot"] = "a skill level from res://pilots/skill_levels/",
@@ -444,6 +448,7 @@ public partial class ScenarioRunner : Node
 					case "mute": _mute = YesNo(value); break;
 					case "variant": _variant = value; break;
 					case "asteroids": _asteroidAmount = value; break;
+					case "plan": _planId = value; break;
 					case "take": _take = value.Split(',', StringSplitOptions.RemoveEmptyEntries); break;
 					case "explain":
 					{
@@ -525,6 +530,7 @@ public partial class ScenarioRunner : Node
 		foreach (string id in _take ?? Array.Empty<string>())
 			Check("take", id, Tuning.Levels.Upgrades.Select(u => u?.Id));
 		FactionDefinition faction = Tuning.FightDirector.DefaultFaction;
+		Check("plan", _planId, faction.Plans.Keys.Select(p => p?.Id));
 		var enemies = faction.GroupWeights.Keys.Concat(faction.WaveGroupWeights.Keys)
 			.Select(e => e?.Id).Distinct().Append("all");
 		foreach ((string id, _, _) in _spawns)

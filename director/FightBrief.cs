@@ -14,6 +14,10 @@ public sealed class FightBrief
 	/// res://director/fight_director.tres.</summary>
 	public FactionDefinition Faction;
 
+	/// <summary>A plan by its ID, from the faction's plans, or null for one picked by their weights. The scenario
+	/// harness and batches set it.</summary>
+	public string PlanId;
+
 	/// <summary>An asteroid amount by its ID, or null for the plan to pick one by the amounts' weights. The
 	/// scenario harness sets it.</summary>
 	public string AsteroidAmountId;

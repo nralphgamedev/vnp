@@ -1,13 +1,13 @@
 using Godot;
 
 /// <summary>
-/// One plan a fight can follow: when and where enemies arrive, and how waves grow (docs/dev/FIGHT_DIRECTOR_SPEC.md).
-/// The Fight Director picks one for each fight, by the weights in res://director/fight_director.tres. Files are in
+/// One named plan a fight can follow (docs/dev/FIGHT_DIRECTOR_SPEC.md): how groups arrive between waves, its large
+/// and small waves, how it grows harder, and its kill target. The waves and the difficulty curve are pieces, files of
+/// their own in res://director/waves/ and res://director/curves/, which plans share. A fight picks a whole plan by
+/// its faction's weights, so plans can be told apart while playing and shown on the galactic map later. Files are in
 /// res://director/plans/.
 ///
-/// Only the classic plan exists so far: the fights as they were before the director. Its values moved here
-/// unchanged from res://tuning/enemy_spawning.tres, which keeps what every plan shares, such as the enemy types'
-/// weights, the spawn margin and the wave warning. Later stages add other pieces to choose from.
+/// The classic plan is the fights as they were before the director, kept so older batches still replay.
 /// </summary>
 [GlobalClass]
 public partial class FightPlanDefinition : Resource
@@ -18,6 +18,10 @@ public partial class FightPlanDefinition : Resource
 	/// galactic map can show it.</summary>
 	[Export] public string Name;
 
+	/// <summary>Kills that win the fight, or 0 for KillTarget in res://tuning/fight.tres. A plan that sends more
+	/// enemies can ask for more, since otherwise more pressure would also mean an earlier win.</summary>
+	[Export] public int KillTarget;
+
 	// Between waves, single groups arrive in random directions off screen and roam until they notice the VNP.
 
 	/// <summary>Groups already roaming, off screen, when the fight starts.</summary>
@@ -25,27 +29,22 @@ public partial class FightPlanDefinition : Resource
 	[Export] public int StartingGroups;
 
 	/// <summary>Seconds between spawned groups at the start of the fight. The spawn rate climbs through the fight
-	/// by the ramp and escalation in res://tuning/difficulty.tres.</summary>
+	/// by the plan's difficulty curve, and past the limit by escalation.</summary>
 	[Export] public float SpawnInterval;
 
 	/// <summary>Groups spawn up to this much farther out than the spawn margin, at random. Waves always spawn at
 	/// the margin, so they arrive together.</summary>
 	[Export] public float SpawnExtraDistance;
 
-	// Every so often a wave arrives: several groups at once, spaced evenly on a ring just off screen around the
-	// VNP, all hunting it from the start. Wave enemies chase from any distance and never give up. They have the
-	// same strength as other enemies spawned at that moment, and ignore MaxAlive.
+	/// <summary>The announced waves: warned of on screen and by sound, numbered on the banner, shaking the
+	/// screen. Every plan has them.</summary>
+	[ExportGroup("Pieces")]
+	[Export] public WavesDefinition LargeWaves;
 
-	/// <summary>Fight time, in seconds, when the first wave arrives.</summary>
-	[ExportGroup("Waves")]
-	[Export] public float WaveFirstSeconds;
+	/// <summary>Unannounced waves, with no warning, banner or shake, usually smaller and more frequent: steady
+	/// pressure between the large waves. Empty for none.</summary>
+	[Export] public WavesDefinition SmallWaves;
 
-	/// <summary>Seconds between waves.</summary>
-	[Export] public float WaveIntervalSeconds;
-
-	/// <summary>Groups in the first wave. Each group is its type's group size.</summary>
-	[Export] public int WaveGroups;
-
-	/// <summary>Groups added to each wave after the first.</summary>
-	[Export] public int WaveGroupsAddedPerWave;
+	/// <summary>How the fight grows harder before the time limit.</summary>
+	[Export] public DifficultyCurveDefinition Curve;
 }

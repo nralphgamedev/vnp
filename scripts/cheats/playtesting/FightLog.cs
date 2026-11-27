@@ -437,7 +437,7 @@ public partial class FightLog : Node
 				["endless"] = _fight.IsEndless,
 				["time"] = Math.Round(_fight.Elapsed, 1),
 				["kills"] = _fight.Kills,
-				["killTarget"] = Tuning.Fight.KillTarget,
+				["killTarget"] = _fight.KillTarget,
 				["killTargetTime"] = _fight.IsEndless || result == "win" ? Math.Round(_fight.VictoryTime, 1) : (object)null,
 				["level"] = _fight.Level,
 				["experience"] = Math.Round(_fight.Experience, 1),

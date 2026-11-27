@@ -1,15 +1,16 @@
-[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://director/waves/classic_large.tres" id="2_large"]
+[ext_resource type="Resource" path="res://director/curves/classic.tres" id="3_curve"]
 
 [resource]
 script = ExtResource("1_script")
 Id = "classic"
 Name = "Classic"
+KillTarget = 0
 StartingGroups = 5
 SpawnInterval = 4.0
 SpawnExtraDistance = 28.0
-WaveFirstSeconds = 45.0
-WaveIntervalSeconds = 45.0
-WaveGroups = 5
-WaveGroupsAddedPerWave = 1
+LargeWaves = ExtResource("2_large")
+Curve = ExtResource("3_curve")

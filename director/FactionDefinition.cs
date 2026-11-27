@@ -2,9 +2,9 @@ using Godot;
 
 /// <summary>
 /// One faction a fight can be against, as data for the Fight Director (docs/dev/FIGHT_DIRECTOR_SPEC.md): its enemy
-/// types and how often each spawns, the plans its fights can follow, and its limits. There is one director for
-/// every faction; a faction that needs something new adds a new kind of plan piece, which any faction can then use.
-/// What each enemy does stays in its type's own code and file.
+/// types and how often each spawns, how hard each is, the plans its fights can follow, and its limits. There is one
+/// director for every faction; a faction that needs something new adds a new kind of plan piece, which any faction
+/// can then use. What each enemy does stays in its type's own code and file.
 ///
 /// Each faction's file sits with its enemy types, such as res://enemies/grey_goo/grey_goo.tres. Grey Goo is the
 /// only one so far, and every fight is against it (DefaultFaction in res://director/fight_director.tres) until the
@@ -27,6 +27,11 @@ public partial class FactionDefinition : Resource
 	/// <summary>The enemy types in waves, each with a weight, picked for each group of a wave as for
 	/// GroupWeights.</summary>
 	[Export] public Godot.Collections.Dictionary<EnemyDefinition, float> WaveGroupWeights;
+
+	/// <summary>How hard each type is, from 1, the easiest, up. Growing waves draw mostly from the easiest tier
+	/// with harder ones peppered in, and swarm waves only from the easiest, so a new type only needs its tier. A
+	/// type not listed is tier 1.</summary>
+	[Export] public Godot.Collections.Dictionary<EnemyDefinition, int> Tiers;
 
 	/// <summary>The plans this faction's fights can follow, each with a weight, picked as for GroupWeights.</summary>
 	[ExportGroup("Plans")]

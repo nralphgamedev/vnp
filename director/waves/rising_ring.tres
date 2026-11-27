@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WavesDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/WavesDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "rising_ring"
+Groups = 4
+GroupsAddedPerWave = 1
+Timing = 1
+FirstSeconds = 45.0
+IntervalSeconds = 60.0
+IntervalScalePerWave = 0.85
+MinIntervalSeconds = 25.0
+Arrival = 0
+Makeup = 1
+HardShareStart = 0.05
+HardSharePerMinute = 0.12
+HardShareMax = 0.7

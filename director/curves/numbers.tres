@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="DifficultyCurveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/DifficultyCurveDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "numbers"
+RampSpawnRatePerMinute = 0.75
+RampEnemySpeedPerMinute = 0.02
+RampGreyGooHealthPerMinute = 0.0
+RampGreyGooDamagePerMinute = 0.0
+RampEnemyHealthPerMinute = 0.0
+RampEnemyDamagePerMinute = 0.0
+RampEnemyAccuracyPerMinute = 0.0

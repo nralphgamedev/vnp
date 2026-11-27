@@ -76,6 +76,7 @@ public class ReviewRecorder
 	private int _lastLevel = 1;
 	private int _lastDronesLost;
 	private int _lastWaves;
+	private int _lastSmallWaves;
 	private int _lastEscalation;
 
 	private readonly Queue<Dictionary<string, object>> _recent = new();
@@ -231,6 +232,11 @@ public class ReviewRecorder
 		if (waves > _lastWaves)
 			Event(now, "wave", waves, "groups", _fight.Director.LastWaveGroups);
 		_lastWaves = waves;
+		// Small, unannounced waves, numbered on their own (the Fight Director's).
+		int smallWaves = _fight.Director.SmallWavesSent;
+		if (smallWaves > _lastSmallWaves)
+			Event(now, "small_wave", smallWaves, "groups", _fight.Director.LastSmallWaveGroups);
+		_lastSmallWaves = smallWaves;
 		int escalation = _fight.EscalationSteps;
 		if (escalation > _lastEscalation)
 			Event(now, "escalation", escalation);

@@ -101,6 +101,8 @@ public static class MapDrawer
 	private static readonly Color Hit = new(1f, 0.25f, 0.25f);
 	// Waves arriving, on maps: a hot orange apart from enemy shots' and the hit red.
 	private static readonly Color Wave = new(1f, 0.45f, 0.1f);
+	// Small, unannounced waves: paler than the announced ones, so the two read apart.
+	private static readonly Color SmallWave = new(1f, 0.75f, 0.45f);
 	private static readonly Color DroneLost = new(1f, 0.55f, 0.80f);
 	private static readonly Color Level = new(0.95f, 0.85f, 0.30f);
 	private static readonly Color Drone = new(0.35f, 0.85f, 0.95f);
@@ -322,6 +324,10 @@ public static class MapDrawer
 					Ring(image, at, 6, Wave, 2);
 					Text(image, at.X - 20, at.Y - 7, $"W{e.GetProperty("value").GetInt32()}", Wave, 1);
 					break;
+				case "small_wave":
+					Ring(image, at, 4, SmallWave, 1);
+					Text(image, at.X - 16, at.Y - 7, $"s{e.GetProperty("value").GetInt32()}", SmallWave, 1);
+					break;
 				case "escalation":
 					Ring(image, at, 6, Level, 2);
 					Text(image, at.X - 20, at.Y - 7, $"E{e.GetProperty("value").GetInt32()}", Level, 1);
@@ -365,6 +371,7 @@ public static class MapDrawer
 		FillRect(image, keyX, 29, 4, 4, DroneLost); keyX = Text(image, keyX + 7, 26, "DRONES LOST", Dim, 1) + 12;
 		FillRect(image, keyX, 27, 2, 8, Level); keyX = Text(image, keyX + 5, 26, "LEVEL", Dim, 1) + 12;
 		Ring(image, new Vector2I(keyX + 4, 31), 4, Wave, 1); keyX = Text(image, keyX + 11, 26, "W WAVE", Dim, 1) + 12;
+		Ring(image, new Vector2I(keyX + 4, 31), 3, SmallWave, 1); keyX = Text(image, keyX + 11, 26, "S SMALL WAVE", Dim, 1) + 12;
 		Ring(image, new Vector2I(keyX + 4, 31), 4, Level, 1); keyX = Text(image, keyX + 11, 26, "E ESCALATION STEP", Dim, 1) + 12;
 		// The detectors' letters, from the log, wrapping onto a second line if needed.
 		int keyLeft = 8, keyY = 40;
@@ -679,12 +686,16 @@ public static class MapDrawer
 			{
 				string kind = e.GetProperty("kind").GetString();
 				double et = e.GetProperty("time").GetDouble();
-				if ((kind != "wave" && kind != "escalation") || et <= since || et > t)
+				if ((kind != "wave" && kind != "small_wave" && kind != "escalation") || et <= since || et > t)
 					continue;
-				string what = kind == "wave"
-					? $"WAVE {e.GetProperty("value").GetInt32()} ARRIVES" + (e.TryGetProperty("groups", out JsonElement g) ? $", {g.GetInt32()} GROUPS" : "")
-					: $"ESCALATION STEP {e.GetProperty("value").GetInt32()}";
-				Text(image, px + 6, py + 30, what, kind == "wave" ? Wave : Level, 1);
+				string groups = e.TryGetProperty("groups", out JsonElement g) ? $", {g.GetInt32()} GROUPS" : "";
+				string what = kind switch
+				{
+					"wave" => $"WAVE {e.GetProperty("value").GetInt32()} ARRIVES{groups}",
+					"small_wave" => $"SMALL WAVE {e.GetProperty("value").GetInt32()}{groups}",
+					_ => $"ESCALATION STEP {e.GetProperty("value").GetInt32()}",
+				};
+				Text(image, px + 6, py + 30, what, kind switch { "wave" => Wave, "small_wave" => SmallWave, _ => Level }, 1);
 			}
 		}
 		return image;

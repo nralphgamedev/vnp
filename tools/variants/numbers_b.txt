@@ -1,6 +1,7 @@
 # Difficulty from numbers, steeper than numbers_a: no Grey Goo health or damage ramp, groups spawning 1.25 more a
 # minute instead of 0.25, and each wave three groups larger than the last instead of one.
-difficulty.RampGreyGooHealthPerMinute = 0
-difficulty.RampGreyGooDamagePerMinute = 0
-difficulty.RampSpawnRatePerMinute = 1.25
-director/plans/classic.tres:WaveGroupsAddedPerWave = 3
+# Changes the classic plan's curve and waves (director/), so batch it with --plans classic.
+director/curves/classic.tres:RampGreyGooHealthPerMinute = 0
+director/curves/classic.tres:RampGreyGooDamagePerMinute = 0
+director/curves/classic.tres:RampSpawnRatePerMinute = 1.25
+director/waves/classic_large.tres:GroupsAddedPerWave = 3

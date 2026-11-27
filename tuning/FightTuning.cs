@@ -6,7 +6,7 @@ public partial class FightTuning : Resource
 {
 	/// <summary>Enemies to destroy to win the fight. Reaching it ends the fight at once.</summary>
 	[ExportGroup("Winning, losing and retreating")]
-	[Export] public int KillTarget;
+	[Export] public int KillTarget;  // A fight's plan can set its own (res://director/plans/).
 
 	/// <summary>The time limit, in seconds. The fight does not end there; difficulty starts to escalate.</summary>
 	[Export] public float TimeLimitSeconds;

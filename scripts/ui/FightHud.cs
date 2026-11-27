@@ -60,7 +60,7 @@ public partial class FightHud : Control
 		if (killsKey != _killsKey)
 		{
 			_killsKey = killsKey;
-			_kills = Fight.IsEndless ? $"Kills {Fight.Kills}  ·  Endless" : $"Kills {Fight.Kills} / {Tuning.Fight.KillTarget}";
+			_kills = Fight.IsEndless ? $"Kills {Fight.Kills}  ·  Endless" : $"Kills {Fight.Kills} / {Fight.KillTarget}";
 		}
 		DrawString(font, new Vector2(0f, 146f), _kills,
 			HorizontalAlignment.Center, width, 28, new Color(1f, 1f, 1f, 0.85f));

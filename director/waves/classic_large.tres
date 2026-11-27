@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WavesDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/WavesDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "classic_large"
+Groups = 5
+GroupsAddedPerWave = 1
+Timing = 0
+FirstSeconds = 45.0
+IntervalSeconds = 45.0
+Arrival = 0
+Makeup = 0

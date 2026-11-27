@@ -4,13 +4,6 @@
 
 [resource]
 script = ExtResource("1_script")
-RampEnemyHealthPerMinute = 0.2
-RampEnemyDamagePerMinute = 0.1
-RampSpawnRatePerMinute = 0.25
-RampEnemyAccuracyPerMinute = 0.06
-RampGreyGooHealthPerMinute = 0.2
-RampGreyGooDamagePerMinute = 0.1
-RampEnemySpeedPerMinute = 0.02
 EscalationStepSeconds = 60.0
 EscalationEnemyHealthPerStep = 0.6
 EscalationEnemyDamagePerStep = 0.5

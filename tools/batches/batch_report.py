@@ -72,6 +72,8 @@ def combo_label(fight, show_variant=False):
         parts.append(fight['weapon'])
     if fight['droneWeapon'] != 'default':
         parts.append(fight['droneWeapon'] + ' drones')
+    if fight.get('plan', 'random') != 'random':
+        parts.append(fight['plan'] + ' plan')
     label = ' / '.join(parts)
     return f'[{fight.get("variant", "base")}] {label}' if show_variant else label
 
@@ -350,6 +352,37 @@ def write_report(folder):
             out.append(table(['Upgrade'] + [f'Lift, {pl}' for pl in pilots] + ['Difference'], [r for _, r in shown]))
         out.append('')
 
+    # ───────────── By plan ─────────────
+    # The Fight Director's plans (docs/dev/FIGHT_DIRECTOR_SPEC.md): every fight records the plan it followed, whether
+    # picked by its seed or set by the batch, so plans can be compared and cut or tuned.
+    plan_groups = {}
+    for f in fights:
+        if f['name'] in logs:
+            plan = logs[f['name']]['settings'].get('fightPlan')
+            if plan:
+                plan_groups.setdefault(plan, []).append(logs[f['name']])
+    if len(plan_groups) > 1:
+        out.append('\n## By plan\n')
+        out.append('Every fight by the Fight Director\'s plan it followed (director/plans/), adding together every pilot, '
+                   'build, weapon and variant. Plans can have different kill targets, so compare time to win with care. '
+                   'Drones are the average alive among fights still going then.\n')
+        rows = []
+        for plan, ls in sorted(plan_groups.items(), key=lambda kv: kv[0]):
+            wins = [l for l in ls if l['outcome']['killTargetTime'] is not None]
+            alive5 = sum(1 for l in ls if (s := at(l, 300)) is not None and s['health'] > 0)
+            drones = []
+            for m in (120, 240):
+                xs = [s['drones'] for l in ls if (s := at(l, m)) is not None and s['health'] > 0]
+                drones.append(num(mean(xs)) if xs else '-')
+            enemies4 = [sum(s['enemies'].values()) for l in ls if (s := at(l, 240)) is not None]
+            rows.append([plan, len(ls), ls[0]['outcome'].get('killTarget', '-'), f'{len(wins)} ({pct(len(wins), len(ls))})',
+                         clock(median([l['outcome']['killTargetTime'] for l in wins])),
+                         f'{alive5} of {len(ls)}', drones[0], drones[1],
+                         num(mean(enemies4)) if enemies4 else '-', num(mean([l['outcome']['level'] for l in ls]))])
+        out.append(table(['Plan', 'Fights', 'Kill target', 'Wins', 'Median time to win', 'Alive at 5:00',
+                          'Drones at 2:00', 'Drones at 4:00', 'Enemies at 4:00', 'Average final level'], rows))
+        out.append('')
+
     # ───────────── By asteroid amount ─────────────
     # Phase 3 asks how much the amount of asteroids changes a fight's difficulty. Every fight records its amount,
     # whether it was picked by its seed or set by the batch.
@@ -501,6 +534,8 @@ def write_report(folder):
             parts.append(f'drone_weapon={start_drone}')
         if fight.get('variant', 'base') != 'base':
             parts.append(f'variant={fight["variant"]}')
+        if fight.get('plan', 'random') != 'random':
+            parts.append(f'plan={fight["plan"]}')
         parts.append(f'maxtime={batch["cap"]:g}')
         parts.append(f'frames={int(batch["cap"] * 60 * 3)}')
         return '`' + ' '.join(parts) + '`'

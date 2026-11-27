@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WavesDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/WavesDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "small_front"
+Groups = 2
+GroupsAddedPerWave = 0
+Timing = 2
+FirstSeconds = 25.0
+IntervalSeconds = 20.0
+IntervalSpread = 0.4
+Arrival = 1
+SpreadDegrees = 40.0
+Makeup = 1
+HardShareStart = 0.1
+HardSharePerMinute = 0.08
+HardShareMax = 0.5

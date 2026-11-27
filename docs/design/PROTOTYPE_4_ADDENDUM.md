@@ -22,14 +22,14 @@ An entry belongs here only if, without it, the AI would do something differently
 - **No flocking while chasing:** `ChaseFlocking` is 0 for every Grey Goo type, so each heads straight at its target. They still keep apart, and idle groups still wander together.
   - **Why:** flocking pulled chasers well off their line.
 - **Speed:** every type that chases moves at 90% of the VNP's starting speed (`Speed`, all alike), at the designer's choice.
-  - Newly spawned enemies get faster each minute (`RampEnemySpeedPerMinute` in `tuning/difficulty.tres`), and each escalation step adds more (`EscalationEnemySpeedPerStep`). Each enemy keeps the speed it spawned with.
+  - Newly spawned enemies get faster each minute (`RampEnemySpeedPerMinute` in the fight plan's difficulty curve, `director/curves/`), and each escalation step adds more (`EscalationEnemySpeedPerStep` in `tuning/difficulty.tres`). Each enemy keeps the speed it spawned with.
   - The ramp is set so that enemies spawned near the time limit reach about the VNP's starting speed. Movement speed upgrades keep the player ahead, and escalation then takes enemies past it. Rejected: a steeper ramp.
   - Exceptions: the Burster, a little faster; the Devourer, which never chases; and the asteroid mimic, slow, as a lumbering rock.
   - Wander speed and acceleration are unchanged.
   - Escalation speeding enemies up changes phase 1, where escalation left speed alone.
 - **Turning and health:** every type but the Devourer accelerates and turns sharply (`Acceleration`, `TurnSpeed`) and has 30% less health than before, at the designer's request.
   - **Why:** goos slid sideways through turns, taking nearly three seconds to reverse.
-- **Shared tuning that isn't in a type's own file:** Grey Goo's health and damage ramps are in `tuning/difficulty.tres` (`RampGreyGoo…`, `EscalationGreyGoo…`). Spawn weights and `MaxAlive` are in the Grey Goo faction's file, `enemies/grey_goo/grey_goo.tres`; when groups and waves come, and how large waves grow, is in the fight's plan, in `director/plans/` (the Fight Director's). Shared fields come from `GreyGooDefinition`, including `HoldDistance` and `HoldBlendDistance`: 0 closes in all the way.
+- **Shared tuning that isn't in a type's own file:** Grey Goo's health and damage ramps are in the fight plan's difficulty curve (`RampGreyGoo…`, `director/curves/`), and its escalation in `tuning/difficulty.tres` (`EscalationGreyGoo…`). Spawn weights and `MaxAlive` are in the Grey Goo faction's file, `enemies/grey_goo/grey_goo.tres`; when groups and waves come, and how large waves grow, is in the fight's plan, in `director/plans/` (the Fight Director's). Shared fields come from `GreyGooDefinition`, including `HoldDistance` and `HoldBlendDistance`: 0 closes in all the way.
 - **Attack ranges:** they are measured from the enemy's edge for every type: `LaunchRange`, `VolleyRange`, `Reach` and `FireRange`.
 
 ## Basic goo
@@ -109,6 +109,9 @@ An entry belongs here only if, without it, the AI would do something differently
 
 ## Spawning
 
+- **Fights follow plans,** at the designer's request: the Fight Director (`docs/dev/FIGHT_DIRECTOR_SPEC.md`) picks one of Grey Goo's plans for each fight by its seed, each with its own waves, difficulty curve and kill target. Why: fights all paced the same way felt repetitive, and late fights left running as the only answer.
+  - **What it changes:** phase 1's waves, which are now one plan's (Classic's): the others time, place and make up their waves differently, and some add small unannounced waves between the announced ones. Phase 1's ramp during the fight, which is now each plan's. Phase 1's single kill target, which a plan can raise.
+  - **Leaning on numbers:** plans other than Classic have no stat ramps before the time limit, so each enemy stays one drones can beat and pressure comes from how many there are. Why: with the stat ramps, drones were lost at the same rate but couldn't be rebuilt late, since tougher enemies meant fewer kills and less debris; raising drone health didn't help. Escalation past the limit is still stat-based for every plan.
 - **The basic enemy:** its weights are 0, but its files and its entry in Grey Goo's weights (`enemies/grey_goo/grey_goo.tres`) stay. The scenario harness can still spawn it with `spawn=basic_enemy:N`.
 
 ## Pilots

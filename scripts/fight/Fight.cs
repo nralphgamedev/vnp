@@ -46,6 +46,12 @@ public partial class Fight : Node3D
 	/// arrive. Made as the fight enters the tree, before any of its parts.</summary>
 	public FightDirector Director { get; private set; }
 
+	/// <summary>Kills that win the fight: the plan's, or fight.tres's if the plan sets none.</summary>
+	public int KillTarget => Director.Plan.Definition is { KillTarget: > 0 } plan ? plan.KillTarget : Tuning.Fight.KillTarget;
+
+	// How the fight grows harder before the time limit: the plan's curve, or none if it has none.
+	private DifficultyCurveDefinition _curve = new();
+
 	/// <summary>What has happened in this fight so far: damage by source, drones lost, kills, level-ups.</summary>
 	public readonly FightStats Stats = new();
 
@@ -127,19 +133,19 @@ public partial class Fight : Node3D
 		? 0
 		: (int)((Elapsed - Tuning.Fight.TimeLimitSeconds) / Tuning.Difficulty.EscalationStepSeconds) + 1;
 
-	// Enemy strength now: the ramp during the fight, times escalation past the limit. "Enemy" is the basic
-	// enemy; every Grey Goo type shares its own. Spawn rate and aggro range are shared by every type.
-	public float EnemyHealthScale => (1f + Tuning.Difficulty.RampEnemyHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyHealthPerStep * EscalationSteps);
-	public float EnemyDamageScale => (1f + Tuning.Difficulty.RampEnemyDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyDamagePerStep * EscalationSteps);
-	public float EnemySpawnRateScale => (1f + Tuning.Difficulty.RampSpawnRatePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationSpawnRatePerStep * EscalationSteps);
-	public float GreyGooHealthScale => (1f + Tuning.Difficulty.RampGreyGooHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooHealthPerStep * EscalationSteps);
-	public float GreyGooDamageScale => (1f + Tuning.Difficulty.RampGreyGooDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooDamagePerStep * EscalationSteps);
+	// Enemy strength now: the plan's difficulty curve during the fight, times escalation past the limit. "Enemy" is
+	// the basic enemy; every Grey Goo type shares its own. Spawn rate and aggro range are shared by every type.
+	public float EnemyHealthScale => (1f + _curve.RampEnemyHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyHealthPerStep * EscalationSteps);
+	public float EnemyDamageScale => (1f + _curve.RampEnemyDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemyDamagePerStep * EscalationSteps);
+	public float EnemySpawnRateScale => (1f + _curve.RampSpawnRatePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationSpawnRatePerStep * EscalationSteps);
+	public float GreyGooHealthScale => (1f + _curve.RampGreyGooHealthPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooHealthPerStep * EscalationSteps);
+	public float GreyGooDamageScale => (1f + _curve.RampGreyGooDamagePerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationGreyGooDamagePerStep * EscalationSteps);
 	public float EnemyAggroScale => 1f + Tuning.Difficulty.EscalationAggroRangePerStep * EscalationSteps;
 	/// <summary>Speed of enemies spawned now, as a multiple of their type's, every type.</summary>
-	public float EnemySpeedScale => (1f + Tuning.Difficulty.RampEnemySpeedPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemySpeedPerStep * EscalationSteps);
+	public float EnemySpeedScale => (1f + _curve.RampEnemySpeedPerMinute * Minutes) * (1f + Tuning.Difficulty.EscalationEnemySpeedPerStep * EscalationSteps);
 
 	/// <summary>Accuracy added to enemies spawned now, from the ramp and escalation, on the 0 to 1 scale.</summary>
-	public float EnemyAccuracyBonus => Tuning.Difficulty.RampEnemyAccuracyPerMinute * Minutes
+	public float EnemyAccuracyBonus => _curve.RampEnemyAccuracyPerMinute * Minutes
 		+ Tuning.Difficulty.EscalationEnemyAccuracyPerStep * EscalationSteps;
 
 	private readonly List<VnpWeapon> _weapons = new();
@@ -172,6 +178,7 @@ public partial class Fight : Node3D
 		Rng.Seed(Seed);
 		// Before the asteroids are placed, which scale by the plan's asteroid amount.
 		Director = new FightDirector(brief, Seed);
+		_curve = Director.Plan.Definition?.Curve ?? new DifficultyCurveDefinition();
 	}
 
 #if TOOLS
@@ -427,7 +434,7 @@ public partial class Fight : Node3D
 			return;
 		}
 
-		if (!IsEndless && Kills >= Tuning.Fight.KillTarget)
+		if (!IsEndless && Kills >= KillTarget)
 		{
 			End(Outcome.Win);
 			return;

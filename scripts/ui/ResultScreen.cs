@@ -94,7 +94,7 @@ public partial class ResultScreen : Control
 		_subtitle.Text = subtitle;
 
 		_stats.Text =
-			$"Kills   {Fight.Kills} / {Tuning.Fight.KillTarget}\n" +
+			$"Kills   {Fight.Kills} / {Fight.KillTarget}\n" +
 			$"Time   {Ui.Clock(Fight.Elapsed)}\n" +
 			$"Fight experience harvested   {Fight.Experience:0}\n" +
 			$"Level reached   {Fight.Level}";

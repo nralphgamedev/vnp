@@ -10,6 +10,7 @@ Run it from PowerShell through tools/batch.cmd, or with python from the vnp fold
     tools\\batch.cmd --weapons default --drone-weapons default   the game's own starting weapons
     tools\\batch.cmd --drone-weapons all --seeds 10    every starting Drone Weapon, 10 seeds each
     tools\\batch.cmd --asteroids all                  every asteroid amount (Sparse, Normal, Rich) in turn
+    tools\\batch.cmd --plans all                      every Fight Director plan (director/plans/) in turn
     tools\\batch.cmd --rendered --seeds 2              watch the fights in a window, one at a time, muted
     tools\\batch.cmd --variants base,gentle_levels     compare the tuning with a variant, on the same fights
 
@@ -87,6 +88,18 @@ def starting_choices():
     return ids('StartingWeaponChoices'), ids('StartingDroneWeaponChoices')
 
 
+def plan_ids():
+    """The Fight Director's plans' IDs, from their files in director/plans/."""
+    folder = os.path.join(PROJECT, 'director', 'plans')
+    found = []
+    for f in sorted(os.listdir(folder)):
+        if f.endswith('.tres'):
+            m = re.search(r'^Id = "(.+)"', open(os.path.join(folder, f), encoding='utf-8').read(), re.M)
+            if m:
+                found.append(m.group(1))
+    return found
+
+
 def asteroid_amounts():
     """The asteroid amounts' IDs, from their files in tuning/asteroid_amounts/."""
     folder = os.path.join(PROJECT, 'tuning', 'asteroid_amounts')
@@ -126,6 +139,9 @@ def main():
     parser.add_argument('--asteroids', default='random',
                         help='asteroid amounts (tuning/asteroid_amounts/), comma-separated, "all", or "random" for '
                              'the one each fight picks by its seed (default: random)')
+    parser.add_argument('--plans', default='random',
+                        help='Fight Director plans (director/plans/), comma-separated, "all", or "random" for the one '
+                             'each fight picks by its seed (default: random)')
     parser.add_argument('--variants', default='base',
                         help='tuning variants from tools/variants/, comma-separated; "base" is the tuning as it is')
     parser.add_argument('--cap', type=float, help='endless cap in seconds of fight time, in place of the setting')
@@ -157,6 +173,11 @@ def main():
     for a in amounts:
         if a != 'random' and a not in amount_choices:
             sys.exit(f'Unknown asteroid amount {a}; choices: {", ".join(amount_choices)}')
+    plan_choices = plan_ids()
+    plans = plan_choices if args.plans == 'all' else [p.strip() for p in args.plans.split(',') if p.strip()] or ['random']
+    for p in plans:
+        if p != 'random' and p not in plan_choices:
+            sys.exit(f'Unknown plan {p}; choices: {", ".join(plan_choices)}')
     for p in pilots:
         if not os.path.exists(os.path.join(PROJECT, 'pilots', 'skill_levels', p + '.tres')):
             sys.exit(f'No skill level {p} in pilots/skill_levels/')
@@ -168,8 +189,8 @@ def main():
     for v in variants:
         if v != 'base' and not os.path.exists(os.path.join(PROJECT, 'tools', 'variants', v + '.txt')):
             sys.exit(f'No tuning variant {v} in tools/variants/')
-    combos = [(p, b, w, d, v, a) for v in variants for p in pilots for b in builds for w in weapons
-              for d in drone_weapons for a in amounts]
+    combos = [(p, b, w, d, v, a, pl) for v in variants for p in pilots for b in builds for w in weapons
+              for d in drone_weapons for a in amounts for pl in plans]
     fights = [(combo, seed) for combo in combos for seed in range(args.first_seed, args.first_seed + seeds)]
     if args.rendered:
         at_once = args.at_once or int(settings.get('RenderedAtOnce', 1)) or 1
@@ -196,11 +217,12 @@ def main():
             sys.exit('The build failed; fix it first.')
 
     def run(fight):
-        (pilot, build_id, weapon, drone, variant, amount), seed = fight
+        (pilot, build_id, weapon, drone, variant, amount, plan), seed = fight
         # A random start is picked by the seed alone, so the same seed starts the same way in every combination.
         start_weapon = random.Random(seed * 7919 + 1).choice(weapon_choices) if weapon == 'random' else weapon
         start_drone = random.Random(seed * 7919 + 2).choice(drone_choices) if drone == 'random' else drone
-        name = f'{variant}_{pilot}_{build_id}_{weapon}_{drone}' + ('' if amount == 'random' else f'_{amount}') + f'_s{seed}'
+        name = (f'{variant}_{pilot}_{build_id}_{weapon}_{drone}' + ('' if amount == 'random' else f'_{amount}')
+                + ('' if plan == 'random' else f'_{plan}') + f'_s{seed}')
         cmd = [GODOT] + ([] if args.rendered else ['--headless']) + [
             '--path', PROJECT, '--fixed-fps', '60', 'res://scripts/cheats/scenario.tscn', '--',
             f'seed={seed}', f'pilot={pilot}', f'build={build_id}', f'maxtime={cap}',
@@ -214,6 +236,8 @@ def main():
             cmd.append(f'drone_weapon={start_drone}')
         if amount != 'random':
             cmd.append(f'asteroids={amount}')
+        if plan != 'random':
+            cmd.append(f'plan={plan}')
         if mute:
             cmd.append('mute=yes')
         if variant != 'base':
@@ -233,7 +257,7 @@ def main():
         status = 'ok' if code == 0 and logged and not problems else (
             'timed out' if code == 'timeout' else 'crashed' if code != 0 else 'no log' if not logged else 'errors')
         return {'name': name, 'variant': variant, 'pilot': pilot, 'build': build_id, 'weapon': weapon, 'droneWeapon': drone,
-                'startWeapon': start_weapon, 'startDroneWeapon': start_drone, 'asteroids': amount,
+                'startWeapon': start_weapon, 'startDroneWeapon': start_drone, 'asteroids': amount, 'plan': plan,
                 'seed': seed, 'status': status, 'exitCode': code, 'problems': problems[:5],
                 'seconds': round(time.time() - started, 1)}
 
@@ -249,7 +273,7 @@ def main():
         'id': batch_id, 'started': stamp, 'seconds': round(time.time() - started, 1),
         'size': args.size if not args.seeds else f'{seeds} seeds', 'seeds': seeds, 'cap': cap,
         'rendered': args.rendered, 'atOnce': at_once, 'pilots': pilots, 'builds': builds,
-        'weapons': weapons, 'droneWeapons': drone_weapons, 'asteroids': amounts, 'variants': variants, 'fights': results,
+        'weapons': weapons, 'droneWeapons': drone_weapons, 'asteroids': amounts, 'plans': plans, 'variants': variants, 'fights': results,
     }
     with open(os.path.join(folder, 'batch.json'), 'w', encoding='utf-8') as f:
         json.dump(batch, f, indent=1)

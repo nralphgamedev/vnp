@@ -88,8 +88,8 @@ First read the stage in the current spec and its addendum (both named in CLAUDE.
    BasicEnemy is the simple template. A Grey Goo type gets touch damage, draining and absorbing drones (when its `DroneDrainPerSecond` is above 0), growth, debris for what it absorbed and the wobbling look from `GreyGoo`; `BasicGoo` shows a type adding its own part, splitting, through `ActOwn`, `AfterAbsorbing` and `Reshape`.
 2. **Factory:** add a case to `EnemyBehavior.Create` (`enemies/EnemyBehavior.cs`). Put subclasses before their base classes in the switch.
 3. **Spawning:** add the `.tres` to both `GroupWeights` and `WaveGroupWeights` in its faction's file (Grey Goo's is `enemies/grey_goo/grey_goo.tres`, a `FactionDefinition`) with the helper and `--weight`. A new faction gets a file of its own beside its types, with its plans (see `docs/dev/FIGHT_DIRECTOR_SPEC.md`). Set `GroupSize`, `Targets` (nearest, drones first, or the VNP only), `ChaseFlocking` and `DroneKeepBack` in its own file.
-4. **Difficulty:** a Grey Goo type uses the shared Grey Goo ramp (`GreyGooHealthScale` and `GreyGooDamageScale` in `Fight.cs`) through `GreyGoo.Spawned`. A type of a new faction that needs its own ramp follows it:
-   - add fields to `DifficultyTuning.cs` and `difficulty.tres`;
+4. **Difficulty:** a Grey Goo type uses the shared Grey Goo ramp (`GreyGooHealthScale` and `GreyGooDamageScale` in `Fight.cs`) through `GreyGoo.Spawned`. Give it a tier in its faction's `Tiers` (1 is the easiest), which growing and swarm waves draw by. A type of a new faction that needs its own ramp follows it:
+   - add fields to `DifficultyCurveDefinition.cs` and every curve in `director/curves/` for the ramp during the fight, and to `DifficultyTuning.cs` and `difficulty.tres` for escalation;
    - add a scale to `Fight.cs`;
    - read it in the behavior's `Spawned`.
 5. **Look:** a silhouette that differs from every other enemy and from asteroids, not only its colour, plus its mesh, possibly a material, and death, attack and other sounds. Check it with a screenshot (check-stage step 2).

@@ -472,25 +472,41 @@ public partial class EnemySwarm : Node3D
 		}
 	}
 
-	/// <summary>An enemy type picked at random, by the weights given, or -1 if none has a weight.</summary>
-	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights)
+	/// <summary>Which of the faction's tiers a pick draws from.</summary>
+	private enum TierFilter { Any, Easiest, Harder }
+
+	/// <summary>
+	/// An enemy type picked at random, by the weights given, or -1 if none has a weight. With a filter, only from
+	/// the easiest tier among the weighted types, or only from those above it; if the filter leaves none, from any.
+	/// </summary>
+	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights, TierFilter filter = TierFilter.Any)
 	{
 		if (weights == null)
 			return -1;
+		int easiest = int.MaxValue;
+		if (filter != TierFilter.Any)
+		{
+			foreach ((EnemyDefinition definition, float weight) in weights)
+			{
+				if (definition != null && weight > 0f && _typeIndex.ContainsKey(definition))
+					easiest = Mathf.Min(easiest, TierOf(definition));
+			}
+		}
 		float total = 0f;
 		foreach ((EnemyDefinition definition, float weight) in weights)
 		{
-			if (definition != null && weight > 0f && _typeIndex.ContainsKey(definition))
+			if (definition != null && weight > 0f && _typeIndex.ContainsKey(definition) && Passes(definition, filter, easiest))
 				total += weight;
 		}
 		if (total <= 0f)
-			return -1;
+			return filter == TierFilter.Any ? -1 : PickType(weights);
 
 		float roll = Rng.Range(0f, total);
 		int picked = -1;
 		foreach ((EnemyDefinition definition, float weight) in weights)
 		{
-			if (definition == null || weight <= 0f || !_typeIndex.TryGetValue(definition, out int index))
+			if (definition == null || weight <= 0f || !_typeIndex.TryGetValue(definition, out int index)
+				|| !Passes(definition, filter, easiest))
 				continue;
 			picked = index;
 			roll -= weight;
@@ -500,23 +516,44 @@ public partial class EnemySwarm : Node3D
 		return picked;
 	}
 
-	/// <summary>
-	/// Spawns a wave for the Fight Director: this many groups spaced evenly on a ring just off screen, all hunting
-	/// the VNP. Each group's type is picked by the wave weights. Waves ignore the MaxAlive limit.
-	/// </summary>
-	public void SpawnRing(Vector2 vnpPosition, int groups)
+	private bool Passes(EnemyDefinition definition, TierFilter filter, int easiest) => filter switch
 	{
-		float startAngle = Rng.Range(0f, Mathf.Tau);
-		for (int g = 0; g < groups; g++)
+		TierFilter.Easiest => TierOf(definition) == easiest,
+		TierFilter.Harder => TierOf(definition) > easiest,
+		_ => true,
+	};
+
+	/// <summary>How hard a type is in the fight's faction, from 1, the easiest; 1 if it isn't ranked.</summary>
+	private int TierOf(EnemyDefinition definition) =>
+		_faction.Tiers != null && _faction.Tiers.TryGetValue(definition, out int tier) ? tier : 1;
+
+	/// <summary>
+	/// A type for one group of a wave, by the wave's makeup: from every type by the wave weights (Mixed), from the
+	/// easiest tier (Swarm), or from a harder tier with the chance <paramref name="hardShare"/> and the easiest
+	/// otherwise (Growing). -1 if the faction has no wave types.
+	/// </summary>
+	public int PickWaveType(WaveMakeup makeup, float hardShare)
+	{
+		switch (makeup)
 		{
-			int type = PickType(_faction.WaveGroupWeights);
-			if (type < 0)
-				return;
-			float angle = startAngle + Mathf.Tau * g / groups;
-			Vector2 direction = Vector2.FromAngle(angle);
-			Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
-			SpawnGroupAt(home, type, hunting: true);
+			case WaveMakeup.Swarm:
+				return PickType(_faction.WaveGroupWeights, TierFilter.Easiest);
+			case WaveMakeup.Growing:
+				bool hard = Rng.Value() < hardShare;
+				return PickType(_faction.WaveGroupWeights, hard ? TierFilter.Harder : TierFilter.Easiest);
+			default:
+				return PickType(_faction.WaveGroupWeights);
 		}
+	}
+
+	/// <summary>
+	/// Spawns one group of a wave for the Fight Director, of this type, just off screen from the VNP in this
+	/// direction, hunting it. Waves ignore the MaxAlive limit.
+	/// </summary>
+	public void SpawnWaveGroup(Vector2 vnpPosition, Vector2 direction, int type)
+	{
+		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
+		SpawnGroupAt(home, type, hunting: true);
 	}
 
 	/// <summary>Spawns one group for the Fight Director, of a type picked by the group weights, at a random spot

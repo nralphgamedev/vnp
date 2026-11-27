@@ -1,4 +1,5 @@
 # Grey Goo gains no health or damage over the fight: difficulty grows only by numbers (spawn rate and waves) and
 # speed. Escalation past the limit is unchanged. For measuring how much the stat ramps cost drones.
-difficulty.RampGreyGooHealthPerMinute = 0
-difficulty.RampGreyGooDamagePerMinute = 0
+# Changes the classic plan's curve and waves (director/), so batch it with --plans classic.
+director/curves/classic.tres:RampGreyGooHealthPerMinute = 0
+director/curves/classic.tres:RampGreyGooDamagePerMinute = 0
