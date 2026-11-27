@@ -1,13 +1,13 @@
 using Godot;
 
 /// <summary>
-/// What a pilot tries to pick from level-up offers. One file per build in res://pilots/builds/. Pilot.cs scores
-/// each offered upgrade by these weights, adds some randomness, and takes the highest, or rerolls when nothing
-/// scores well enough.
+/// What a pilot tries to pick from level-up offers. One file per build in res://pilots/builds/. The pilot scores
+/// each offered upgrade on Arbiter's decision core by these weights, adds some randomness, and takes the highest,
+/// or rerolls when nothing scores well enough (Pilot.ChooseUpgrade).
 ///
-/// An upgrade's score starts from its own weight in UpgradeWeights if it has one, and otherwise from its
-/// category's weight. Then FavourOwned is added if it improves something the VNP already has, and
-/// NewWeaponWeight if it gives a new weapon.
+/// An upgrade's score is three terms: its liking, its own weight in UpgradeWeights if it has one and otherwise its
+/// category's weight; FavourOwned if it improves something the VNP already has; and NewWeaponWeight if it gives a
+/// new weapon.
 /// </summary>
 [GlobalClass]
 public partial class BuildDefinition : Resource

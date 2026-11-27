@@ -75,6 +75,7 @@ Read the diff (`git diff` and the untracked files) with these questions. Each co
 - **Files together:** are new files in their feature's folder, Definitions and Tunings named by kind, and moved files' `.uid` and `path=` references updated?
 - **Cheats:** is any testing aid in `scripts/cheats/` behind `#if TOOLS`, with its settings in `in_game_cheats.tres`?
 - **Older specs:** if the change contradicts an earlier phase's spec or addendum, does the current addendum say which phase it changes? Earlier specs are never edited.
+- **Arbiter stays general:** if the change touches `arbiter/`, does it fit the README's "What belongs here", rather than something only VNP needs? A VNP need goes in the game's code (`pilots/`), described to Arbiter in its own terms. The mechanical check fails on VNP's words in Arbiter's code, but not on a VNP-only idea in general words, so judge that here.
 
 ## 4. Report
 

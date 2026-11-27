@@ -81,6 +81,10 @@ Check(decision.Choose(3) == 1, "decision: the best total wins (2 - 0 beats 5 - 6
 decision.SetWeight(harm, 0.1f);
 Check(decision.Choose(3) == 2, "decision: changing a weight changes the choice");
 Check(decision.Explain(2).StartsWith("2 +4.70 (toward +5.00 harm -0.30)"), $"decision: explained ({decision.Explain(2)})");
+decision.SetWeight(harm, 2f);
+Check(decision.Choose(3, 10f, new Never()) == 1 && Near(decision.NoiseOf(1), 9.9f) && Near(decision.TotalOf(1), 11.9f),
+	"decision: noise is added to each option's total, and kept");
+Check(decision.Explain(1).Contains("noise +9.90"), $"decision: explained with its noise ({decision.Explain(1)})");
 var shots = new Situation();
 shots.Add(Hazard.Timed(Area.Circle(Vector2.Zero, 0f), 0f, 1f, 5f, Endangers.Agent));
 shots.Add(Hazard.Lasting(Area.Circle(Vector2.Zero, 1f), 5f, Endangers.Agent));

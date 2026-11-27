@@ -6,7 +6,7 @@ An entry belongs here only if, without it, the AI would do something differently
 
 ## Status
 
-- Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, only removing the old pilot is done; still to do: upgrade picks on the decision core, calibrating the designer-like pilot, and the ceiling pilot.
+- Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, removing the old pilot and upgrade picks on the decision core, with its guards, are done; still to do: calibrating the designer-like pilot, and the ceiling pilot.
 - Done when: met, except the pilot items above. Each type's performance cost was measured at its stage; all were close to the basic goo's.
 - The designer is reworking how fights feel. Recorded-fight calibration of pilots waits until they are happy with it.
 
@@ -114,7 +114,7 @@ An entry belongs here only if, without it, the AI would do something differently
 
 - **Rebuilt before the Lancer,** as `docs/dev/PILOT_SPEC.md` describes. This added a stage 2, "Pilots that plan", to the build order; the types moved to stages 3 to 9. This answers the spec's open item on how pilots handle enemy types.
 - **The pilot spec's later stages run between the types, where they fit:**
-  - upgrade picks on the decision core, with the guards that keep it general;
+  - upgrade picks on the decision core, with the guards that keep it general (done);
   - calibration against the designer's recorded Grey Goo fights;
   - the ceiling pilot;
   - removing the old pilot (done).
@@ -133,12 +133,16 @@ An entry belongs here only if, without it, the AI would do something differently
 - **The `Explosive` flag:** each VNP Weapon's file has an `Explosive` flag, which decides whether it breaks fragile enemy shots.
 - **Sounds pause with the fight:** while a menu pauses the fight, the fight's own sounds pause and resume; menu and result sounds still play. This changes phase 2's "Sounds while paused".
 - **The debug line is for development only,** at the designer's choice. The line at the top of the screen (fps, seed, health, counts) shows in the editor and in debug exports, never in a release build (`#if DEBUG` in `Fight.cs`). The result screen still shows the seed.
+- **The damage breakdown collapses,** at the designer's request: each damage source is one line, and clicking it shows or hides its split by enemy type. Every source starts collapsed. A source shows "+" while collapsed and "-" while open, since the game's font has no triangle characters. This changes phase 3's breakdown, which always showed the split. Only the mouse opens them; like scrolling the panels, it has no controller or keyboard control yet.
 - **Result panels scroll:** the damage breakdown and upgrade list grow until they would leave the screen, then scroll by mouse wheel or scroll bar. The damage breakdown stops above the weapon icons. Scrolling by controller or keyboard isn't built.
+
+## Settled from the spec's open list
+
+- **Drones and growth for every type,** decided by the designer: only the basic goo splits, and drones a Grey Goo type destroys without absorbing them (a Lancer hit, a Quiller spike) add nothing to its growth. A type grows only from drones it absorbs (and the Devourer from what it consumes). This was already the built default.
 
 ## Still open
 
 These are from the spec's Not yet decided list. The built behaviour is the spec's default unless noted.
 
-- **Drones and growth for every type:** drones destroyed without being absorbed add nothing, and only the basic goo splits.
 - **The Burster's tiny blobs:** they are as the spec describes, plus the explosion above.
 - **The Devourer and drones:** it drains and absorbs drones and grows from them, as the spec describes.

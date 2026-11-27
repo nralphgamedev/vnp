@@ -102,6 +102,17 @@ else
 	echo "$arbiter_out" | grep -E "FAIL|error" | head -20
 	fail "Arbiter's own checks failed (arbiter/checks/)"
 fi
+# No game words in Arbiter's code or training tools, so a change made for one VNP need can't quietly tie the
+# library to VNP (docs/dev/PILOT_SPEC.md, Staying general). Generic words that happen to be VNP's too, such as
+# "mine" or "weapon", are allowed; VNP's own names aren't. The README may name VNP, as where it came from.
+game_words='vnp|drones?|goos?|grey goo|asteroids?|debris|harvest[a-z]*|lancers?|quillers?|spikers?|bursters?|devourers?|mimics?|shockwave|seeker|scatter shot|orbital|shards?|pulse laser|mine layer|pilots?|godot'
+word_hits="$(grep -rniwE "$game_words" --include='*.cs' --include='*.py' arbiter 2>/dev/null | grep -v '/bin/\|/obj/')"
+if [ -n "$word_hits" ]; then
+	echo "$word_hits" | head -10
+	fail "Arbiter's code names VNP's things (see above); keep game words in the game's code (arbiter/README.md)"
+else
+	note "Arbiter's words: none of VNP's in its code or training tools"
+fi
 
 echo "== Editor rescan (makes .uid files for new scripts)"
 timeout 300 "$GODOT" --headless --path . --editor --quit > /dev/null 2>&1

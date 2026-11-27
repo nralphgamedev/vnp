@@ -30,6 +30,7 @@ namespace Arbiter
 		// The last choice: each option's value for each term (option-major), its total, and which was taken.
 		private float[] _table = Array.Empty<float>();
 		private float[] _totals = Array.Empty<float>();
+		private float[] _noise = Array.Empty<float>();
 		private int[] _order = Array.Empty<int>();
 
 		public string Name { get; }
@@ -58,6 +59,8 @@ namespace Arbiter
 
 		public float ValueOf(int option, int term) => _table[option * TermCount + term];
 		public float TotalOf(int option) => _totals[option];
+		/// <summary>The randomness the last choice added to an option's total, 0 without noise.</summary>
+		public float NoiseOf(int option) => _noise[option];
 
 		/// <summary>
 		/// Scores <paramref name="optionCount"/> options and returns the best, or -1 if there are none. Terms at
@@ -74,6 +77,7 @@ namespace Arbiter
 			if (_totals.Length < optionCount)
 			{
 				_totals = new float[optionCount * 2];
+				_noise = new float[optionCount * 2];
 				_order = new int[optionCount * 2];
 			}
 			Chosen = -1;
@@ -87,8 +91,9 @@ namespace Arbiter
 					_table[o * terms + t] = value;
 					total += value * _weights[t];
 				}
-				if (noise > 0f && random != null)
-					total += noise * random.Value();
+				float added = noise > 0f && random != null ? noise * random.Value() : 0f;
+				total += added;
+				_noise[o] = added;
 				_totals[o] = total;
 				if (total > best)
 				{
@@ -126,6 +131,8 @@ namespace Arbiter
 					text.Append(first ? "" : " ").Append(_names[t]).Append(' ').Append(contribution.ToString("+0.00;-0.00;0.00", culture));
 					first = false;
 				}
+				if (Math.Abs(_noise[o]) >= 0.005f)
+					text.Append(first ? "" : " ").Append("noise ").Append(_noise[o].ToString("+0.00;-0.00;0.00", culture));
 				text.Append(')');
 			}
 			return text.ToString();

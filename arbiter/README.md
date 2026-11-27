@@ -15,9 +15,11 @@ what to pick, in a world with things that can hurt it.
   - **hazards:** areas that will hurt, with their shape (circle, capsule, cone or ring), how they move, when they
     land, how long they last, how much they hurt and whom (the agent, its allies, or both);
   - **zones:** where the agent's own effects work: its reach, or traps it has left.
-- **Decisions** (planned): options scored by weighted terms, with skill settings, a record of each choice and an
-  explanation.
-- **Motion planning** (planned): candidate paths on a plane, scored against the hazards along them.
+- **Decisions** (`Decisions/Decision.cs`): options scored by weighted terms, with optional noise, a record of each
+  choice (every option's value for every term, and its noise) and an explanation.
+- **Motion planning** (`Motion/PathPlanner.cs`): candidate paths on a plane, scored against the hazards along them.
+- **Training** (`training/`, Python): fitting a decision's term weights to someone's recorded choices
+  (`fit_choices.py`), so an agent can be made to choose as a person did.
 
 ## What doesn't
 

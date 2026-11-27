@@ -112,6 +112,7 @@ public partial class ScenarioRunner : Node
 	private bool _capped;
 	private float _explainFrom = -1f;
 	private float _explainTo = -1f;
+	private string _pickExplained = "";
 	private int _decisionsExplained;
 	private string _pilotId;
 	private string _buildId = "greedy";
@@ -825,6 +826,13 @@ public partial class ScenarioRunner : Node
 			return;
 		// The pilot writes its reasoning only when asked, from the first frame so the window's first decision has it.
 		pilot.Explaining = true;
+		// Its upgrade picks, whenever they happen: they are few, and an offer pauses the fight, so a pick rarely
+		// falls inside a short window.
+		if (!ReferenceEquals(pilot.UpgradeReasoning, _pickExplained) && pilot.UpgradeReasoning.Length > 0)
+		{
+			_pickExplained = pilot.UpgradeReasoning;
+			Say($"  {_fight.Elapsed:0.00}s  PICK {pilot.UpgradeReasoning}");
+		}
 		if (pilot.Decisions == _decisionsExplained)
 			return;
 		_decisionsExplained = pilot.Decisions;

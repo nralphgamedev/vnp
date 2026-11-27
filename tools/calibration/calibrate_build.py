@@ -5,10 +5,14 @@ playtests/human/, and writes them to pilots/builds/designer.tres:
     python tools/calibration/calibrate_build.py            fit, write the build, and print what it fitted
     python tools/calibration/calibrate_build.py --dry-run  fit and print, without writing
 
-Every level-up offer the designer answered is a choice among three upgrades (the offer after any reroll). The
-fit finds a weight per upgrade, plus a bonus for upgrades that improve something already owned and one for new
-weapons, that best explain which one was taken, as a softmax choice. Upgrades the designer was rarely offered are
-pulled toward their category's weight, so a few picks don't swing them far. The weights are then scaled to the
+Every level-up offer the designer answered is a choice among three upgrades (the offer after any reroll). Each is
+described in the terms the pilot's upgrade decision scores on Arbiter's decision core (Pilot.ChooseUpgrade):
+- liking: the build's weight for that upgrade, one unknown per upgrade ("liking:<id>");
+- owned: 1 if it improves something already owned;
+- new weapon: 1 if it gives a new weapon.
+Arbiter's own training tool (arbiter/training/fit_choices.py) then fits the weights that best explain which one was
+taken, as a softmax choice. Upgrades the designer was rarely offered are pulled toward their category's weight, so
+a few picks don't swing them far. The weights are then scaled to the
 pilot's own randomness (the build's Randomness plus the average skill level's PickNoise), so the pilot picks with
 about the same spread as the designer did.
 
@@ -18,16 +22,14 @@ Editor-only testing tool: nothing here is part of the game.
 """
 import glob
 import json
-import math
 import os
 import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'pilots', 'builds', 'designer.tres')
-PRIOR = 1.0       # How strongly an upgrade's weight is pulled toward its category's (L2, in fitted units).
-STEPS = 4000
-RATE = 0.05
+sys.path.insert(0, os.path.join(ROOT, 'arbiter', 'training'))
+from fit_choices import Choice, fit as fit_choices  # noqa: E402  Arbiter's training tool, free of VNP's words.
 
 
 def upgrade_info():
@@ -81,40 +83,31 @@ def choices(info):
     return out
 
 
+def as_choices(data, info):
+    """The designer's choices in the terms the pilot's upgrade decision scores, for Arbiter's fitter."""
+    out = []
+    for offer, taken, improves in data:
+        options = []
+        for i, u in enumerate(offer):
+            terms = {f'liking:{u}': 1.0}
+            if improves[i]:
+                terms['owned'] = 1.0
+            if info.get(u, {}).get('effect') in (EQUIP, SWITCH_DRONE):
+                terms['new weapon'] = 1.0
+            options.append(terms)
+        out.append(Choice(options=options, taken=offer.index(taken)))
+    return out
+
+
 def fit(data, info):
+    """Each upgrade's liking, each category's, and the owned and new weapon weights."""
     ids = sorted({u for offer, _, _ in data for u in offer})
-    w = {u: 0.0 for u in ids}
-    cat = {c: 0.0 for c in range(4)}
-    owned_bonus, new_bonus = 0.0, 0.0
-    for _ in range(STEPS):
-        gw = {u: 0.0 for u in ids}
-        gc = {c: 0.0 for c in cat}
-        go = gn = 0.0
-        for offer, taken, improves in data:
-            score = [w[u] + (owned_bonus if improves[i] else 0) +
-                     (new_bonus if info.get(u, {}).get('effect') in (EQUIP, SWITCH_DRONE) else 0)
-                     for i, u in enumerate(offer)]
-            top = max(score)
-            e = [math.exp(s - top) for s in score]
-            total = sum(e)
-            for i, u in enumerate(offer):
-                g = (1.0 if u == taken else 0.0) - e[i] / total
-                gw[u] += g
-                if improves[i]:
-                    go += g
-                if info.get(u, {}).get('effect') in (EQUIP, SWITCH_DRONE):
-                    gn += g
-        for u in ids:
-            c = info.get(u, {}).get('category', 0)
-            gw[u] -= PRIOR * (w[u] - cat[c])
-            gc[c] += PRIOR * (w[u] - cat[c])
-        for u in ids:
-            w[u] += RATE * gw[u]
-        for c in cat:
-            cat[c] += RATE * gc[c] * 0.5
-        owned_bonus += RATE * go / 4
-        new_bonus += RATE * gn / 4
-    return w, cat, owned_bonus, new_bonus
+    # Each upgrade's liking is pulled toward its category's, by the category's number.
+    group_of = {f'liking:{u}': info.get(u, {}).get('category', 0) for u in ids}
+    weights, groups = fit_choices(as_choices(data, info), group_of)
+    w = {u: weights[f'liking:{u}'] for u in ids}
+    cat = {c: groups.get(c, 0.0) for c in range(4)}
+    return w, cat, weights.get('owned', 0.0), weights.get('new weapon', 0.0)
 
 
 def main():

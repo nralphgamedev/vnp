@@ -510,32 +510,58 @@ public partial class Pilot : Node, IVnpController
 
 	// ───────────── Choosing upgrades ─────────────
 
+	// Upgrade picks are a choice on Arbiter's decision core, its second user after moving (docs/dev/PILOT_SPEC.md):
+	// the offered upgrades are the options, and the build's weights are three terms on them.
+	private Arbiter.Decision _pick;
+	private int _tLiking, _tOwned, _tNewWeapon;
+	private IReadOnlyList<UpgradeDefinition> _offer;
+
+	private void SetUpPicking()
+	{
+		_pick = new Arbiter.Decision("upgrade");
+		// How much the build wants this upgrade: its own weight, or its category's. Weighted 1, since the build's
+		// weights are already on the scale the other terms and the randomness use.
+		_tLiking = _pick.AddTerm("liking", o => Liking(_offer[o]));
+		// It improves something the VNP already has: an equipped weapon, or its drones' attack.
+		_tOwned = _pick.AddTerm("owned", o => ImprovesOwned(_offer[o]) ? 1f : 0f);
+		// It gives a new VNP Weapon or Drone Weapon.
+		_tNewWeapon = _pick.AddTerm("new weapon",
+			o => _offer[o].Effect is UpgradeEffect.EquipWeapon or UpgradeEffect.SwitchDroneWeapon ? 1f : 0f);
+	}
+
 	/// <summary>
-	/// Picks from a level-up offer by the build's weights, with some randomness. Returns the index of the
-	/// option to take, or -1 to reroll: when nothing scores well enough, a reroll is left, and it hasn't
+	/// Picks from a level-up offer by the build's weights, with some randomness that shrinks with skill. Returns the
+	/// index of the option to take, or -1 to reroll: when nothing scores well enough, a reroll is left, and it hasn't
 	/// rerolled this offer yet.
 	/// </summary>
 	public int ChooseUpgrade(IReadOnlyList<UpgradeDefinition> options, int rerollsLeft, bool alreadyRerolled)
 	{
-		int best = -1;
-		float bestScore = float.MinValue;
-		for (int i = 0; i < options.Count; i++)
-		{
-			float score = Score(options[i]) + Rng.Range(0f, Build.Randomness + Skill.PickNoise);
-			if (score > bestScore)
-			{
-				bestScore = score;
-				best = i;
-			}
-		}
-		if (rerollsLeft > 0 && !alreadyRerolled && Build.RerollBelow > 0f && bestScore < Build.RerollBelow)
+		if (_pick == null)
+			SetUpPicking();
+		_offer = options;
+		_pick.SetWeight(_tLiking, 1f);
+		_pick.SetWeight(_tOwned, Build.FavourOwned);
+		_pick.SetWeight(_tNewWeapon, Build.NewWeaponWeight);
+		int best = _pick.Choose(options.Count, Build.Randomness + Skill.PickNoise, Random);
+#if TOOLS
+		if (Explaining)
+			UpgradeReasoning = _pick.Explain(options.Count, o => options[o].Id);
+#endif
+		_offer = null;
+		if (best >= 0 && rerollsLeft > 0 && !alreadyRerolled && Build.RerollBelow > 0f && _pick.TotalOf(best) < Build.RerollBelow)
 			return -1;
 		return best;
 	}
 
-	private float Score(UpgradeDefinition upgrade)
-	{
-		float score = Build.UpgradeWeights.TryGetValue(upgrade.Id, out float own)
+#if TOOLS
+	/// <summary>Why it picked as it did at its latest level-up offer, each option with the terms that scored it.
+	/// Written only while <see cref="Explaining"/> is on; the harness prints it with explain=.</summary>
+	public string UpgradeReasoning { get; private set; } = "";
+#endif
+
+	/// <summary>The build's weight for an upgrade: its own, if the build names it, or its category's.</summary>
+	private float Liking(UpgradeDefinition upgrade) =>
+		Build.UpgradeWeights.TryGetValue(upgrade.Id, out float own)
 			? own
 			: upgrade.Category switch
 			{
@@ -544,12 +570,6 @@ public partial class Pilot : Node, IVnpController
 				UpgradeCategory.Stats => Build.StatsWeight,
 				_ => Build.DronesWeight,
 			};
-		if (ImprovesOwned(upgrade))
-			score += Build.FavourOwned;
-		if (upgrade.Effect is UpgradeEffect.EquipWeapon or UpgradeEffect.SwitchDroneWeapon)
-			score += Build.NewWeaponWeight;
-		return score;
-	}
 
 	/// <summary>Whether an upgrade improves something the VNP already has: an equipped weapon, or its drones.</summary>
 	private bool ImprovesOwned(UpgradeDefinition upgrade) => upgrade.Effect switch

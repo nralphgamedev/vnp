@@ -172,7 +172,7 @@ Every change to the library has to keep it usable outside pilots and outside VNP
   - the direction sums in `HarvestMove` and `Decide`
 
   Their settings, such as `TouchAvoidWeight` and the dodge chance, become scoring weights or noticing settings.
-- **Unchanged at first: upgrade picks.** `ChooseUpgrade` and the builds stay as they are until they move onto the decision core (stage 4).
+- **Unchanged at first: upgrade picks.** `ChooseUpgrade` and the builds stay as they are until they move onto the decision core (stage 4, now done).
 
 **During the rebuild:** the old pilot stays as it is, chosen by a setting, as the baseline the new one must match on the same seeds.
 
@@ -271,6 +271,16 @@ The prototype now does the following; any of it can still change.
   - **Checked:** four 2½-minute expert fights, one starting with Mine Layer, traced identically before and after at every checkpoint, with the first pilot's one random draw at the start (which way it circled) kept for the comparison.
   - **Seeds:** that draw was then removed, so a seed now plays out differently from the same seed before this change, as after any tuning change. Replay commands in older batch reports no longer match.
   - **Cost:** `Pilot.cs` went from 921 lines to 565.
+- **Upgrade picks on the decision core (stage 4):** the decision core's second user.
+  - **The decision:** `Pilot.ChooseUpgrade` is an `Arbiter.Decision` named "upgrade", the offered upgrades its options, with three terms: `liking` (the build's weight for the upgrade, its own or its category's, at weight 1), `owned` (1 if it improves something already owned, weighted by `FavourOwned`) and `new weapon` (1 if it gives a new weapon, weighted by `NewWeaponWeight`). The noise is the build's `Randomness` plus the skill level's `PickNoise`, drawn through the decision as before. A reroll still follows `RerollBelow`, on the chosen option's total.
+  - **Picks unchanged:** four expert and novice fights with the Designer, Greedy, Weapon focus and Random builds, one with a reroll, traced identically before and after.
+  - **Explaining:** with `explain=`, the harness prints each pick as a `PICK` line: every option with its total and the terms that made it. Arbiter's explanations now include the noise each option got (`NoiseOf`), so the terms add up to the total.
+  - **Training tools begin:** `arbiter/training/fit_choices.py` fits a decision's term weights to recorded choices, as softmax choices over the same weighted sums the core scores, with terms optionally pulled toward a group's weight. It is plain Python, free of VNP's words. `calibrate_build.py` now describes each of the designer's level-up choices in the upgrade decision's terms (`liking:<upgrade>`, grouped by category, `owned`, `new weapon`) and fits them with it, giving exactly the weights the old fit gave.
+  - **Guards for staying general,** chosen by the designer from the starting ideas (see Staying general):
+    - **the build boundary,** as before: Arbiter can't reference VNP's code or Godot;
+    - **no game words:** the stage check fails if Arbiter's code or training tools name VNP's things (the VNP, drones, Goo types, asteroids, debris, harvesting, VNP's weapon names, pilots, Godot). Generic words that VNP also uses, such as mine or weapon, are allowed, and the README may name VNP as where it came from;
+    - **its purpose, written down:** the README says what belongs in it, `CLAUDE.md` asks for each change to be checked against it, and the check-stage review asks the same.
+    - **Not chosen:** a sample agent that isn't VNP's, built and run by the stage check. It stays an option if the guards above miss something.
 - **Recorded and drawn (stage 1):** every picture of a recording holds the hazards and zones, as a pilot would perceive them around the VNP.
   - **On strips:** hazards are drawn yellow if they hurt the VNP and pink if they hurt drones, dimmer if not yet landed, each with a line to where it moves in the next second. Weapons' reach shows as faint rings.
   - **Size:** this added about half to a recording in a dense fight, about 830 KB for a 5-minute fight instead of 560 KB.
@@ -313,7 +323,7 @@ Build one stage at a time, and stop after each so the designer can try it.
    - built beside the current pilot, chosen by a setting, and compared in batches on the same seeds;
    - it replaces the current pilot only once it matches or beats it on results and on the calibration gap. (Done, on results alone, at the designer's choice: see Settled during the build.)
 3. **The first declared attack:** the Lancer (phase 4's stage 3). This tests the design: the pilot dodges a forming Lancer with no code for it.
-4. **The second user, and staying general:**
+4. **The second user, and staying general:** (done, see Settled during the build)
    - upgrade picks moved onto the decision core;
    - `calibrate_build.py` fitting the Designer build's weights to picks made on the core;
    - the guards for staying general, as settled with the designer.
