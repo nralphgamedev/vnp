@@ -65,12 +65,12 @@ You can't judge how the game feels, only how a still frame and some numbers look
 
 Read the diff (`git diff` and the untracked files) with these questions. Each comes from CLAUDE.md or a past mistake:
 
-- **Spec:** does the current spec (named in CLAUDE.md) describe what was built, including any choices made for "not yet decided" items? Does it name tuning values and files rather than quoting their numbers? Does it list new tuning values in its tuning table?
+- **Spec and addendum:** is every design spec (`docs/design/PROTOTYPE_N_SPEC.md`) unchanged? Only addenda change. Does the current addendum record what was built where it differs from the spec, with the reason, and any choices made for "not yet decided" items? Does it name tuning values and files rather than quoting their numbers? Does each new entry pass the addendum test (an AI would do worse without it), leaving out test measurements and what the code already shows?
 - **Tuning:** are new numbers that affect play in a data file, not hard-coded in a script? A few fixed constants that only shape a look or a motion are fine if they're commented.
 - **Placeholders:** is every new mesh, material, sound or icon in `res://placeholder/` and listed in `PLACEHOLDERS.md`, with what uses it? Is a code-made one listed with the script that makes it?
 - **Files together:** are new files in their feature's folder, Definitions and Tunings named by kind, and moved files' `.uid` and `path=` references updated?
 - **Cheats:** is any testing aid in `scripts/cheats/` behind `#if TOOLS`, with its settings in `in_game_cheats.tres`?
-- **Older specs:** if the change contradicts an earlier phase's spec, does the current spec say so, or was the earlier text updated?
+- **Older specs:** if the change contradicts an earlier phase's spec or addendum, does the current addendum say which phase it changes? Earlier specs are never edited.
 
 ## 4. Report
 

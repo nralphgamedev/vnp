@@ -1,0 +1,143 @@
+# Phase 4 addendum: what changed in building and testing
+
+`PROTOTYPE_4_SPEC.md` is the designer's intent, as given, and is never edited. This file records only what an AI working on the project needs in order not to get it wrong: where the build now differs from the spec, why, what was tried and rejected, and choices made for items the spec left open. Where this file and the spec disagree, this file wins.
+
+An entry belongs here only if, without it, the AI would do something differently or worse. Test measurements, process stories, implementation details the code already shows, and repeats of the spec stay out; batch reports and git history keep those.
+
+## Status
+
+- Build order: all nine stages are built (the order gained a stage, see Pilots). Of the pilot spec's later stages, none are done yet: upgrade picks on the decision core, calibrating the designer-like pilot, the ceiling pilot, and removing the old pilot.
+- Done when: met, except the pilot items above. Each type's performance cost was measured at its stage; all were close to the basic goo's.
+- The designer is reworking how fights feel. Recorded-fight calibration of pilots waits until they are happy with it.
+
+## Shared traits
+
+- **One grey for every type:** every type is the same satin grey (`Color` in each type's file, all alike), darker than the asteroids, with a faint rim of light (`materials/goo.tres`). Types are told apart by silhouette alone.
+  - Rejected: a pale tint per type; glossy.
+  - Since types share a colour, maps give each type a palette colour of their own (run review spec).
+- **Declared threats:** every type declares its body and its attacks' danger shapes once their tells are visible (`EnemyBehavior.DeclareThreats`, required by the build). This was added with the pilot rebuild.
+- **What each type chases:** this is set by `Targets` in each type's file (the nearest of drones and the VNP, or the VNP only), which replaced `TargetsDronesFirst`. Every Grey Goo type goes for the VNP only.
+  - **Why:** basic goos spent almost all their time chasing drones, which fly close round the VNP, so they never seemed to come for it.
+- **No flocking while chasing:** `ChaseFlocking` is 0 for every Grey Goo type, so each heads straight at its target. They still keep apart, and idle groups still wander together.
+  - **Why:** flocking pulled chasers well off their line.
+- **Speed:** every type that chases moves at 90% of the VNP's starting speed (`Speed`, all alike), at the designer's choice.
+  - Newly spawned enemies get faster each minute (`RampEnemySpeedPerMinute` in `tuning/difficulty.tres`), and each escalation step adds more (`EscalationEnemySpeedPerStep`). Each enemy keeps the speed it spawned with.
+  - The ramp is set so that enemies spawned near the time limit reach about the VNP's starting speed. Movement speed upgrades keep the player ahead, and escalation then takes enemies past it. Rejected: a steeper ramp.
+  - Exceptions: the Burster, a little faster; the Devourer, which never chases; and the asteroid mimic, slow, as a lumbering rock.
+  - Wander speed and acceleration are unchanged.
+  - Escalation speeding enemies up changes phase 1, where escalation left speed alone.
+- **Turning and health:** every type but the Devourer accelerates and turns sharply (`Acceleration`, `TurnSpeed`) and has 30% less health than before, at the designer's request.
+  - **Why:** goos slid sideways through turns, taking nearly three seconds to reverse.
+- **Shared tuning that isn't in a type's own file:** Grey Goo's health and damage ramps are in `tuning/difficulty.tres` (`RampGreyGoo…`, `EscalationGreyGoo…`). Spawn weights are in `tuning/enemy_spawning.tres`. Shared fields come from `GreyGooDefinition`, including `HoldDistance` and `HoldBlendDistance`: 0 closes in all the way.
+- **Attack ranges:** they are measured from the enemy's edge for every type: `LaunchRange`, `VolleyRange`, `Reach` and `FireRange`.
+
+## Basic goo
+
+- **Targets and flocking:** it now goes for the VNP only (see Shared traits), which changes phase 3's targeting for the Goo. It still drains and absorbs drones that touch it.
+- **ID:** it is `basic_goo`. Fight logs from before phase 4 call it `goo`.
+- **Split push:** halves are pushed apart at `SplitPushSpeed`. Before the speed change, the push used its chase speed.
+- **Splitting into other types:**
+  - The pick covers every Grey Goo type in the fight except the basic goo, found from the types themselves, so a new type joins it with no change.
+  - The other type is fresh at the fight's current difficulty. The other half's share of what the goo had grown is simply lost, which was a choice: the spec didn't say.
+  - A mimic made this way is awake. A Devourer made this way goes about its business.
+
+## Lancer
+
+- **Aim:** its aim is fixed as it starts forming, so stepping off the line dodges it. The spec didn't say; this choice gives the warning the spec asks for.
+- **Launch:** each launch carries `LaunchBeyond` past the point it aimed at, at the designer's request: farther, and twice as fast as first built.
+  - Rejected: a fixed distance from its start, which barely reached a target at the edge of its range.
+- **Touch during a launch:** a launching Lancer doesn't also hurt by touch; the launch is the hit.
+- **Holds its distance:** between launches it keeps `HoldDistance` from the VNP, inside its launch range, instead of drifting straight at it. It grips harder than the other types (`Acceleration`).
+- **Gliding:** it glides on at its chase speed after a launch, so since the speed change it glides farther. Watch this in playtesting.
+
+## Quiller
+
+- **What breaks spikes:** only Orbital Shards with blocking and weapons marked `Explosive` in their file break spikes. That is Mine Layer and Seeker Missiles now, and any later weapon only if its file says so. This replaces the spec's "any damage that touches it". Shots, Shockwave rings and ramming drones pass through spikes. Burster blobs follow the same rule.
+- **Volleys:** a volley aims at the VNP only; drones are hit only when a spike passes through them. This replaces the spec's spikes shared among the VNP and drones.
+- **Firing:** spikes leave from every side and curl in on target points spread round the VNP (`OutTurnDegrees`). Each flies `SpikeBeyond` past its point, then arcs home.
+  - Rejected: a forward spread; a reach set from the target's distance plus a margin; the same reach for every spike.
+- **Coming home:** spikes turn back hard (`ReturnTurnDegrees`), and near home they head straight in.
+  - Rejected: a gentler return, which let spikes loop round their Quiller.
+- **Holds at range:** between volleys it keeps `HoldDistance` from the VNP, inside its volley range, rather than closing in to touch. It also moves faster than the basic goo and the Lancer.
+- **Losing spikes:** each spike broken costs its Quiller `SpikeLossHealth`, credited to whatever broke it.
+- **For pilots:** while forming, it declares a small circle at each target point, not a line, since its spikes curve.
+- **Performance:** spikes need the spatial grid. Rejected: finding each by scanning the enemies, which was far too slow in a crowd.
+
+## Spiker
+
+- **Look and size:** it is a four-armed caltrop, drawn a third smaller (`Size`); its reach and hit size are unchanged.
+  - Rejected: an urchin, which looked too like the Quiller.
+- **Moving and spikes:** it moves after the VNP only and hurts it by touch. Its spikes favour drones: the nearest drone in reach that no other spike is after, and the VNP only when no drone is in reach.
+  - Rejected: spikes at every drone and the VNP at once; spikes at the VNP only, which rarely caught drones.
+- **Spikes per thrust:** each thrust sends 2 spikes (`MinSpikes` and `MaxSpikes`), set by the designer after a while at 1.
+- **Aim:** it rolls an accuracy as it spawns, raised by the difficulty ramp, like the Lancer. A spike at the VNP has its line fixed as forming starts, so it can be dodged. A spike at a drone is aimed as the thrust starts and swings toward the drone as it goes (`TrackDegrees`). Its cooldown is `ThrustCooldown`.
+- **Impaling:** any drone the tip meets first is impaled, whether or not it was the one aimed at. The spec didn't say; this was the choice. A drone already on a spike can't be caught by another.
+- **Holding drones:** a drone held by an enemy that stops holding it is released a moment later, so no drone is ever left stuck.
+
+## Burster
+
+- **Speed:** a little faster than the other types, which since the speed change all move alike.
+- **Tell:** it throbs, faster the more it is hurt (`HurtThrobFactor`).
+- **Bursting:** only a Burster that is killed bursts; one cleared away far behind does not. Breaking a blob costs no one health, since its Burster is gone.
+- **Exploding blobs:** a blob explodes as it pops on the VNP or a drone, hurting the VNP and every drone within `BlobBlastRadius`, at the designer's request. It never hurts enemies and can't break other fragile shots. A blob that runs out of life fizzles.
+- **Blob speed:** blobs fly exactly at the VNP's starting speed (`BlobSpeed`), at the designer's choice. A VNP fleeing straight keeps its distance; one that turns or stops gets caught.
+  - Rejected: slower than the VNP, which pilots simply outran, and later made the Burster most of the damage taken; a little faster than the VNP.
+
+## Devourer
+
+- **It never chases,** at the designer's request: not when the VNP is close, not when it is shot, not in a wave (`EnemyBehavior.Chases`). This settles the spec's open item on its targets. Its aggro ranges and targeting are unused, and it isn't drawn darker when idle.
+- **Finding material:** `SeekRange` is just inside `ActiveRadius` in `asteroids.tres`, since beyond that nothing is kept findable. It searches near first, so it still heads for the nearest material.
+- **No ripples:** it hurts only by touch and by draining drones. Ripples were built as the spec described and then removed at the designer's request. The spec's ripple tell no longer applies.
+- **No sound while consuming,** at the designer's choice.
+- **Producing:** this was added by the designer and isn't in the spec. While the VNP is within `AttackRange` of its edge, it produces a basic goo once its cooldown is done and it has `ProduceMass` stored. The goo is pushed toward the VNP at `ProducePushSpeed`, then behaves as any basic goo, new, at the fight's current difficulty.
+- **Storing, then attacking:** it stores what it consumes as growth. Each goo costs `ProduceMass` of the store, and it shrinks by the growth that mass gave it.
+  - It never shrinks below its starting size, and loses health by the same share, so producing never kills it.
+  - Spent mass no longer counts toward its debris.
+  - At `MaxBulk` it stops consuming until producing makes room.
+  - Rejected: producing on a cooldown wherever the VNP was, without shrinking.
+- **Adding enemies mid-update:** an enemy can't be added during the enemies' own update; use `EnemySwarm.QueueSpawn`, as splits do.
+- **Never in waves,** at the designer's request: its wave weight is 0. This replaces the spec's "waves can include every type that spawns in groups".
+
+## Asteroid mimic
+
+- **Asleep:** a sleeping mimic isn't an enemy but an asteroid marked as a mimic (`Harvestables`), so neither a player nor a pilot can tell. Which fields hold mimics comes from a generator of its own, seeded from the field's position, so placing them doesn't change the fight's random numbers.
+- **Waking:** only the VNP coming within `WakeRange` wakes it; drones near it don't, at the designer's request. Harvesting it still wakes it, as the spec says. A Devourer touching one wakes it unhurt rather than eating it.
+  - **Why it has its own range:** `AggroRange` once did both waking and noticing targets, so an awake mimic barely noticed anything. Awake, its aggro ranges work like the basic goo's.
+- **When it appears:** the waking mimic is added at the start of the next update.
+- **Spawning:** never in groups or waves; its weights are 0. It is listed in `enemy_spawning.tres` only so the fight knows the type, and its `GroupSize` is unused.
+
+## Spawning
+
+- **The basic enemy:** its weights are 0, but its files and its entry in `enemy_spawning.tres` stay. The scenario harness can still spawn it with `spawn=basic_enemy:N`.
+
+## Pilots
+
+- **Rebuilt before the Lancer,** as `docs/dev/PILOT_SPEC.md` describes. This added a stage 2, "Pilots that plan", to the build order; the types moved to stages 3 to 9. This answers the spec's open item on how pilots handle enemy types.
+- **The pilot spec's later stages run between the types, where they fit:**
+  - upgrade picks on the decision core, with the guards that keep it general;
+  - calibration against the designer's recorded Grey Goo fights;
+  - the ceiling pilot;
+  - removing the old pilot.
+- **Done when** gains: "Pilots react to each type's attacks through its threat declaration, with no pilot code for the type."
+- **The planner replaced the first pilot on results alone,** at the designer's choice. It outlives the designer, so batches read the game as easier than it plays. Comparisons between options still hold.
+- **Fitting pilot weights to individual recorded moments is deferred,** at the designer's choice. Calibrating settings against recorded fights replaces it.
+
+## Weapons and other systems changed in phase 4
+
+- **Seeker Missiles explode:** at the designer's request, every enemy within `BlastRadius` is hit (`seeker_missiles.tres`). A missile that hits a fragile shot explodes there.
+  - A new upgrade, Seeker Missiles area of effect, widens the blast (`weapons/seeker_missiles/upgrades/area.tres`). The pool now has 40 upgrades.
+  - Enemies caught in the blast take `SplashDamage` of the missile's damage; the enemy hit takes the full amount. This was set to half at the designer's choice, because Grey Goo chases in tight packs and the blast had grown to nearly half the missiles' damage.
+- **Seeker Missiles spread their targets:** a volley goes for up to as many different enemies in range as it has missiles, nearest first, one each. Missiles share an enemy only when there are fewer enemies than missiles. Each leaves on the side of its target, so missiles don't cross.
+  - A missile whose target dies goes for the nearest enemy no other missile is after, or the nearest at all.
+  - This changes phase 2's targeting.
+- **The `Explosive` flag:** each VNP Weapon's file has an `Explosive` flag, which decides whether it breaks fragile enemy shots.
+- **Sounds pause with the fight:** while a menu pauses the fight, the fight's own sounds pause and resume; menu and result sounds still play. This changes phase 2's "Sounds while paused".
+- **Result panels scroll:** the damage breakdown and upgrade list grow until they would leave the screen, then scroll by mouse wheel or scroll bar. The damage breakdown stops above the weapon icons. Scrolling by controller or keyboard isn't built.
+
+## Still open
+
+These are from the spec's Not yet decided list. The built behaviour is the spec's default unless noted.
+
+- **Drones and growth for every type:** drones destroyed without being absorbed add nothing, and only the basic goo splits.
+- **The Burster's tiny blobs:** they are as the spec describes, plus the explosion above.
+- **The Devourer and drones:** it drains and absorbs drones and grows from them, as the spec describes.

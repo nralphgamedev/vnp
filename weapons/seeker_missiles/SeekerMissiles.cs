@@ -3,10 +3,12 @@ using System;
 
 /// <summary>
 /// A VNP Weapon that fires volleys of slow missiles that home in on enemies. The volley fans out as it
-/// launches, then each missile turns toward its target at a limited rate, so it curves in. Each missile
-/// heads for the nearest enemy when fired; if that enemy is destroyed first, it picks the nearest enemy
-/// to itself within range, and flies straight on if there is none. A missile hits the first enemy in its
-/// path, whether or not it was the target, and fizzles out if it flies too long.
+/// launches, then each missile turns toward its target at a limited rate, so it curves in. A volley spreads
+/// over the nearest enemies in range, one missile each, nearest first, and shares them out only when there
+/// are fewer enemies than missiles. If a missile's target is destroyed first, it picks the nearest enemy to
+/// itself within range that no other missile is after (the nearest at all if every one is), and flies
+/// straight on if there is none. A missile hits the first enemy in its path, whether or not it was the
+/// target, and fizzles out if it flies too long.
 /// </summary>
 public partial class SeekerMissiles : VnpWeapon
 {
@@ -62,20 +64,28 @@ public partial class SeekerMissiles : VnpWeapon
 	{
 		EnemySwarm enemies = Fight.Enemies;
 		Vector2 from = Fight.Vnp.PlanePosition;
-		int target = enemies.FindNearest(from, Seekers.Range);
-		if (target < 0)
+		int volley = Mathf.Max(1, Seekers.MissilesPerVolley + ExtraCount);
+		int targets = NearestTargets(from, volley);
+		if (targets == 0)
 			return false;
 
-		Vector2 toTarget = enemies.PositionOf(target) - from;
+		Vector2 toTarget = enemies.PositionOf(_targets[0]) - from;
 		Vector2 aim = toTarget.LengthSquared() > 0.0001f ? toTarget.Normalized() : Vector2.Up;
-		int volley = Mathf.Max(1, Seekers.MissilesPerVolley + ExtraCount);
 		float spread = Mathf.DegToRad(Seekers.LaunchSpread);
+
+		// Order the targets round the volley's fan, so each missile leaves on the side of the one it goes for and
+		// the missiles don't cross.
+		for (int t = 0; t < targets; t++)
+			_targetAngles[t] = aim.AngleTo(enemies.PositionOf(_targets[t]) - from);
+		Array.Sort(_targetAngles, _targets, 0, targets);
 
 		for (int i = 0; i < volley; i++)
 		{
 			if (_count == _missiles.Length)
 				Array.Resize(ref _missiles, _missiles.Length * 2);
 			float angle = volley == 1 ? 0f : spread * ((float)i / (volley - 1) - 0.5f);
+			// With fewer targets than missiles, neighbouring missiles share a target, so they are spread evenly.
+			int target = _targets[i * targets / volley];
 			_missiles[_count++] = new Missile
 			{
 				Position = from,
@@ -89,6 +99,84 @@ public partial class SeekerMissiles : VnpWeapon
 		Fight.Effects.MuzzleFlash(from, aim, Seekers.Color, Power);
 		Fight.Sounds.Play(Sound.SeekerLaunch);
 		return true;
+	}
+
+	private readonly int[] _near = new int[1024];
+	private int[] _targets = new int[8];
+	private float[] _targetAngles = new float[8];
+
+	/// <summary>
+	/// Fills _targets with up to <paramref name="most"/> different enemies within range of a point, nearest first, and
+	/// returns how many there are.
+	/// </summary>
+	private int NearestTargets(Vector2 from, int most)
+	{
+		if (_targets.Length < most)
+		{
+			_targets = new int[most];
+			_targetAngles = new float[most];
+		}
+		EnemySwarm enemies = Fight.Enemies;
+		int found = enemies.CollectNear(from, Seekers.Range, _near);
+		int kept = Mathf.Min(most, found);
+		// A partial selection sort: only the nearest few are needed, from what may be a crowd.
+		for (int k = 0; k < kept; k++)
+		{
+			int best = k;
+			float bestSquared = from.DistanceSquaredTo(enemies.PositionOf(_near[k]));
+			for (int c = k + 1; c < found; c++)
+			{
+				float squared = from.DistanceSquaredTo(enemies.PositionOf(_near[c]));
+				if (squared < bestSquared)
+				{
+					bestSquared = squared;
+					best = c;
+				}
+			}
+			(_near[k], _near[best]) = (_near[best], _near[k]);
+			_targets[k] = _near[k];
+		}
+		return kept;
+	}
+
+	/// <summary>
+	/// A new target for a missile whose own is gone: the nearest enemy within range of it that no other missile is
+	/// after, or, if every one is taken, the nearest. -1 if there is none.
+	/// </summary>
+	private int NewTarget(int missile)
+	{
+		EnemySwarm enemies = Fight.Enemies;
+		Vector2 at = _missiles[missile].Position;
+		int found = enemies.CollectNear(at, Seekers.Range, _near);
+		int nearest = -1, nearestFree = -1;
+		float nearestSquared = float.MaxValue, freeSquared = float.MaxValue;
+		for (int c = 0; c < found; c++)
+		{
+			int index = _near[c];
+			float squared = at.DistanceSquaredTo(enemies.PositionOf(index));
+			if (squared < nearestSquared)
+			{
+				nearestSquared = squared;
+				nearest = index;
+			}
+			if (squared < freeSquared && !Claimed(enemies.IdOf(index), missile))
+			{
+				freeSquared = squared;
+				nearestFree = index;
+			}
+		}
+		return nearestFree >= 0 ? nearestFree : nearest;
+	}
+
+	/// <summary>Whether a missile other than <paramref name="except"/> is homing on this enemy.</summary>
+	private bool Claimed(int id, int except)
+	{
+		for (int i = 0; i < _count; i++)
+		{
+			if (i != except && _missiles[i].TargetId == id)
+				return true;
+		}
+		return false;
 	}
 
 	private void Fly(float dt)
@@ -111,7 +199,7 @@ public partial class SeekerMissiles : VnpWeapon
 			int target = missile.TargetId != 0 ? enemies.IndexOfId(missile.TargetId) : -1;
 			if (target < 0)
 			{
-				target = enemies.FindNearest(missile.Position, Seekers.Range);
+				target = NewTarget(i);
 				missile.TargetId = target >= 0 ? enemies.IdOf(target) : 0;
 			}
 			if (target >= 0)
@@ -179,8 +267,8 @@ public partial class SeekerMissiles : VnpWeapon
 	private readonly int[] _caught = new int[1024];
 
 	/// <summary>
-	/// A missile explodes: the enemy it hit, if any, and every other enemy within its blast take its damage, and,
-	/// since it is explosive, fragile enemy shots there break.
+	/// A missile explodes: the enemy it hit, if any, takes its damage, every other enemy within its blast takes
+	/// SplashDamage of it, and, since it is explosive, fragile enemy shots there break.
 	/// </summary>
 	private void Explode(Vector2 at, float damage, int hit)
 	{
@@ -188,13 +276,14 @@ public partial class SeekerMissiles : VnpWeapon
 		if (hit >= 0)
 			enemies.Damage(hit, damage, Source);
 		float blast = BlastRadius;
+		float splash = damage * Seekers.SplashDamage;
 		if (blast > 0f)
 		{
 			int caught = enemies.CollectTouching(at, blast, _caught);
 			for (int c = 0; c < caught; c++)
 			{
 				if (_caught[c] != hit)
-					enemies.Damage(_caught[c], damage, Source);
+					enemies.Damage(_caught[c], splash, Source);
 			}
 			if (Definition.Explosive)
 				Fight.FragileShots.DestroyWithin(at, blast, Source);

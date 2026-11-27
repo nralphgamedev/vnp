@@ -4,7 +4,7 @@ Two folders, split by who needs them.
 
 ## `design/`
 
-The game itself: the phase specs, taken from the game design document (GDD), describing what the prototype is and how it plays. The designer reads and decides these.
+The game itself: the phase specs, taken from the game design document (GDD), describing what the prototype is and how it plays. The designer reads and decides these. Each spec is kept exactly as the designer gave it; its addendum (`PROTOTYPE_N_ADDENDUM.md`) records, for AI, what building and testing changed, and wins where they disagree (CLAUDE.md, "Specs and addenda").
 
 - `PROTOTYPE_1_SPEC.md`: phase 1, one complete fight.
 - `PROTOTYPE_2_SPEC.md`: phase 2, feedback and more weapons and upgrades.
@@ -23,4 +23,4 @@ Development only: the testing tools and how the game is checked, which design do
 
 ## Where a new doc goes
 
-Anything about how the game plays, looks or sounds goes in `design/`. Anything about tools, testing, pipelines or how the code is checked goes in `dev/`. A dev spec can change game code for testing's sake (such as hooks inside `#if RECORDING`), but if it changes how the game plays, that change belongs in the current design spec too.
+Anything about how the game plays, looks or sounds goes in `design/`. Anything about tools, testing, pipelines or how the code is checked goes in `dev/`. A dev spec can change game code for testing's sake (such as hooks inside `#if RECORDING`), but if it changes how the game plays, that change belongs in the current design spec's addendum too.

@@ -13,6 +13,7 @@ MissileLifetime = 3.5
 LaunchSpread = 70.0
 MissileSize = 0.8
 BlastRadius = 2.5
+SplashDamage = 0.5
 Id = "seeker_missiles"
 Name = "Seeker Missiles"
 Damage = 12.0

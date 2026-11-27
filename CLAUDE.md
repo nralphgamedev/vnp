@@ -2,19 +2,21 @@
 
 VNP is a top-down roguelite space conquest game built in Godot. The current goal is a combat prototype: one real-time fight, with nothing from the rest of the game.
 
-The current spec is the source for what to build: @docs/design/PROTOTYPE_4_SPEC.md (phase 4, the rest of the Grey Goo types).
+The current spec is the source for what to build: @docs/design/PROTOTYPE_4_SPEC.md (phase 4, the rest of the Grey Goo types), with its addendum @docs/design/PROTOTYPE_4_ADDENDUM.md.
 
-It builds on the earlier specs:
+It builds on the earlier specs (each design spec with its addendum) and the dev specs:
 
-- Phase 1, one complete fight: @docs/design/PROTOTYPE_1_SPEC.md
-- Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md
-- Phase 3, a second enemy type and ways to see what worked: @docs/design/PROTOTYPE_3_SPEC.md
+- Phase 1, one complete fight: @docs/design/PROTOTYPE_1_SPEC.md and @docs/design/PROTOTYPE_1_ADDENDUM.md
+- Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md and @docs/design/PROTOTYPE_2_ADDENDUM.md
+- Phase 3, a second enemy type and ways to see what worked: @docs/design/PROTOTYPE_3_SPEC.md and @docs/design/PROTOTYPE_3_ADDENDUM.md
 - Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
 - Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
 - Performance: the requirement below, how it is measured, its tests and what is open: @docs/dev/PERFORMANCE_SPEC.md
 - Pilots that plan: threats enemies declare, path scoring, two training targets, and Arbiter, a generic decision library meant to serve other behavior and other games (planned): @docs/dev/PILOT_SPEC.md
 
-Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also written into the current design spec.
+A design spec is the designer's intent, as given, and is never edited. Its addendum records what changed in building and testing, and wins where they disagree; a newer phase's spec and addendum win over an older one's (see "Specs and addenda" below).
+
+Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also recorded in the current design spec's addendum. The rule against editing applies to the design specs only; the dev specs are still kept up to date in place.
 
 ## Technical rules
 
@@ -58,17 +60,28 @@ This project is developed on Windows, where a few editing habits cause damage:
 - You cannot judge how the game feels. Feedback will arrive as descriptions of what happened on screen, such as "drones lag too far behind." Turn that into a change, and say which tuning value or behavior you adjusted.
 - Stay inside the spec's scope. If something would be useful but is listed as out of scope or as a stretch goal, mention it rather than building it.
 - When the spec is silent on a design question, ask. Where the spec marks something as not yet decided, pick the simplest behavior, say what you picked, and keep it easy to change.
-- Keep the current spec up to date. Whenever something changes during prototyping, whether from playtest feedback, a new design decision, or a choice made for something marked not yet decided, update the spec in the same step so it always describes what is built. Move items that get settled out of the spec's not-yet-decided list and record what was chosen.
-- The spec describes behavior, not tuning numbers. Numbers change constantly while prototyping and the tuning files already record them, so name the tuning value and file instead of quoting its number. Keep only numbers the designer set as part of the design, such as weapon slots or upgrade limits, and leave out test measurements, which go stale when a value changes.
+- Keep the current addendum up to date (see "Specs and addenda" below). Whenever something changes during prototyping, whether from playtest feedback, a new design decision, or a choice made for something marked not yet decided, record it in the current phase's addendum in the same step, so spec and addendum together describe what is built. A change to something an earlier phase built goes in the current phase's addendum too, saying which phase it changes.
+- An addendum describes behavior, not tuning numbers. Numbers change constantly while prototyping and the tuning files already record them, so name the tuning value and file instead of quoting its number. Keep only numbers the designer set as part of the design, such as weapon slots or upgrade limits, and leave out test measurements, which go stale when a value changes.
 - After a stage is approved, commit it to git so there is a working version to return to. Always ask before committing or pushing, except on a calibration branch under the rules in "Unattended work on calibration branches" below.
 - Before every commit, run the plain stage check (`check_stage.sh`). Run it with `--full` only just before a push, at the designer's choice: `--full` adds the performance requirement and the full recording check (a few recorded fights covering every weapon, Drone Weapon, mod and asteroid amount, checked field by field), and covers every commit the push carries. A commit that changes only documents (Markdown files such as the specs, the journal and READMEs) needs no stage check, and neither does a push that carries only such commits.
+
+## Specs and addenda
+
+The designer wants a concise history of what they intended kept apart from what testing changed. So:
+
+- **Never edit a design spec** (`docs/design/PROTOTYPE_N_SPEC.md`), not even to fix a path or a name. Its text is the designer's intent, as given. A new spec the designer hands over is committed exactly as given.
+- **The addendum beside it** (`PROTOTYPE_N_ADDENDUM.md`) is written for AI, not for the designer. Each entry must pass one test: without it, would an AI working on the project do something differently, or worse? If not, it stays out.
+- **What passes:** overrides of the spec; the reason behind each decision, since without it a choice gets undone or a rejected idea proposed again; what was tried and rejected, in a line; choices made for "not yet decided" items; and where a behaviour's tuning lives, when the file name doesn't make it obvious.
+- **What stays out:** test measurements (batch reports keep them), process stories, anything the code already shows, and repeats of the spec where nothing changed.
+- **Keep the reason** in every entry, even when it is short, so a bare override isn't "fixed" back.
+- **Group entries by the spec section they change,** and rewrite an entry when its behaviour changes again rather than adding a second one; git history keeps the old one.
 
 ## Unattended work on calibration branches
 
 Long calibration runs on their own, without the designer, on a git branch made for them. These rules apply only there. Everywhere else, the rules above stand: ask before every commit and push.
 
 - **Where:** only on a branch whose name starts with `calibration/`, created by the designer's go-ahead before a run. Check the current branch (`git branch --show-current`) before any commit or push; if it isn't one of these, stop and ask.
-- **Allowed without asking, on that branch only:** changing pilot code and settings (`pilots/`, weapon `pilot_profile.tres` files), tuning variants (`tools/variants/`), calibration and review tools (`tools/`, `scripts/cheats/playtesting/`), the journal, and notes in the specs; committing those changes; and pushing that branch to `origin`.
+- **Allowed without asking, on that branch only:** changing pilot code and settings (`pilots/`, weapon `pilot_profile.tres` files), tuning variants (`tools/variants/`), calibration and review tools (`tools/`, `scripts/cheats/playtesting/`), the journal, and notes in the dev specs and the design addenda (never the design specs themselves); committing those changes; and pushing that branch to `origin`.
 - **Never, even there:** push to `main`, merge into or from `main`, force-push, rewrite history, or delete a branch. Never change game code or tuning outside the pilots, since that changes the game being balanced: if calibration seems to need it, stop and ask. Never delete or rewrite the designer's fight logs in `playtests/human/`.
 - **The guard:** while a run is unattended, the file `.git/vnp-unattended` exists, and the `pre-push` hook in `.git/hooks/` then refuses any push to `main`. Create the file when an unattended run starts and remove it when it ends. Never remove the hook or bypass it (`--no-verify`).
 - **Work in chunks, and keep the journal:** usage limits, a full context or a closed terminal can cut a run off at any moment, and the remaining usage can't be checked from inside a session. So work in small chunks, each ending in a commit: one change or candidate, a batch kept under about a minute, its result, and a dated entry in `docs/dev/calibration/JOURNAL.md` saying what was tried, what was found and what comes next. A run that starts reads the journal first and carries on from its last entry, rather than from memory.

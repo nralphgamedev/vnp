@@ -7,7 +7,7 @@ description: Add a new VNP Weapon, fight upgrade, Drone Weapon, or enemy type to
 
 VNP's content is data: each weapon, upgrade, Drone Weapon and enemy type is a definition (`*Definition`, a `.tres` file) in its feature's folder, read by code. Adding one is quick, but it has to be registered in several places that nothing checks at compile time. A missed one fails quietly: an upgrade never offered, a weapon missing from the cheat menu, a card with the wrong colour. This skill is the list of those places.
 
-First read the stage in the current spec (named in CLAUDE.md) for what to build. Where it's silent on a design question, ask rather than invent. Then find the closest existing example of the same kind and copy its pattern. The project is consistent, so the nearest sibling is the best template.
+First read the stage in the current spec and its addendum (both named in CLAUDE.md) for what to build; the addendum wins where they disagree. Where it's silent on a design question, ask rather than invent. Then find the closest existing example of the same kind and copy its pattern. The project is consistent, so the nearest sibling is the best template.
 
 ## Rules that apply to every kind
 
@@ -98,13 +98,11 @@ First read the stage in the current spec (named in CLAUDE.md) for what to build.
 
 ## Finish
 
-1. **The spec**, in the same step (CLAUDE.md requires it):
-   - the behavior, described without tuning numbers;
-   - any new tuning values in its tuning table, by name and file;
-   - the upgrade pool's new size;
-   - the upgrade's row in the "Offer card colours" table in the phase 2 spec;
-   - choices made for "not yet decided" items;
-   - folder lists that name every feature folder, such as "Tuning files" in the phase 2 spec.
+1. **The current addendum**, in the same step (CLAUDE.md requires it; never edit a design spec itself), keeping only what passes its test (would an AI do worse without it?):
+   - where the new content differs from the spec, and why;
+   - choices made for "not yet decided" items, or where the spec was silent;
+   - where its tuning lives, if the file name doesn't make it obvious;
+   - the upgrade pool's new size, and the category a new upgrade was filed under if the rule in the phase 2 addendum's "Offer card colours" doesn't make it obvious.
 2. **PLACEHOLDERS.md** for every new asset.
-3. **Checks:** run the check-stage skill. Its data check reports the pool size and spawn weights, so compare them with what the spec now says.
+3. **Checks:** run the check-stage skill. Its data check reports the pool size and spawn weights, so compare them with what the addendum now says.
 4. **Report:** tell the designer what was added, how to try it, and which values are guesses to tune. The starting weapon cheat lets them pick a new weapon straight away.
