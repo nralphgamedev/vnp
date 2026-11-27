@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="PilotDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://pilots/PilotDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "ceiling"
+Name = "Ceiling"
+ReactionSeconds = 0.12
+AwarenessRadius = 80.0
+DodgeChance = 1.0
+WanderDegrees = 0.0
+AffordableThreat = 2.5
+ThreatRange = 38.0
+StrengthPerDrone = 0.14
+StrengthPerLevel = 0.1
+Caution = 0.5
+DroneEaterThreat = 3.0
+TouchAvoidDistance = 5.0
+LowHealthBelow = 0.4
+LowHealthTouchScale = 1.0
+HoldStillPressure = 0.85
+ApproachEnemies = 0.2
+PathDanger = 1.0
+RegroupBelow = 0.2
+RegroupUntil = 0.4
+PressureFall = 0.3
+RegroupClearRange = 0.0
+CommitOrWithdraw = true
+WithdrawMargin = 5.0
+WithdrawMaxSeconds = 8.0
+TouchAvoidWeight = 2.0
+HarvestWeight = 1.0
+HarvestAtCap = 1.0
+ConcentrationPull = 1.2
+ConcentrationMass = 25.0
+DebrisRewardInfluence = 1.0
+HarvestRateInfluence = 0.5
+HarvestCommitDistance = 8.0
+HarvestDangerWhenBackingOff = 3.0
+FightWeight = 0.8
+FightWithoutDrones = 0.5
+ClusterWeight = 0.5
+DebrisClusterWeight = 0.15
+ClusterRadius = 15.0
+BackOffWeight = 1.5
+PreferredEnemyDistance = 12.0
+ExploreUrge = 20.0
+ExploreRethinkSeconds = 5.0
+ReturnHalfDistance = 80.0
+TacticSkill = 1.0
+LeadWeight = 1.5
+LookAheadSeconds = 1.5
+PathDirections = 24
+Attention = 96
+HarmWeight = 10.0
+DroneDangerWeight = 1.0
+TurnCost = 0.2
+OrbitShare = 0.6
+CommitWeight = 2.0
+PickNoise = 0.0
+UpgradeDecisionSeconds = 0.5

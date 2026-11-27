@@ -280,6 +280,76 @@ def write_report(folder):
                               'Alive at 5:00'], rows))
             out.append('')
 
+    # ───────────── Pilots compared ─────────────
+    # The pilot spec's two training targets side by side: the gap between them is how much better the game can be
+    # played than the designer-like pilot plays it, and what wins far more often in the best hands shows where the
+    # balance breaks.
+    pilots = list(dict.fromkeys(f['pilot'] for f in fights))
+    if len(pilots) > 1:
+        first, last = pilots[0], pilots[-1]
+        by_pilot = {pl: [logs[f['name']] for f in fights if f['pilot'] == pl and f['name'] in logs] for pl in pilots}
+
+        def won(l):
+            return l['outcome']['killTargetTime'] is not None
+
+        def rate(ls):
+            return 100 * sum(1 for l in ls if won(l)) / len(ls) if ls else None
+
+        out.append('\n## Pilots compared\n')
+        out.append(f'Each pilot over all its fights, every build and variant added together. The gap is {last} '
+                   f'against {first}, in points of win rate.\n')
+        rows = []
+        for pl in pilots:
+            ls = by_pilot[pl]
+            rows.append([pl, len(ls), f'{num(rate(ls), 0)}%', clock(median([l['outcome']['killTargetTime'] for l in ls if won(l)])),
+                         f'{sum(1 for l in ls if (s := at(l, 300)) is not None and s["health"] > 0)} of {len(ls)}',
+                         num(mean([l['outcome']['level'] for l in ls]))])
+        out.append(table(['Pilot', 'Fights', 'Win rate', 'Median time to win', 'Alive at 5:00', 'Average final level'], rows))
+
+        weapons = sorted({l['settings']['startingWeapons'][0] for ls in by_pilot.values() for l in ls if l['settings'].get('startingWeapons')})
+        if len(weapons) > 1:
+            out.append(f'\n**By starting VNP Weapon,** win rate for each pilot, widest gap first. A weapon whose gap '
+                       f'is far above the others is one the better pilot gets much more out of.\n')
+            rows = []
+            for w in weapons:
+                rates = {pl: rate([l for l in by_pilot[pl] if l['settings']['startingWeapons'][0] == w]) for pl in pilots}
+                n = {pl: sum(1 for l in by_pilot[pl] if l['settings']['startingWeapons'][0] == w) for pl in pilots}
+                gap = rates[last] - rates[first] if rates[last] is not None and rates[first] is not None else None
+                rows.append((gap if gap is not None else -999, [w] + [f'{num(rates[pl], 0)}% ({n[pl]})' for pl in pilots]
+                             + [f'{gap:+.0f}' if gap is not None else '-']))
+            rows.sort(key=lambda r: -r[0])
+            out.append(table(['Starting weapon'] + pilots + ['Gap'], [r for _, r in rows]))
+
+        # Upgrades: how much more often fights that took one were won than fights that didn't, for each pilot. The
+        # lift growing with the better pilot points at an upgrade that's strong in skilled hands.
+        min_taken = 15
+        upgrade_rows = []
+        ids = sorted({u for ls in by_pilot.values() for l in ls for u in l['outcome'].get('upgradesTaken', [])})
+        for u in ids:
+            lifts, cells = {}, []
+            for pl in pilots:
+                with_u = [l for l in by_pilot[pl] if u in l['outcome'].get('upgradesTaken', [])]
+                without = [l for l in by_pilot[pl] if u not in l['outcome'].get('upgradesTaken', [])]
+                if len(with_u) >= min_taken and len(without) >= min_taken:
+                    lifts[pl] = rate(with_u) - rate(without)
+                    cells.append(f'{lifts[pl]:+.0f} ({len(with_u)})')
+                else:
+                    cells.append('-')
+            if first in lifts and last in lifts:
+                upgrade_rows.append((lifts[last] - lifts[first], [u] + cells + [f'{lifts[last] - lifts[first]:+.0f}']))
+        if upgrade_rows:
+            upgrade_rows.sort(key=lambda r: -r[0])
+            out.append(f'\n**Upgrades,** by lift: how many points more often fights that took the upgrade were won '
+                       f'than fights that didn\'t, for each pilot (in brackets, fights that took it; only upgrades '
+                       f'taken and not taken in at least {min_taken} fights each). The difference is {last}\'s lift '
+                       f'against {first}\'s; the top of the list is what wins more in better hands, the bottom what '
+                       f'the better pilot needs less. Lift is a correlation, not a cause: an upgrade taken late is '
+                       f'taken by fights that lasted.\n')
+            shown = upgrade_rows[:8] + ([(0, ['...'] + [''] * (len(pilots) + 1))] if len(upgrade_rows) > 12 else []) \
+                + (upgrade_rows[-4:] if len(upgrade_rows) > 12 else upgrade_rows[8:])
+            out.append(table(['Upgrade'] + [f'Lift, {pl}' for pl in pilots] + ['Difference'], [r for _, r in shown]))
+        out.append('')
+
     # ───────────── By asteroid amount ─────────────
     # Phase 3 asks how much the amount of asteroids changes a fight's difficulty. Every fight records its amount,
     # whether it was picked by its seed or set by the batch.

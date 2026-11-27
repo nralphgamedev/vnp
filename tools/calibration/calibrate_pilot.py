@@ -1,19 +1,26 @@
 """
-Searches a pilot's settings for the values that play most like the designer, unattended (the run review spec's
-Automatic calibration). It runs batches itself and needs no one to pick candidates or read results.
+Searches a pilot's settings, unattended, for one of the pilot spec's two training targets: playing most like the
+designer (the run review spec's Automatic calibration), or playing as well as possible (the ceiling pilot). It runs
+batches itself and needs no one to pick candidates or read results.
 
     python tools/calibration/calibrate_pilot.py                        search the expert, writing what it finds
     python tools/calibration/calibrate_pilot.py --dry-run              search, but leave the skill level file unchanged
     python tools/calibration/calibrate_pilot.py --passes 2 --params Caution,FightWeight
+    python tools/calibration/calibrate_pilot.py --target results --pilot ceiling --build greedy --seeds 100
 
 How it works:
-- **The measure** is tools/calibration/compare_to_designer.py's gap: the expert's fights against the designer's at the same
-  fight times. Smaller is closer.
+- **The measure,** smaller better, by --target:
+  - **designer** (the default): tools/calibration/compare_to_designer.py's gap: the pilot's fights against the
+    designer's at the same fight times. Smaller is closer.
+  - **results:** the shortfall from perfect results: 1 less the score, where the score is half the win rate plus half
+    the average share of the batch's cap each fight survived. It searches the planner's own weights too.
 - **One setting at a time:** for each setting it plays the same seeds with the setting raised and lowered by a
   step (a factor, or a fixed amount for settings from 0 to 1), as two tuning variants in one batch.
 - **Confirming:** a candidate that beats the current gap by at least --min-gain on the search seeds is played
   again, with the current settings, on a second, separate set of seeds. It is kept only if it also wins there, so
   the search doesn't fit to the luck of one set of seeds.
+- **Measured once:** fights repeat exactly, so a candidate already measured with the same settings isn't played
+  again in a later pass.
 - **Kept changes** are written to the skill level file (unless --dry-run), and the search carries on from them.
   After a full pass with nothing kept, the steps halve; it stops when they get too small or after --passes.
 - **The log:** every candidate and decision goes to playtests/calibration/<start time>.md as it happens, so a
@@ -32,6 +39,20 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import compare_to_designer  # noqa: E402
+
+# For --target results, also the planner's own weights. Its look-ahead, paths and attention aren't searched: what
+# limits them is their cost, not how well they play.
+SEARCH_RESULTS = {
+    'HarmWeight': ('scale', 1.3),
+    'DroneDangerWeight': ('scale', 1.3),
+    'TurnCost': ('scale', 1.5),
+    'OrbitShare': ('add', 0.15, 0.0, 1.0),
+    'CommitWeight': ('scale', 1.3),
+    'ApproachEnemies': ('add', 0.1, 0.0, 1.0),
+    'Caution': ('add', 0.1, 0.0, 1.0),
+    'PreferredEnemyDistance': ('scale', 1.2),
+    'LeadWeight': ('scale', 1.3),
+}
 
 # Settings to search, and how: ('scale', factor) multiplies or divides; ('add', amount, low, high) adds or takes
 # away within limits. These are the pilot's main judgement settings; others can be named with --params.
@@ -96,6 +117,10 @@ class Search:
         os.makedirs(os.path.join(ROOT, 'playtests', 'calibration'), exist_ok=True)
         self.log_path = os.path.join(ROOT, 'playtests', 'calibration', f'{stamp}.md')
         self.variants = []
+        # Results already measured on the search seeds, by every searched setting's value: fights repeat exactly,
+        # so a later pass needn't play a candidate again when nothing has changed since it was measured.
+        self.measured = {}
+        self.search = dict(SEARCH, **SEARCH_RESULTS) if args.target == 'results' else SEARCH
 
     def log(self, text):
         print(text, flush=True)
@@ -123,9 +148,15 @@ class Search:
         folder = m.group(1)
         logs = [json.load(open(os.path.join(folder, 'logs', f), encoding='utf-8'))
                 for f in os.listdir(os.path.join(folder, 'logs'))]
+        gaps = {}
+        if self.args.target == 'results':
+            cap = json.load(open(os.path.join(folder, 'batch.json'), encoding='utf-8'))['cap']
+            for v in variants:
+                mine = [l for l in logs if (l['settings'].get('tuningVariant') or 'base') == v]
+                gaps[v] = shortfall(mine, cap)
+            return gaps
         human = compare_to_designer.designer_logs(None, self.args.since)
         designer = compare_to_designer.profile(human)
-        gaps = {}
         for v in variants:
             mine = [l for l in logs if (l['settings'].get('tuningVariant') or 'base') == v]
             gaps[v] = compare_to_designer.gap(compare_to_designer.profile(mine), designer)
@@ -133,25 +164,31 @@ class Search:
 
     def run(self):
         a = self.args
-        names = a.params.split(',') if a.params else list(SEARCH)
+        names = a.params.split(',') if a.params else list(self.search)
         values = {n: read_value(self.level, n) for n in names}
-        names = [n for n in names if values[n] is not None and n in SEARCH]
-        self.log(f'# Calibration search, {datetime.datetime.now():%Y-%m-%d %H:%M}\n')
+        names = [n for n in names if values[n] is not None and n in self.search]
+        self.log(f'# Calibration search, {datetime.datetime.now():%Y-%m-%d %H:%M}, target {a.target}\n')
         self.log(f'Pilot {a.pilot}, build {a.build}, {a.seeds} seeds per candidate (seeds {a.first_seed} on), '
                  f'confirming on seeds {a.confirm_seed} on; designer fights since {a.since or "any time"}; '
                  f'kept only with a gain of at least {a.min_gain}.\n')
         current = self.batch(['base'], a.first_seed)['base']
-        self.log(f'Starting gap: {current:.3f}\n')
+        self.log(f'Starting {"shortfall" if a.target == "results" else "gap"}: {current:.3f}\n')
         step = 1.0
         for p in range(1, a.passes + 1):
             kept_this_pass = 0
             self.log(f'## Pass {p}, step x{step:g}\n')
             for name in names:
-                tries = candidates(name, values[name], SEARCH[name], step)
+                tries = candidates(name, values[name], self.search[name], step)
                 if not tries:
                     continue
                 labels = [self.variant(f'autocal_{name}_{label}', {name: v}) for label, v in tries]
-                gaps = self.batch(labels, a.first_seed)
+                keys = {l: tuple(sorted(dict(values, **{name: v}).items())) for l, (_, v) in zip(labels, tries)}
+                gaps = {l: self.measured[keys[l]] for l in labels if keys[l] in self.measured}
+                todo = [l for l in labels if l not in gaps]
+                if todo:
+                    gaps.update(self.batch(todo, a.first_seed))
+                for l in labels:
+                    self.measured[keys[l]] = gaps[l]
                 best_label, best_gap = min(gaps.items(), key=lambda kv: kv[1])
                 best_value = dict(zip(labels, [v for _, v in tries]))[best_label]
                 line = f'- **{name}** {values[name]:g}: ' + ', '.join(
@@ -186,8 +223,17 @@ class Search:
                 os.remove(path)
 
 
+def shortfall(logs, cap):
+    """1 less the results score: half the win rate plus half the average share of the cap survived. Smaller is better."""
+    if not logs:
+        return 1.0
+    wins = sum(1 for l in logs if l['outcome']['killTargetTime'] is not None) / len(logs)
+    survived = sum(min(l['outcome']['time'], cap) / cap for l in logs) / len(logs)
+    return 1.0 - (0.5 * wins + 0.5 * survived)
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Search a pilot\'s settings to play more like the designer.')
+    parser = argparse.ArgumentParser(description='Search a pilot\'s settings to play more like the designer, or as well as possible.')
     parser.add_argument('--pilot', default='expert')
     parser.add_argument('--build', default='designer')
     parser.add_argument('--seeds', type=int, default=50)
@@ -198,6 +244,8 @@ def main():
     parser.add_argument('--passes', type=int, default=3)
     parser.add_argument('--min-gain', type=float, default=0.01)
     parser.add_argument('--min-step', type=float, default=0.25)
+    parser.add_argument('--target', choices=['designer', 'results'], default='designer',
+                        help='play like the designer (the default), or play as well as possible')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
     search = Search(args)
