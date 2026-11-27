@@ -1,0 +1,2 @@
+# The VNP regains 0.05 health per mass harvested, about half what a well-played fight loses.
+vnp.RepairPerMass = 0.05

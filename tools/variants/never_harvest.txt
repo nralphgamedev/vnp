@@ -1,0 +1,3 @@
+# The expert pilot never harvests, asteroids or debris: it fights and runs, and its drones are never rebuilt. For
+# checking whether running without harvesting survives as well as playing properly, which it shouldn't.
+pilots/skill_levels/expert.tres:HarvestWeight = 0

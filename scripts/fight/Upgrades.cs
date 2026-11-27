@@ -208,6 +208,9 @@ public static class Upgrades
 			case PlayerStat.DebrisExperience:
 				fight.DebrisExperience *= factor;
 				break;
+			case PlayerStat.RepairPerMass:
+				fight.RepairPerMass *= factor;
+				break;
 		}
 	}
 
@@ -240,6 +243,9 @@ public static class Upgrades
 				break;
 			case PlayerStat.DebrisExperience:
 				fight.DebrisExperience += amount;
+				break;
+			case PlayerStat.RepairPerMass:
+				fight.RepairPerMass += amount;
 				break;
 		}
 	}

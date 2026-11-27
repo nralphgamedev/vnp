@@ -71,6 +71,16 @@ public partial class Vnp : Node3D
 		Health = Mathf.Min(MaxHealth, Health + amount);
 	}
 
+	/// <summary>Restores up to <paramref name="amount"/> health, never past the maximum. Returns how much it restored.</summary>
+	public float Repair(float amount)
+	{
+		if (IsDestroyed || amount <= 0f)
+			return 0f;
+		float restored = Mathf.Min(amount, MaxHealth - Health);
+		Health += restored;
+		return restored;
+	}
+
 	/// <summary>Damages the VNP, after armor. <paramref name="source"/> is what dealt it, for fight statistics.</summary>
 	public void TakeDamage(float amount, DamageSource source = null)
 	{

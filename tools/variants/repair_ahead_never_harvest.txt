@@ -1,0 +1,11 @@
+# The VNP regains 0.05 health per mass harvested, about half what a well-played fight loses.
+# Half the groups between waves, and every front or pincer wave, arrive ahead of a moving VNP, on every plan.
+# The expert pilot never harvests.
+vnp.RepairPerMass = 0.05
+director/plans/classic.tres:AheadShare = 0.5
+director/plans/swarm.tres:AheadShare = 0.5
+director/plans/pincer.tres:AheadShare = 0.5
+director/plans/rising.tres:AheadShare = 0.5
+director/waves/pincer_growing.tres:AheadShare = 1
+director/waves/small_front.tres:AheadShare = 1
+pilots/skill_levels/expert.tres:HarvestWeight = 0

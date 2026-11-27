@@ -216,6 +216,9 @@ The prototype now does the following; any of it can still change.
     | Rising | 160 | 96% | 25 of 25 | 11.0 / 9.9 | 98 |
 
     The plans play differently: Swarm is the hardest to survive past the win, Pincer is the hardest on drones, and Rising, with the most enemies after Swarm but no stat ramps, the easiest.
+- **Arrivals ahead (after stage 3):** at the designer's request, after pilots kept surviving by running: a plan's `AheadShare` sends that share of its between-wave groups toward the VNP's heading, within `AheadSpreadDegrees`, and a waves piece's `AheadShare` aims a front there, or a pincer ahead and behind. Only while the VNP moves faster than a third of its starting top speed. 0, the default everywhere for now, draws nothing, so fights are unchanged.
+  - **Why:** a pilot that never harvested survived to 5:00 as often as one that played properly (60 of 80 each, across the four plans), since enemies chasing at 90% of its speed never catch a VNP that keeps moving.
+  - **Measured on** (half the groups, every front and pincer wave): the pilot that never harvested fell to 32 of 80 alive at 5:00, but normal play fell too, to 51, since pilots move nearly all the time; the designer holds still more. Variants `ahead`, `ahead_never_harvest` and their `repair_` forms repeat the test. Its value is still to be chosen.
 
 ## Not yet decided
 

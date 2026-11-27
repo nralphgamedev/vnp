@@ -86,7 +86,7 @@ public sealed class FightDirector
 		{
 			_startingGroupsSpawned = true;
 			for (int i = 0; i < plan.StartingGroups; i++)
-				swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: false);
+				swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: false, Vector2.Zero, 0f);
 		}
 
 		if (_large != null && fight.Elapsed >= _large.NextTime)
@@ -100,7 +100,20 @@ public sealed class FightDirector
 
 		// The spawn rate climbs through the fight.
 		_spawnTimer = plan.SpawnInterval / fight.EnemySpawnRateScale;
-		swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: true);
+		// Some groups ahead of a moving VNP. No number is drawn for a plan without them, so classic fights are unchanged.
+		Vector2 ahead = plan.AheadShare > 0f && Heading(fight) is Vector2 heading && Rng.Value() < plan.AheadShare
+			? heading : Vector2.Zero;
+		swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: true, ahead,
+			Mathf.DegToRad(plan.AheadSpreadDegrees));
+	}
+
+	/// <summary>The way the VNP is heading, or null while it is nearly still (below a third of its starting top
+	/// speed), when there is no ahead.</summary>
+	private static Vector2? Heading(Fight fight)
+	{
+		Vector2 velocity = fight.Vnp.Velocity;
+		float slowest = Tuning.Vnp.MoveSpeed / 3f;
+		return velocity.LengthSquared() > slowest * slowest ? velocity.Normalized() : null;
 	}
 
 	/// <summary>A wave: an announced one shakes the screen; the HUD and the sounds warn of it from the director's
@@ -130,6 +143,10 @@ public sealed class FightDirector
 		float hardShare = Mathf.Clamp(waves.HardShareStart + waves.HardSharePerMinute * fight.Minutes, 0f, waves.HardShareMax);
 		float spread = Mathf.DegToRad(waves.SpreadDegrees);
 		float startAngle = Rng.Range(0f, Mathf.Tau);
+		// A front or pincer aimed ahead of a moving VNP. No number is drawn for a wave without it.
+		if (waves.Arrival != WaveArrival.Ring && waves.AheadShare > 0f && Heading(fight) is Vector2 heading
+			&& Rng.Value() < waves.AheadShare)
+			startAngle = heading.Angle();
 		for (int g = 0; g < groups; g++)
 		{
 			int type = swarm.PickWaveType(waves.Makeup, hardShare);

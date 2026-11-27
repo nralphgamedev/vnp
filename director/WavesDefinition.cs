@@ -87,6 +87,11 @@ public partial class WavesDefinition : Resource
 	/// <summary>Front and Pincer: the angle each side's groups are spread across, in degrees.</summary>
 	[Export] public float SpreadDegrees;
 
+	/// <summary>Front and Pincer: the chance a wave is aimed at the VNP's heading while it moves, rather than a
+	/// random direction: a front then arrives ahead of it, and a pincer ahead and behind, so running in a straight
+	/// line leads into it. 0 is never.</summary>
+	[Export] public float AheadShare;
+
 	[ExportGroup("Makeup")]
 	[Export] public WaveMakeup Makeup;
 

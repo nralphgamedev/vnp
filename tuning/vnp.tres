@@ -12,6 +12,7 @@ Deceleration = 60.0
 TurnSpeed = 540.0
 StickDeadzone = 0.2
 MaxHealth = 100.0
+RepairPerMass = 0.0
 HitRadius = 1.4
 WeaponSlots = 2
 Size = 1.0

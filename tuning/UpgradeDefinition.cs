@@ -109,6 +109,9 @@ public enum PlayerStat
 
 	/// <summary>Fight experience from harvesting enemy debris, as a multiple starting at 1.</summary>
 	DebrisExperience,
+
+	/// <summary>Health the VNP regains per unit of mass harvested, starting at RepairPerMass in vnp.tres.</summary>
+	RepairPerMass,
 }
 
 /// <summary>

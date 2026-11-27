@@ -36,6 +36,13 @@ public partial class FightPlanDefinition : Resource
 	/// the margin, so they arrive together.</summary>
 	[Export] public float SpawnExtraDistance;
 
+	/// <summary>The share of groups placed ahead of the VNP while it moves, rather than in a random direction, so
+	/// running in a straight line leads into fresh enemies. 0 is none, as before.</summary>
+	[Export] public float AheadShare;
+
+	/// <summary>Groups placed ahead land within this angle of the VNP's heading, in degrees, across.</summary>
+	[Export] public float AheadSpreadDegrees = 60f;
+
 	/// <summary>The announced waves: warned of on screen and by sound, numbered on the banner, shaking the
 	/// screen. Every plan has them.</summary>
 	[ExportGroup("Pieces")]

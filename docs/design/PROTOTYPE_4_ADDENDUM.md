@@ -129,7 +129,7 @@ An entry belongs here only if, without it, the AI would do something differently
 ## Weapons and other systems changed in phase 4
 
 - **Seeker Missiles explode:** at the designer's request, every enemy within `BlastRadius` is hit (`seeker_missiles.tres`). A missile that hits a fragile shot explodes there.
-  - A new upgrade, Seeker Missiles area of effect, widens the blast (`weapons/seeker_missiles/upgrades/area.tres`). The pool now has 40 upgrades.
+  - A new upgrade, Seeker Missiles area of effect, widens the blast (`weapons/seeker_missiles/upgrades/area.tres`). The pool then had 40 upgrades; Harvest repair made it 41.
   - Enemies caught in the blast take `SplashDamage` of the missile's damage; the enemy hit takes the full amount. This was set to half at the designer's choice, because Grey Goo chases in tight packs and the blast had grown to nearly half the missiles' damage.
 - **Seeker Missiles spread their targets:** a volley goes for up to as many different enemies in range as it has missiles, nearest first, one each. Missiles share an enemy only when there are fewer enemies than missiles. Each leaves on the side of its target, so missiles don't cross.
   - A missile whose target dies goes for the nearest enemy no other missile is after, or the nearest at all.
@@ -144,6 +144,12 @@ An entry belongs here only if, without it, the AI would do something differently
   - **Why wide lenses broke spawning:** past about 150 degrees at the 15 degree tilt, the top of the screen looked above the horizon, so "just off screen" no longer existed. Well before that, enemies spawned beyond `DespawnDistance` and were removed straight away.
   - **Guards:** `Fov` and `Tilt` are clamped, with an error, so the top of the screen stays at least 20 degrees below the horizon. A zoom wide enough to spawn enemies past `DespawnDistance` is reported as an error when the fight starts.
   - **The scene's Camera node:** its own `fov` is overwritten every frame, so only `camera.tres` counts.
+
+- **Harvest repair,** at the designer's request: harvesting repairs the VNP, by `RepairPerMass` health per unit of mass harvested by anything (its beam, its drones, Orbital Shards), up to its maximum. There is no other healing.
+  - **Why:** a pilot that never harvested survived as long as one that played properly, seven levels behind with almost no drones, because running avoids damage and nothing else heals. Repair makes harvesting how the VNP stays alive.
+  - **The base is 0 for now** (`RepairPerMass` in `vnp.tres`), so only the upgrade repairs. A base of 0.05 was measured: normal play survived to 5:00 in 70 of 80 fights against 60, a pilot that never harvested 63 against 60.
+  - **The upgrade,** Harvest repair (`tuning/upgrades/harvesting/repair.tres`), adds 0.05 per pick, up to 4, filed under Stats like the other harvesting upgrades. A flat amount rather than a percentage, since the base is 0.
+- **Arrivals ahead of the VNP** are built but off: a plan can send a share of its groups, and its front and pincer waves, toward the VNP's heading (`AheadShare`; see the Fight Director spec). Measured on, a pilot that never harvested fell from 60 alive at 5:00 to 32 of 80, but normal play fell too, from 60 to 51, so its value is still to be chosen.
 
 ## Settled from the spec's open list
 

@@ -475,6 +475,7 @@ public partial class FightLog : Node
 					["taken"] = l.Taken,
 				}).ToList(),
 				["damageTaken"] = stats.DamageTaken.ToDictionary(e => e.Key, e => (object)Math.Round(e.Value, 1)),
+				["healthRepaired"] = Math.Round(stats.HealthRepaired, 1),
 				["experience"] = new Dictionary<string, object>
 				{
 					["asteroids"] = Math.Round(stats.ExperienceFromAsteroids, 1),

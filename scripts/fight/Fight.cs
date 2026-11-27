@@ -306,11 +306,15 @@ public partial class Fight : Node3D
 	}
 
 	/// <summary>
-	/// Called by harvest beams with the mass they drew out. Turns it into fight experience, and
-	/// builds temporary drones until the cap is reached. At the cap it gives only fight experience.
+	/// Called by harvest beams with the mass they drew out. Turns it into fight experience, repairs the VNP by
+	/// RepairPerMass (vnp.tres, raised by upgrades), and builds temporary drones until the cap is reached. At the cap it gives only fight experience
+	/// and repair.
 	/// </summary>
 	public void AddHarvest(float mass, bool fromDebris = false)
 	{
+		if (RepairPerMass > 0f)
+			Stats.HealthRepaired += Vnp.Repair(mass * RepairPerMass);
+
 		// Debris reward upgrades raise the experience from enemy debris only, not from asteroids.
 		float experience = mass * Tuning.Harvesting.ExperiencePerMass * (fromDebris ? DebrisExperience : 1f);
 		Experience += experience;
@@ -380,6 +384,10 @@ public partial class Fight : Node3D
 
 	/// <summary>Fight experience from enemy debris, as a multiple starting at 1. Debris reward upgrades raise it.</summary>
 	public float DebrisExperience = 1f;
+
+	/// <summary>Health the VNP regains per unit of mass harvested: RepairPerMass in vnp.tres, raised by the Harvest
+	/// repair upgrade.</summary>
+	public float RepairPerMass = Tuning.Vnp.RepairPerMass;
 
 	/// <summary>Whether a Drone Weapon has been chosen at a level up this fight. With OneDroneWeaponChoicePerFight
 	/// in levels.tres, no Drone Weapon is offered after that.</summary>

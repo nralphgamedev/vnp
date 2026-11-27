@@ -558,15 +558,17 @@ public partial class EnemySwarm : Node3D
 
 	/// <summary>Spawns one group for the Fight Director, of a type picked by the group weights, at a random spot
 	/// off screen around the VNP, up to <paramref name="extraDistance"/> beyond the margin. That spot is the group's
-	/// home. With <paramref name="respectMaxAlive"/>, it spawns nothing while the swarm is at MaxAlive.</summary>
-	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive)
+	/// home. With <paramref name="respectMaxAlive"/>, it spawns nothing while the swarm is at MaxAlive. Given an
+	/// <paramref name="ahead"/> direction, the spot is within <paramref name="aheadSpread"/> radians of it, across,
+	/// rather than in any direction.</summary>
+	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive, Vector2 ahead, float aheadSpread)
 	{
 		int type = PickType(_faction.GroupWeights);
 		if (type < 0)
 			return;
 		if (respectMaxAlive && Count + _types[type].Definition.GroupSize > _faction.MaxAlive)
 			return;
-		Vector2 direction = Rng.Direction();
+		Vector2 direction = ahead == Vector2.Zero ? Rng.Direction() : ahead.Rotated(Rng.Range(-0.5f, 0.5f) * aheadSpread);
 		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, extraDistance));
 		SpawnGroupAt(home, type, hunting: false);
 	}

@@ -96,6 +96,9 @@ public sealed class FightStats
 	public double ExperienceFromAsteroids;
 	public double ExperienceFromDebris;
 
+	/// <summary>Health the VNP regained by harvesting (RepairPerMass in vnp.tres).</summary>
+	public double HealthRepaired;
+
 	private readonly Dictionary<string, SourceDamage> _damageById = new();
 
 	public int DronesDestroyedTotal => DronesDestroyed.Values.Sum();
