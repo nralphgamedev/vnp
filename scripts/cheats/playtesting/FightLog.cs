@@ -428,6 +428,7 @@ public partial class FightLog : Node
 				{
 					["chooseStartingWeapon"] = InGameCheats.ChoosesStartingWeapon,
 					["asteroidAmountChosen"] = _fight.AsteroidAmountChosen,
+					["planChosen"] = _fight.PlanChosen,
 					["freeRerolls"] = stats.LevelUps.Sum(l => l.FreeRerolls),
 				},
 			},

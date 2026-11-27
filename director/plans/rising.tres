@@ -13,6 +13,7 @@ KillTarget = 160
 StartingGroups = 5
 SpawnInterval = 4.0
 SpawnExtraDistance = 28.0
+AheadShare = 0.5
 LargeWaves = ExtResource("2_large")
 SmallWaves = ExtResource("4_small")
 Curve = ExtResource("3_curve")

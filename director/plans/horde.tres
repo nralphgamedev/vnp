@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://director/waves/horde_large.tres" id="2_large"]
+[ext_resource type="Resource" path="res://director/curves/horde.tres" id="3_curve"]
+[ext_resource type="Resource" path="res://director/waves/horde_small.tres" id="4_small"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "horde"
+Name = "Horde"
+KillTarget = 450
+StartingGroups = 8
+SpawnInterval = 2.5
+SpawnExtraDistance = 28.0
+AheadShare = 0.5
+GroupStrength = 0.4
+LargeWaves = ExtResource("2_large")
+SmallWaves = ExtResource("4_small")
+Curve = ExtResource("3_curve")

@@ -56,6 +56,10 @@ public abstract class GreyGoo : EnemyBehavior
 	protected void Resize(ref EnemySwarm.Enemy enemy)
 	{
 		float grown = Mathf.Sqrt(Mathf.Max(0.01f, enemy.Bulk));
+		// A fragile one (Strength below 1, from its plan or wave) is smaller, by area as its health, so it reads as
+		// weaker at a glance.
+		if (enemy.Strength > 0f && enemy.Strength < 1f)
+			grown *= Mathf.Sqrt(enemy.Strength);
 		enemy.Radius = GooType.HitRadius * grown;
 		enemy.Scale = GooType.Size * grown;
 	}

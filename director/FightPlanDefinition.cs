@@ -43,14 +43,39 @@ public partial class FightPlanDefinition : Resource
 	/// <summary>Groups placed ahead land within this angle of the VNP's heading, in degrees, across.</summary>
 	[Export] public float AheadSpreadDegrees = 60f;
 
+	/// <summary>How far beyond the spawn margin the starting groups, and groups that keep the population up, can be
+	/// placed, at random: 0 for SpawnExtraDistance. A large value fills the area around the gateway with enemies
+	/// already there, rather than ringing the screen. Keep it within DespawnDistance in enemy_spawning.tres, past
+	/// which enemies are removed.</summary>
+	[Export] public float FieldExtraDistance;
+
+	/// <summary>Enemies the director keeps alive at the least: while fewer are, it adds a group every RefillSeconds,
+	/// spread like the starting groups, so the field stays dense however many are killed. 0 for none. Capped by
+	/// the faction's MaxAlive.</summary>
+	[Export] public int KeepAlive;
+
+	/// <summary>How much KeepAlive grows each minute of fight time.</summary>
+	[Export] public float KeepAlivePerMinute;
+
+	/// <summary>Seconds between groups added to keep the population up.</summary>
+	[Export] public float RefillSeconds = 0.5f;
+
+	/// <summary>Health and debris of the groups between waves, as a multiple of their type's: 1 as usual, less for
+	/// fragile enemies that come in large numbers, such as the horde plan's. Their damage is unchanged.</summary>
+	[Export] public float GroupStrength = 1f;
+
 	/// <summary>The announced waves: warned of on screen and by sound, numbered on the banner, shaking the
-	/// screen. Every plan has them.</summary>
+	/// screen. Empty for none, as in a plan that is one continuous stream.</summary>
 	[ExportGroup("Pieces")]
 	[Export] public WavesDefinition LargeWaves;
 
 	/// <summary>Unannounced waves, with no warning, banner or shake, usually smaller and more frequent: steady
 	/// pressure between the large waves. Empty for none.</summary>
 	[Export] public WavesDefinition SmallWaves;
+
+	/// <summary>Streams of single enemies, one after another, which can multiply and turn into a screw. Empty for
+	/// none.</summary>
+	[Export] public StreamsDefinition Streams;
 
 	/// <summary>How the fight grows harder before the time limit.</summary>
 	[Export] public DifficultyCurveDefinition Curve;

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WavesDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/WavesDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "horde_small"
+Groups = 3
+GroupsAddedPerWave = 0
+Strength = 0.35
+Timing = 1
+FirstSeconds = 15.0
+IntervalSeconds = 15.0
+IntervalScalePerWave = 0.93
+MinIntervalSeconds = 8.0
+Arrival = 1
+SpreadDegrees = 60.0
+AheadShare = 1.0
+Makeup = 2
+Formation = 1

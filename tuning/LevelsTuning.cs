@@ -12,6 +12,11 @@ public partial class LevelsTuning : Resource
 	/// At 150 and 75, level 5 takes 1050 in total and level 10 takes 4050.</summary>
 	[Export] public float ExperienceIncreasePerLevel;
 
+	/// <summary>The most a single level can need, so late levels keep coming at a steady pace rather than ever more
+	/// slowly, while the early curve is unchanged. At 900, with 150 and 75 above, levels up to 10 are as before and
+	/// every level from 11 needs 900. 0 for no cap.</summary>
+	[Export] public float ExperienceForLevelMax;
+
 	/// <summary>How many upgrades each level up offers.</summary>
 	[ExportGroup("Offers")]
 	[Export] public int OptionsPerOffer;

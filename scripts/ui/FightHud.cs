@@ -56,7 +56,8 @@ public partial class FightHud : Control
 			_clock = left > 0 ? Ui.Clock(System.Math.Ceiling(left)) : $"PAST LIMIT  +{Ui.Clock(-left)}";
 		}
 		DrawString(font, new Vector2(0f, 104f), _clock, HorizontalAlignment.Center, width, 48, clockColor);
-		long killsKey = Fight.Kills * 2L + (Fight.IsEndless ? 1 : 0);
+		// The target too, since the plan cheat can change it as the fight starts.
+		long killsKey = (Fight.Kills * 2L + (Fight.IsEndless ? 1 : 0)) * 100000L + Fight.KillTarget;
 		if (killsKey != _killsKey)
 		{
 			_killsKey = killsKey;

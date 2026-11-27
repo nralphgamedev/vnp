@@ -19,3 +19,4 @@ ChooseStartingWeapon = true
 StartingWeaponChoices = Array[ExtResource("2_weapon_script")]([ExtResource("3_pulse_laser"), ExtResource("4_orbital_shards"), ExtResource("5_scatter_shot"), ExtResource("6_seeker_missiles"), ExtResource("7_shockwave"), ExtResource("8_mine_layer")])
 StartingDroneWeaponChoices = Array[ExtResource("9_drone_weapon_script")]([ExtResource("10_projectile"), ExtResource("11_beam"), ExtResource("12_ram")])
 ChooseAsteroidAmount = true
+ChoosePlan = true

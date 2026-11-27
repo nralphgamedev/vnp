@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="StreamsDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://director/StreamsDefinition.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "screw"
+FirstSeconds = 3.0
+IntervalSeconds = 1.4
+RatePerMinute = 0.4
+MinIntervalSeconds = 0.5
+AddStreamSeconds = Array[float]([75.0, 150.0, 225.0])
+IntervalPerExtraStream = 0.5
+StartRotationDegreesPerSecond = 3.0
+RotateFromSeconds = 120.0
+RotationDegreesPerSecond = 12.0
+JitterDegrees = 4.0
+Strength = 0.9
+Makeup = 1
+HardShareStart = 0.0
+HardSharePerMinute = 0.07
+HardShareMax = 0.35

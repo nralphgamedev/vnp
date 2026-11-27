@@ -1,4 +1,0 @@
-# The VNP regains 0.05 health per mass harvested, about half what a well-played fight loses.
-# The expert pilot never harvests.
-vnp.RepairPerMass = 0.05
-pilots/skill_levels/expert.tres:HarvestWeight = 0

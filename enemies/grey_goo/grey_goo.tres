@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="FactionDefinition" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="FactionDefinition" load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://director/FactionDefinition.cs" id="1_script"]
 [ext_resource type="Resource" path="res://enemies/basic_enemy/basic_enemy.tres" id="2_enemy"]
@@ -15,6 +15,9 @@
 [ext_resource type="Resource" path="res://director/plans/swarm.tres" id="22_swarm"]
 [ext_resource type="Resource" path="res://director/plans/pincer.tres" id="23_pincer"]
 [ext_resource type="Resource" path="res://director/plans/rising.tres" id="24_rising"]
+[ext_resource type="Resource" path="res://director/plans/horde.tres" id="25_horde"]
+[ext_resource type="Resource" path="res://director/plans/stream.tres" id="26_stream"]
+[ext_resource type="Resource" path="res://director/plans/dense.tres" id="27_dense"]
 
 [resource]
 script = ExtResource("1_script")
@@ -26,7 +29,6 @@ ExtResource("3_goo"): 1.0,
 ExtResource("5_lancer"): 0.35,
 ExtResource("6_quiller"): 0.3,
 ExtResource("7_spiker"): 0.3,
-ExtResource("8_burster"): 0.3,
 ExtResource("9_devourer"): 0.2,
 ExtResource("10_mimic"): 0.0
 })
@@ -36,7 +38,6 @@ ExtResource("3_goo"): 1.0,
 ExtResource("5_lancer"): 0.35,
 ExtResource("6_quiller"): 0.3,
 ExtResource("7_spiker"): 0.3,
-ExtResource("8_burster"): 0.3,
 ExtResource("9_devourer"): 0.0,
 ExtResource("10_mimic"): 0.0
 })
@@ -54,6 +55,9 @@ Plans = Dictionary[ExtResource("20_plan_script"), float]({
 ExtResource("21_classic"): 1.0,
 ExtResource("22_swarm"): 1.0,
 ExtResource("23_pincer"): 1.0,
-ExtResource("24_rising"): 1.0
+ExtResource("24_rising"): 1.0,
+ExtResource("25_horde"): 1.0,
+ExtResource("26_stream"): 1.0,
+ExtResource("27_dense"): 1.0
 })
 MaxAlive = 200

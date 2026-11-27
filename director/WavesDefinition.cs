@@ -25,6 +25,22 @@ public enum WaveArrival
 	Pincer,
 }
 
+/// <summary>How a wave's enemies move as they come in.</summary>
+public enum WaveFormation
+{
+	/// <summary>As their type moves when chasing: for Grey Goo, each straight at its target, from a tight spawn,
+	/// so a group arrives together.</summary>
+	Usual,
+	/// <summary>Held together while chasing, by their type's alignment and cohesion, so a group moves as one
+	/// pack.</summary>
+	Pack,
+	/// <summary>Spawned spread out (LooseSpread) and each coming in from its own angle (up to LooseAngleDegrees off
+	/// the straight line), converging only near the target, so they arrive from many directions at once.</summary>
+	Loose,
+	/// <summary>Each wave Pack or Loose, at random, so a plan's waves vary.</summary>
+	Varied,
+}
+
 /// <summary>What a wave's groups are, by the faction's wave weights and its types' tiers.</summary>
 public enum WaveMakeup
 {
@@ -55,6 +71,10 @@ public partial class WavesDefinition : Resource
 
 	/// <summary>Groups added to each wave after the first.</summary>
 	[Export] public int GroupsAddedPerWave;
+
+	/// <summary>Health and debris of the waves' enemies, as a multiple of their type's: 1 as usual, less for fragile
+	/// enemies that come in large numbers. Their damage is unchanged.</summary>
+	[Export] public float Strength = 1f;
 
 	[ExportGroup("Timing")]
 	[Export] public WaveTiming Timing;
@@ -91,6 +111,16 @@ public partial class WavesDefinition : Resource
 	/// random direction: a front then arrives ahead of it, and a pincer ahead and behind, so running in a straight
 	/// line leads into it. 0 is never.</summary>
 	[Export] public float AheadShare;
+
+	[ExportGroup("Formation")]
+	[Export] public WaveFormation Formation;
+
+	/// <summary>Loose: the radius a loose group spawns across, against 4 usually.</summary>
+	[Export] public float LooseSpread = 14f;
+
+	/// <summary>Loose: the most an enemy's line of approach is turned off the straight line, in degrees, either way.
+	/// It straightens out as the enemy closes in.</summary>
+	[Export] public float LooseAngleDegrees = 40f;
 
 	[ExportGroup("Makeup")]
 	[Export] public WaveMakeup Makeup;

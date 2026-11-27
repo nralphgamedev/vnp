@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://director/curves/numbers.tres" id="3_curve"]
+[ext_resource type="Resource" path="res://director/streams/screw.tres" id="4_streams"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "stream"
+Name = "Stream"
+KillTarget = 300
+StartingGroups = 3
+SpawnInterval = 10.0
+SpawnExtraDistance = 28.0
+AheadShare = 0.5
+Streams = ExtResource("4_streams")
+Curve = ExtResource("3_curve")

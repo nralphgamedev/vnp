@@ -72,6 +72,9 @@ using System.Reflection;
 ///   plan=ID            the Fight Director's plan (director/plans/, any of the faction's), in place of the one
 ///                      picked by its seed
 ///   mute=yes           silence all sound, as batches do whenever they run more than one fight
+///   fast=yes           in a window, run as fast as the computer can draw, with vsync off and no frame cap, instead
+///                      of at normal speed. Every frame is still one fixed step of fight, so the fight is the same as
+///                      at normal speed or headless: for reaching a late moment to watch or screenshot quickly.
 ///   close=yes          in a window, quit when the fight finishes instead of staying open on the final screen.
 ///                      Headless runs, and runs taking a screenshot, always quit when finished.
 ///   log=FOLDER         write a fight log there (res:// or a full path), or log=none for no log. By default,
@@ -110,6 +113,7 @@ public partial class ScenarioRunner : Node
 	private double _maxTime = -1;
 	private string _logName;
 	private bool _mute;
+	private bool _fast;
 	private string _variant;
 	private bool _capped;
 	private float _explainFrom = -1f;
@@ -318,6 +322,13 @@ public partial class ScenarioRunner : Node
 		Fight.NextBrief = new FightBrief { Seed = _seed, PlanId = _planId, AsteroidAmountId = _asteroidAmount };
 		if (_perf != null)
 			StartPerf();
+		else if (_fast)
+		{
+			// Frames as fast as the computer allows. Each is still one fixed step (--fixed-fps), so nothing in the
+			// fight changes, only how soon it gets there.
+			DisplayServer.WindowSetVsyncMode(DisplayServer.VSyncMode.Disabled);
+			Engine.MaxFps = 0;
+		}
 		FightLog.NextFolder = _logFolder == "none" ? ""
 			: _logFolder ?? (_pilotId != null ? "res://playtests/pilot" : "");
 		// A pilot fight logged to playtests/pilot gets a folder of its own, like the designer's fights.
@@ -380,6 +391,7 @@ public partial class ScenarioRunner : Node
 		["strip"] = "comma-separated T, T:S, FROM-TO or FROM-TO:S, in seconds",
 		["logname"] = "a file name without .json",
 		["mute"] = "yes or no",
+		["fast"] = "yes or no",
 		["variant"] = "a tuning variant's name, from tools/variants/NAME.txt, or base",
 		["asteroids"] = "an asteroid amount ID from tuning/asteroid_amounts/",
 		["plan"] = "a plan ID from director/plans/",
@@ -446,6 +458,7 @@ public partial class ScenarioRunner : Node
 						break;
 					case "logname": _logName = value; break;
 					case "mute": _mute = YesNo(value); break;
+					case "fast": _fast = YesNo(value); break;
 					case "variant": _variant = value; break;
 					case "asteroids": _asteroidAmount = value; break;
 					case "plan": _planId = value; break;
@@ -767,7 +780,8 @@ public partial class ScenarioRunner : Node
 			for (int g = 0; g < groups; g++)
 			{
 				Vector2 home = _fight.Vnp.PlanePosition + Vector2.FromAngle(Mathf.Tau * g / groups) * distance;
-				spawnGroup.Invoke(swarm, new object[] { home, type, true });
+				// Every parameter, since reflection doesn't fill in optional ones: full strength, the usual spread, no formation.
+				spawnGroup.Invoke(swarm, new object[] { home, type, true, 1f, 4f, false, 0f, 0 });
 			}
 		}
 		Say($"SCENARIO: seed {_fight.Seed}, pilot {(_fight.Pilot == null ? "none" : $"{_fight.Pilot.Skill.Id}/{_fight.Pilot.Build.Id}")}, weapon {weapon?.Id}, drones {_fight.Drones.Count} ({_fight.Drones.Weapon.Id}), " +

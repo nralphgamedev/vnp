@@ -28,5 +28,10 @@ public partial class InGameCheatSettings : Resource
 	/// amounts in asteroids.tres, or Random to keep the one the fight picked.</summary>
 	[ExportGroup("Asteroid amount")]
 	[Export] public bool ChooseAsteroidAmount;
+
+	/// <summary>Each fight's starting choice menu ends with a page to choose the Fight Director's plan, from the
+	/// default faction's plans, or Random to keep the one the fight picked by its seed.</summary>
+	[ExportGroup("Fight plan")]
+	[Export] public bool ChoosePlan;
 }
 #endif

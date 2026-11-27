@@ -77,6 +77,8 @@ An entry belongs here only if, without it, the AI would do something differently
 
 ## Burster
 
+- **Out of fights for now,** at the designer's request: too aggravating to fight, and too like the Quiller. It is out of Grey Goo's weight lists (`enemies/grey_goo/grey_goo.tres`), so fights don't know the type: it never spawns, and a basic goo's split can't become one. Its files and its tier stay, so it comes back by listing it in both weight lists again. While it is out, the scenario harness can't spawn it either. This changes the spec's six other types to five.
+
 - **Speed:** a little faster than the other types, which since the speed change all move alike.
 - **Tell:** it throbs, faster the more it is hurt (`HurtThrobFactor`).
 - **Bursting:** only a Burster that is killed bursts; one cleared away far behind does not. Breaking a blob costs no one health, since its Burster is gone.
@@ -112,6 +114,8 @@ An entry belongs here only if, without it, the AI would do something differently
 - **Fights follow plans,** at the designer's request: the Fight Director (`docs/dev/FIGHT_DIRECTOR_SPEC.md`) picks one of Grey Goo's plans for each fight by its seed, each with its own waves, difficulty curve and kill target. Why: fights all paced the same way felt repetitive, and late fights left running as the only answer.
   - **What it changes:** phase 1's waves, which are now one plan's (Classic's): the others time, place and make up their waves differently, and some add small unannounced waves between the announced ones. Phase 1's ramp during the fight, which is now each plan's. Phase 1's single kill target, which a plan can raise.
   - **Leaning on numbers:** plans other than Classic have no stat ramps before the time limit, so each enemy stays one drones can beat and pressure comes from how many there are. Why: with the stat ramps, drones were lost at the same rate but couldn't be rebuilt late, since tougher enemies meant fewer kills and less debris; raising drone health didn't help. Escalation past the limit is still stat-based for every plan.
+- **Waves move in varied formations,** at the designer's request: as packs that hold together, loosely from many directions, or varied wave to wave, by each plan's wave pieces (`Formation`; see the Fight Director spec). This changes phase 1's waves, whose groups all arrived as tight clumps; Classic keeps that.
+- **Fragile enemies in numbers:** a plan's groups and each waves piece have a `Strength`, multiplying the health and debris of the enemies they spawn (not their damage); a split's halves keep it. The Horde plan uses it for many fragile goos. A fragile goo is smaller, by area as its health (its size times the square root of its strength), at the designer's choice, so fodder reads as weaker at a glance.
 - **The basic enemy:** its weights are 0, but its files and its entry in Grey Goo's weights (`enemies/grey_goo/grey_goo.tres`) stay. The scenario harness can still spawn it with `spawn=basic_enemy:N`.
 
 ## Pilots
@@ -145,14 +149,19 @@ An entry belongs here only if, without it, the AI would do something differently
   - **Guards:** `Fov` and `Tilt` are clamped, with an error, so the top of the screen stays at least 20 degrees below the horizon. A zoom wide enough to spawn enemies past `DespawnDistance` is reported as an error when the fight starts.
   - **The scene's Camera node:** its own `fov` is overwritten every frame, so only `camera.tres` counts.
 
+- **Late levels keep coming,** at the designer's request: no level needs more than `ExperienceForLevelMax` (`levels.tres`), so levels up to 10 cost what they did and every later one the same. This changes phase 1's experience per level, which grew by the same amount each level without end.
+  - **Why:** the designer found the early curve good but late levelling slow. Their experience came in at a steady rate (about 3,000 to 4,500 a minute), so ever-dearer levels meant gaps growing from a few seconds to over half a minute.
+  - **What it did for pilots:** a level every 6.5 seconds from 3:00 to 5:00 instead of 18, level 22 at 5:00 instead of 17, wins and survival about the same. Variant `no_level_cap` turns it off.
 - **Harvest repair,** at the designer's request: harvesting repairs the VNP, by `RepairPerMass` health per unit of mass harvested by anything (its beam, its drones, Orbital Shards), up to its maximum. There is no other healing.
   - **Why:** a pilot that never harvested survived as long as one that played properly, seven levels behind with almost no drones, because running avoids damage and nothing else heals. Repair makes harvesting how the VNP stays alive.
-  - **The base is 0 for now** (`RepairPerMass` in `vnp.tres`), so only the upgrade repairs. A base of 0.05 was measured: normal play survived to 5:00 in 70 of 80 fights against 60, a pilot that never harvested 63 against 60.
-  - **The upgrade,** Harvest repair (`tuning/upgrades/harvesting/repair.tres`), adds 0.05 per pick, up to 4, filed under Stats like the other harvesting upgrades. A flat amount rather than a percentage, since the base is 0.
-- **Arrivals ahead of the VNP** are built but off: a plan can send a share of its groups, and its front and pincer waves, toward the VNP's heading (`AheadShare`; see the Fight Director spec). Measured on, a pilot that never harvested fell from 60 alive at 5:00 to 32 of 80, but normal play fell too, from 60 to 51, so its value is still to be chosen.
+  - **The base** (`RepairPerMass` in `vnp.tres`) was chosen with arrivals ahead, below, by a tuning pass that compared normal play against a pilot that never harvested. Repair alone barely separated them; with arrivals ahead it lets normal play survive as well as before while running gets clearly worse.
+  - **The upgrade,** Harvest repair (`tuning/upgrades/harvesting/repair.tres`), adds a flat amount per pick, up to 4, filed under Stats like the other harvesting upgrades. Flat rather than a percentage, since the base was 0 when it was added.
+- **Arrivals ahead of the VNP,** at the designer's request: the Swarm, Pincer, Rising and Horde plans send a share of their groups, and their front and pincer waves, toward a moving VNP's heading (`AheadShare`; see the Fight Director spec), so running in a straight line leads into fresh enemies. Classic doesn't, so it keeps the old pacing to compare against.
+  - **Why, and what it did:** together with repair, a pilot that never harvested fell from 65 alive at 5:00 to 46 of 80, while normal play held at 68 against 65. Arrivals ahead without repair cost normal play too (51 of 80), since pilots move nearly all the time.
 
 ## Settled from the spec's open list
 
+- **The Devourer and drones,** decided by the designer: it absorbs drones, draining those that touch it and growing from them, as the spec's default had it.
 - **Drones and growth for every type,** decided by the designer: only the basic goo splits, and drones a Grey Goo type destroys without absorbing them (a Lancer hit, a Quiller spike) add nothing to its growth. A type grows only from drones it absorbs (and the Devourer from what it consumes). This was already the built default.
 
 ## Still open
@@ -160,4 +169,3 @@ An entry belongs here only if, without it, the AI would do something differently
 These are from the spec's Not yet decided list. The built behaviour is the spec's default unless noted.
 
 - **The Burster's tiny blobs:** they are as the spec describes, plus the explosion above.
-- **The Devourer and drones:** it drains and absorbs drones and grows from them, as the spec describes.

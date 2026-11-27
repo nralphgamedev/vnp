@@ -1,7 +1,0 @@
-# Half the groups between waves, and every front or pincer wave, arrive ahead of a moving VNP, on every plan.
-director/plans/classic.tres:AheadShare = 0.5
-director/plans/swarm.tres:AheadShare = 0.5
-director/plans/pincer.tres:AheadShare = 0.5
-director/plans/rising.tres:AheadShare = 0.5
-director/waves/pincer_growing.tres:AheadShare = 1
-director/waves/small_front.tres:AheadShare = 1

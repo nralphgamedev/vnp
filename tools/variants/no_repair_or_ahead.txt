@@ -1,0 +1,7 @@
+# No repair from harvesting and no arrivals ahead of the VNP, as fights were before both: for comparing.
+vnp.RepairPerMass = 0
+director/plans/swarm.tres:AheadShare = 0
+director/plans/pincer.tres:AheadShare = 0
+director/plans/rising.tres:AheadShare = 0
+director/waves/pincer_growing.tres:AheadShare = 0
+director/waves/small_front.tres:AheadShare = 0

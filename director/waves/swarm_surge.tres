@@ -14,3 +14,4 @@ WavesPerSurge = 3
 SecondsWithinSurge = 6.0
 Arrival = 0
 Makeup = 2
+Formation = 1

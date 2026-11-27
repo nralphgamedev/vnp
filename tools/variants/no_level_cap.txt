@@ -1,0 +1,2 @@
+# No cap on the experience a level needs, as before: each level needs 75 more than the last.
+levels.ExperienceForLevelMax = 0

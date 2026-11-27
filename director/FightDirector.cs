@@ -43,15 +43,30 @@ public sealed class FightDirector
 	private const int PlanStream = 5;
 	private const int LargeWaveStream = 6;
 	private const int SmallWaveStream = 7;
+	private const int StreamsStream = 8;
 
-	private readonly WaveStream _large;
-	private readonly WaveStream _small;
+	// The most streams at once.
+	private const int MaxStreams = 8;
+
+	private readonly int _seed;
+	private WaveStream _large;
+	private WaveStream _small;
 	private float _spawnTimer;
+	private float _refillTimer;
 	private bool _startingGroupsSpawned;
+
+	// Streams of single enemies (StreamsDefinition): how many there are, where the first comes from, how far the
+	// spawn points have turned, each stream's time to its next enemy, and the next time a stream is added.
+	private int _streamCount;
+	private float _streamAngle;
+	private float _streamTurn;
+	private readonly float[] _streamTimers = new float[MaxStreams];
+	private int _nextStreamAdd;
 
 	public FightDirector(FightBrief brief, int seed)
 	{
 		Brief = brief;
+		_seed = seed;
 		FactionDefinition faction = brief.Faction ?? Tuning.FightDirector?.DefaultFaction;
 		if (faction == null)
 			GD.PushError("No faction to fight. Set DefaultFaction in res://director/fight_director.tres.");
@@ -61,19 +76,38 @@ public sealed class FightDirector
 			Definition = PickPlan(faction, brief.PlanId, seed),
 			AsteroidAmount = PickAsteroidAmount(seed, brief.AsteroidAmountId),
 		};
+		StartPlan();
+	}
+
+	/// <summary>Sets up the plan's wave streams and spawn timer, before the fight's first frame.</summary>
+	private void StartPlan()
+	{
 		FightPlanDefinition plan = Plan.Definition;
+		_large = _small = null;
+		_streamCount = 0;
+		_streamTurn = 0f;
+		_nextStreamAdd = 0;
 		if (plan == null)
 			return;
+		_streamAngle = (float)Stream(_seed, StreamsStream).NextDouble() * Mathf.Tau;
 		if (plan.LargeWaves != null)
-			_large = new WaveStream(plan.LargeWaves, Stream(seed, LargeWaveStream));
-		else
-			GD.PushError($"Plan {plan.Id} has no LargeWaves.");
+			_large = new WaveStream(plan.LargeWaves, Stream(_seed, LargeWaveStream));
 		if (plan.SmallWaves != null)
-			_small = new WaveStream(plan.SmallWaves, Stream(seed, SmallWaveStream));
+			_small = new WaveStream(plan.SmallWaves, Stream(_seed, SmallWaveStream));
 		if (plan.Curve == null)
 			GD.PushError($"Plan {plan.Id} has no Curve, so the fight doesn't grow harder before the time limit.");
 		_spawnTimer = plan.SpawnInterval;
 	}
+
+#if TOOLS
+	/// <summary>Playtest cheat, editor only: follows this plan instead of the one picked, as the fight starts,
+	/// before anything has spawned. Through Fight.ChoosePlan, which also changes the difficulty curve.</summary>
+	public void ChoosePlan(FightPlanDefinition plan)
+	{
+		Plan.Definition = plan;
+		StartPlan();
+	}
+#endif
 
 	/// <summary>Called by the swarm each frame, where it used to spawn, before enemies move.</summary>
 	public void Update(Fight fight, EnemySwarm swarm, float dt, Vector2 vnpPosition)
@@ -86,13 +120,28 @@ public sealed class FightDirector
 		{
 			_startingGroupsSpawned = true;
 			for (int i = 0; i < plan.StartingGroups; i++)
-				swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: false, Vector2.Zero, 0f);
+				swarm.SpawnScattered(vnpPosition, FieldExtraDistance(plan), respectMaxAlive: false, Vector2.Zero, 0f,
+					plan.GroupStrength);
+		}
+
+		// Keep the field dense: a group at a time while the population is below what the plan keeps alive.
+		if (plan.KeepAlive > 0)
+		{
+			_refillTimer -= dt;
+			if (_refillTimer <= 0f && swarm.Count < plan.KeepAlive + plan.KeepAlivePerMinute * fight.Minutes)
+			{
+				_refillTimer = Mathf.Max(0.05f, plan.RefillSeconds);
+				swarm.SpawnScattered(vnpPosition, FieldExtraDistance(plan), respectMaxAlive: true, Vector2.Zero, 0f,
+					plan.GroupStrength);
+			}
 		}
 
 		if (_large != null && fight.Elapsed >= _large.NextTime)
 			SendWave(fight, swarm, vnpPosition, _large, announced: true);
 		if (_small != null && fight.Elapsed >= _small.NextTime)
 			SendWave(fight, swarm, vnpPosition, _small, announced: false);
+		if (plan.Streams != null && fight.Elapsed >= plan.Streams.FirstSeconds)
+			UpdateStreams(fight, swarm, dt, vnpPosition, plan.Streams);
 
 		_spawnTimer -= dt;
 		if (_spawnTimer > 0f)
@@ -104,8 +153,13 @@ public sealed class FightDirector
 		Vector2 ahead = plan.AheadShare > 0f && Heading(fight) is Vector2 heading && Rng.Value() < plan.AheadShare
 			? heading : Vector2.Zero;
 		swarm.SpawnScattered(vnpPosition, plan.SpawnExtraDistance, respectMaxAlive: true, ahead,
-			Mathf.DegToRad(plan.AheadSpreadDegrees));
+			Mathf.DegToRad(plan.AheadSpreadDegrees), plan.GroupStrength);
 	}
+
+	/// <summary>How far beyond the margin starting and refill groups go: the plan's field distance, or its usual
+	/// extra distance.</summary>
+	private static float FieldExtraDistance(FightPlanDefinition plan) =>
+		plan.FieldExtraDistance > 0f ? plan.FieldExtraDistance : plan.SpawnExtraDistance;
 
 	/// <summary>The way the VNP is heading, or null while it is nearly still (below a third of its starting top
 	/// speed), when there is no ahead.</summary>
@@ -114,6 +168,48 @@ public sealed class FightDirector
 		Vector2 velocity = fight.Vnp.Velocity;
 		float slowest = Tuning.Vnp.MoveSpeed / 3f;
 		return velocity.LengthSquared() > slowest * slowest ? velocity.Normalized() : null;
+	}
+
+	/// <summary>
+	/// Streams of single enemies: one at first, more added at their times and spread evenly round the VNP, each
+	/// spawning an enemy every gap, all turning round it together, faster from RotateFromSeconds.
+	/// </summary>
+	private void UpdateStreams(Fight fight, EnemySwarm swarm, float dt, Vector2 vnpPosition, StreamsDefinition streams)
+	{
+		if (_streamCount == 0)
+		{
+			_streamCount = 1;
+			_streamTimers[0] = 0f;
+		}
+		float gap = Mathf.Max(streams.MinIntervalSeconds, streams.IntervalSeconds / (1f + streams.RatePerMinute * fight.Minutes))
+			* (1f + streams.IntervalPerExtraStream * (_streamCount - 1));
+		while (_nextStreamAdd < streams.AddStreamSeconds.Count && fight.Elapsed >= streams.AddStreamSeconds[_nextStreamAdd])
+		{
+			_nextStreamAdd++;
+			if (_streamCount >= MaxStreams)
+				continue;
+			// The new stream's first enemy comes half a gap later, so the streams take turns.
+			_streamTimers[_streamCount] = gap * 0.5f;
+			_streamCount++;
+		}
+		// Turning all the while, faster from RotateFromSeconds.
+		bool faster = streams.RotateFromSeconds > 0f && fight.Elapsed >= streams.RotateFromSeconds;
+		_streamTurn += Mathf.DegToRad(faster ? streams.RotationDegreesPerSecond : streams.StartRotationDegreesPerSecond) * dt;
+
+		float hardShare = Mathf.Clamp(streams.HardShareStart + streams.HardSharePerMinute * fight.Minutes, 0f, streams.HardShareMax);
+		float jitter = Mathf.DegToRad(streams.JitterDegrees);
+		for (int s = 0; s < _streamCount; s++)
+		{
+			_streamTimers[s] -= dt;
+			if (_streamTimers[s] > 0f)
+				continue;
+			_streamTimers[s] += gap;
+			int type = swarm.PickWaveType(streams.Makeup, hardShare);
+			if (type < 0)
+				return;
+			float angle = _streamAngle + _streamTurn + Mathf.Tau * s / _streamCount + Rng.Range(-jitter, jitter);
+			swarm.SpawnStreamEnemy(vnpPosition, Vector2.FromAngle(angle), type, streams.Strength);
+		}
 	}
 
 	/// <summary>A wave: an announced one shakes the screen; the HUD and the sounds warn of it from the director's
@@ -130,7 +226,7 @@ public sealed class FightDirector
 #endif
 		if (announced)
 			fight.Camera.Shake(Tuning.Feedback.ShakeOnWave);
-		PlaceWave(fight, swarm, vnpPosition, stream.Definition, groups);
+		PlaceWave(fight, swarm, vnpPosition, stream, groups);
 	}
 
 	/// <summary>
@@ -138,8 +234,9 @@ public sealed class FightDirector
 	/// The direction is drawn from the fight's random numbers, then each group's type in turn, as the ring wave
 	/// always did, so classic fights are unchanged.
 	/// </summary>
-	private static void PlaceWave(Fight fight, EnemySwarm swarm, Vector2 vnpPosition, WavesDefinition waves, int groups)
+	private static void PlaceWave(Fight fight, EnemySwarm swarm, Vector2 vnpPosition, WaveStream stream, int groups)
 	{
+		WavesDefinition waves = stream.Definition;
 		float hardShare = Mathf.Clamp(waves.HardShareStart + waves.HardSharePerMinute * fight.Minutes, 0f, waves.HardShareMax);
 		float spread = Mathf.DegToRad(waves.SpreadDegrees);
 		float startAngle = Rng.Range(0f, Mathf.Tau);
@@ -147,6 +244,11 @@ public sealed class FightDirector
 		if (waves.Arrival != WaveArrival.Ring && waves.AheadShare > 0f && Heading(fight) is Vector2 heading
 			&& Rng.Value() < waves.AheadShare)
 			startAngle = heading.Angle();
+
+		// The formation, for every group of this wave. No number is drawn for the usual one.
+		WaveFormation formation = waves.Formation == WaveFormation.Varied
+			? (Rng.Value() < 0.5f ? WaveFormation.Pack : WaveFormation.Loose)
+			: waves.Formation;
 		for (int g = 0; g < groups; g++)
 		{
 			int type = swarm.PickWaveType(waves.Makeup, hardShare);
@@ -159,7 +261,8 @@ public sealed class FightDirector
 				WaveArrival.Pincer => startAngle + (g % 2) * Mathf.Pi + Fan(g / 2, (groups + 1 - g % 2) / 2, spread),
 				_ => startAngle + Mathf.Tau * g / groups,
 			};
-			swarm.SpawnWaveGroup(vnpPosition, Vector2.FromAngle(angle), type);
+			swarm.SpawnWaveGroup(vnpPosition, Vector2.FromAngle(angle), type, waves.Strength, formation,
+				waves.LooseSpread, Mathf.DegToRad(waves.LooseAngleDegrees));
 		}
 	}
 

@@ -74,7 +74,15 @@ public partial class Fight : Node3D
 	public float ExperienceIntoLevel => (float)(Experience - _levelStartExperience);
 
 	/// <summary>Fight experience the current level needs before the next level up.</summary>
-	public float ExperienceForNextLevel => Tuning.Levels.ExperienceForFirstLevel + Tuning.Levels.ExperienceIncreasePerLevel * (Level - 1);
+	public float ExperienceForNextLevel
+	{
+		get
+		{
+			float needed = Tuning.Levels.ExperienceForFirstLevel + Tuning.Levels.ExperienceIncreasePerLevel * (Level - 1);
+			// Late levels keep a steady pace: none needs more than the cap.
+			return Tuning.Levels.ExperienceForLevelMax > 0f ? Mathf.Min(needed, Tuning.Levels.ExperienceForLevelMax) : needed;
+		}
+	}
 
 	/// <summary>Rerolls left for the rest of the fight.</summary>
 	public int Rerolls = Tuning.Levels.FreeRerolls;
@@ -193,6 +201,18 @@ public partial class Fight : Node3D
 
 	/// <summary>Whether the asteroid amount was chosen with the playtest cheat rather than picked.</summary>
 	public bool AsteroidAmountChosen { get; private set; }
+
+	/// <summary>Playtest cheat, editor only: follows this plan instead of the one the fight picked, as the fight
+	/// starts, before anything has spawned. Whether it was chosen this way is recorded in the fight log.</summary>
+	public void ChoosePlan(FightPlanDefinition plan)
+	{
+		Director.ChoosePlan(plan);
+		_curve = plan.Curve ?? new DifficultyCurveDefinition();
+		PlanChosen = true;
+	}
+
+	/// <summary>Whether the plan was chosen with the playtest cheat rather than picked.</summary>
+	public bool PlanChosen { get; private set; }
 #endif
 
 	public override void _Ready()

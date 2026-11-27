@@ -17,3 +17,4 @@ Makeup = 1
 HardShareStart = 0.05
 HardSharePerMinute = 0.12
 HardShareMax = 0.7
+Formation = 3

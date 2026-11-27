@@ -33,6 +33,11 @@ public partial class EnemySwarm : Node3D
 		public float Scale;             // Size of its model.
 		public float Damage;            // Damage of its attack, at the strength it spawned with.
 		public float SpeedScale;        // Its speed as a multiple of its type's, from escalation when it spawned.
+		public float Strength;          // Its health and debris as a multiple of its type's, from its plan or wave: 1, or
+		                                // less for fragile horde enemies. A split's halves keep it.
+		public bool Pack;               // Its wave's formation holds it to its group while chasing (WaveFormation.Pack).
+		public float ApproachAngle;     // Radians its line of approach is turned off straight, fading as it closes in
+		                                // (WaveFormation.Loose); 0 for straight.
 		public float Drain;             // Health per second it drains from a drone touching it (Grey Goo that absorbs drones).
 		public float FireTimer;         // Seconds until it can attack again.
 		public float OrbitSign;         // 1 or -1: which way it circles or turns.
@@ -421,7 +426,7 @@ public partial class EnemySwarm : Node3D
 			Fight.Stats.EnemyKilled(Fight.Elapsed, type.Definition.Id);
 			// It bursts apart, and its debris appears a moment later.
 			type.Died(enemy);
-			AddPendingDebris(enemy.Position, type.DebrisMass(enemy));
+			AddPendingDebris(enemy.Position, type.DebrisMass(enemy) * enemy.Strength);
 			// The enemy itself is cleared away at the start of the next update.
 		}
 	}
@@ -471,6 +476,10 @@ public partial class EnemySwarm : Node3D
 			_pendingDebris[i] = _pendingDebris[--_pendingDebrisCount];
 		}
 	}
+
+	// A loose wave's enemy flies straight once this near its target, and fully at its angle from this much farther.
+	private const float LooseStraightDistance = 12f;
+	private const float LooseFadeDistance = 30f;
 
 	/// <summary>Which of the faction's tiers a pick draws from.</summary>
 	private enum TierFilter { Any, Easiest, Harder }
@@ -548,20 +557,40 @@ public partial class EnemySwarm : Node3D
 
 	/// <summary>
 	/// Spawns one group of a wave for the Fight Director, of this type, just off screen from the VNP in this
-	/// direction, hunting it. Waves ignore the MaxAlive limit.
+	/// direction, hunting it. Waves ignore the MaxAlive limit. <paramref name="strength"/> multiplies its health and
+	/// debris.
 	/// </summary>
-	public void SpawnWaveGroup(Vector2 vnpPosition, Vector2 direction, int type)
+	public void SpawnWaveGroup(Vector2 vnpPosition, Vector2 direction, int type, float strength,
+		WaveFormation formation = WaveFormation.Usual, float looseSpread = 0f, float looseAngle = 0f)
 	{
-		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
-		SpawnGroupAt(home, type, hunting: true);
+		bool loose = formation == WaveFormation.Loose;
+		// A loose group spawns farther out by its spread, so all of it is still off screen.
+		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, loose ? looseSpread : 0f);
+		SpawnGroupAt(home, type, hunting: true, strength, loose ? looseSpread : SpawnSpread,
+			formation == WaveFormation.Pack, loose ? looseAngle : 0f);
+	}
+
+	// How far from its home a group's enemies spawn, usually.
+	private const float SpawnSpread = 4f;
+
+	/// <summary>
+	/// Spawns a single enemy of a stream for the Fight Director, of this type, just off screen from the VNP in this
+	/// direction, hunting it. Streams ignore the MaxAlive limit, as waves do. <paramref name="strength"/> multiplies
+	/// its health and debris.
+	/// </summary>
+	public void SpawnStreamEnemy(Vector2 vnpPosition, Vector2 direction, int type, float strength)
+	{
+		Vector2 at = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, 0f);
+		SpawnGroupAt(at, type, hunting: true, strength, spread: 0f, count: 1);
 	}
 
 	/// <summary>Spawns one group for the Fight Director, of a type picked by the group weights, at a random spot
 	/// off screen around the VNP, up to <paramref name="extraDistance"/> beyond the margin. That spot is the group's
 	/// home. With <paramref name="respectMaxAlive"/>, it spawns nothing while the swarm is at MaxAlive. Given an
 	/// <paramref name="ahead"/> direction, the spot is within <paramref name="aheadSpread"/> radians of it, across,
-	/// rather than in any direction.</summary>
-	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive, Vector2 ahead, float aheadSpread)
+	/// rather than in any direction. <paramref name="strength"/> multiplies its health and debris.</summary>
+	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive, Vector2 ahead, float aheadSpread,
+		float strength)
 	{
 		int type = PickType(_faction.GroupWeights);
 		if (type < 0)
@@ -570,7 +599,7 @@ public partial class EnemySwarm : Node3D
 			return;
 		Vector2 direction = ahead == Vector2.Zero ? Rng.Direction() : ahead.Rotated(Rng.Range(-0.5f, 0.5f) * aheadSpread);
 		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, extraDistance));
-		SpawnGroupAt(home, type, hunting: false);
+		SpawnGroupAt(home, type, hunting: false, strength);
 	}
 
 	/// <summary>How far from the VNP a group must spawn in a direction to be out of sight:
@@ -580,17 +609,20 @@ public partial class EnemySwarm : Node3D
 		return Fight.Camera.DistanceOutOfView(vnpPosition, direction, Tuning.EnemySpawning.SpawnMargin) + extra;
 	}
 
-	private void SpawnGroupAt(Vector2 home, int type, bool hunting)
+	private void SpawnGroupAt(Vector2 home, int type, bool hunting, float strength = 1f, float spread = SpawnSpread,
+		bool pack = false, float approachAngle = 0f, int count = 0)
 	{
 		EnemyBehavior behavior = _types[type];
-		for (int i = 0; i < behavior.Definition.GroupSize; i++)
+		// The type's group size, unless a count is given, such as one for a stream.
+		int size = count > 0 ? count : behavior.Definition.GroupSize;
+		for (int i = 0; i < size; i++)
 		{
 			Vector2 direction = Rng.Direction();
 			var enemy = new Enemy
 			{
 				Id = ++_lastId,
 				Type = type,
-				Position = home + Rng.InsideCircle(4f),
+				Position = home + Rng.InsideCircle(spread),
 				Home = home,
 				WanderDirection = direction,
 				WanderTimer = Rng.Range(1.5f, 4f),
@@ -600,8 +632,18 @@ public partial class EnemySwarm : Node3D
 				Aggro = hunting,
 				Hunting = hunting,
 				SpeedScale = Fight?.EnemySpeedScale ?? 1f,
+				Strength = strength,
+				Pack = pack,
 			};
+			// Each loose enemy comes in from its own angle. No number is drawn otherwise.
+			if (approachAngle > 0f)
+				enemy.ApproachAngle = Rng.Range(-approachAngle, approachAngle);
 			behavior.Spawned(ref enemy);
+			if (strength != 1f)
+			{
+				enemy.Health *= strength;
+				enemy.BaseHealth *= strength;
+			}
 			Append(enemy);
 		}
 	}
@@ -638,6 +680,7 @@ public partial class EnemySwarm : Node3D
 			OrbitSign = Rng.Sign(),
 			Aggro = true,
 			SpeedScale = Fight?.EnemySpeedScale ?? 1f,
+			Strength = 1f,
 		};
 		_types[type].Spawned(ref enemy);
 		return enemy;
@@ -814,7 +857,10 @@ public partial class EnemySwarm : Node3D
 			if (aggro)
 			{
 				speed = type.Speed * enemy.SpeedScale;
-				goal = behavior.Chase(ref enemy, trackDirection, distance);
+				// A loose wave's enemy comes in from its own angle, straightening out as it closes in.
+				Vector2 approach = enemy.ApproachAngle == 0f ? trackDirection
+					: trackDirection.Rotated(enemy.ApproachAngle * Mathf.Clamp((distance - LooseStraightDistance) / LooseFadeDistance, 0f, 1f));
+				goal = behavior.Chase(ref enemy, approach, distance);
 			}
 			else if (behavior.Roam(ref enemy, dt) is Vector2 roam)
 			{
@@ -845,7 +891,7 @@ public partial class EnemySwarm : Node3D
 					goal -= fromHome / homeDistance * homePull;
 			}
 
-			Vector2 steer = goal + Flocking(i, type, speed, aggro ? type.ChaseFlocking : 1f);
+			Vector2 steer = goal + Flocking(i, type, speed, aggro ? (enemy.Pack ? 1f : type.ChaseFlocking) : 1f);
 			Vector2 wantedVelocity = steer.LimitLength(1f) * speed;
 			enemy.Velocity = enemy.Velocity.MoveToward(wantedVelocity, type.Acceleration * dt);
 			enemy.Position += enemy.Velocity * dt;
