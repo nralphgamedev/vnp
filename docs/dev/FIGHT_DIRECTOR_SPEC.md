@@ -22,7 +22,10 @@ This spec adds a **Fight Director**. It gives each fight its own character and p
 
 - **Fight brief:** what a fight is asked to be: its faction, its difficulty and its seed. The game sets it for now. Later the galactic map sets it, from the sector being fought over.
 - **Fight plan:** the pieces picked for one fight at its start, from the brief alone.
-- **Piece:** one choice in a plan: how enemies arrive, when waves come, what a wave is made of, how a wave behaves, or a knob.
+- **Piece:** one choice in a plan: how enemies arrive, when waves come, what a wave is made of, how a wave behaves, how the fight grows harder, or a knob.
+- **Large wave:** an announced wave, with its warning, sound, banner and screen shake, as every wave is today.
+- **Small wave:** an unannounced wave of a few groups, with no warning, banner or shake, coming more often than large waves.
+- **Difficulty curve:** how a fight grows harder before the time limit: by stats (enemies' health, damage, speed and accuracy) and by numbers (how often groups spawn, how large groups and waves are, and small waves).
 - **Knob:** a named multiplier that the plan carries for one fight, such as enemy speed or spawn rate. It does not change the tuning files.
 - **Pacing:** the live part of the director, which raises and lowers pressure during the fight.
 - **Intensity:** the director's measure of how hard-pressed the player is right now.
@@ -64,17 +67,32 @@ These are starting ideas for the designer to cut, change or add to. Each kind ha
 
 ### When waves come
 
-- **Steady:** a fixed interval (today).
+Added at the designer's request: a plan can have two kinds of wave. **Large waves** are the announced ones, spaced further apart in plans that also have small waves. **Small waves** are unannounced and more frequent, giving steady pressure between the large waves without the player bracing for each one. Each plan sets the timing of both: when the first of each comes, the gaps between them and how they grow, and whether it has small waves at all. The classic plan keeps today's timing and has none.
+
+Timings for either kind:
+
+- **Steady:** a fixed interval (today's large waves).
 - **Speeding up:** the gaps shorten through the fight.
 - **Irregular:** random gaps around an average, so the next wave can't be timed.
 - **Surge and lull:** a burst of waves close together, then a quiet stretch.
+
+Small waves, as first built (easy to change):
+
+- **From one or two directions,** not a full ring, so they read as a push from somewhere rather than a smaller large wave.
+- **Hunting at once,** like large waves.
+- **Not numbered:** the "WAVE n" banner counts large waves only.
+- **Recorded:** in fight logs, and on the run review's maps in a colour of their own.
+- **Fair to pilots:** pilots see them only once on screen, as a player does.
 
 ### What a wave is made of
 
 - **Mixed:** each group's type drawn by weight (today).
 - **Themed:** a whole wave of one type.
 - **Escort:** a core enemy, such as a Devourer, with guards around it.
-- **Growing:** the mix gains tougher types as the fight goes on.
+- **Growing:** the mix gains tougher types as the fight goes on. The designer's idea: early waves are mostly easier types, and as the fight goes on a few harder ones are peppered in, rather than every wave drawing from the same mix.
+- **Swarm:** many of the easiest type, coming in rapid succession, so the pressure is sheer numbers rather than any one dangerous enemy. This pairs with a surge in wave timing.
+
+**Easier and harder types:** growing and swarm waves need to know which types are easy. Each faction would rank its types, such as a tier for each in its file (for Grey Goo, the basic goo easiest), so a wave can draw "mostly easy, a few hard" without naming types, and a new type only needs its tier.
 
 ### How a wave behaves
 
@@ -83,10 +101,23 @@ These are starting ideas for the designer to cut, change or add to. Each kind ha
 - **Circle and close:** groups ring the VNP and tighten.
 - **Sweep through:** groups pass through and carry on, rather than staying to hunt.
 
+### How the fight grows harder
+
+Added at the designer's request, after raising drones' health didn't stop them dying too much. Each plan owns its difficulty curve before the time limit, rather than every fight sharing `tuning/difficulty.tres`:
+
+- **By stats:** how much health, damage, speed and accuracy enemies gain each minute.
+- **By numbers:** how much faster groups spawn each minute, how much larger groups and waves grow, and small waves.
+
+**Why numbers, mostly:** with today's ramps, a Grey Goo spawned at 5:00 has twice the health and half again the damage, and its drain on drones grows with its damage. A drone fight that is fair at 1:00 is lopsided by 4:00, whatever the drones' health. Growing by numbers keeps each enemy one drones can beat, so the pressure comes from how many there are, which reads better in a swarm game. New plans lean on numbers; plans can still differ, one swelling in numbers while another sends fewer, tougher enemies.
+
+- **The classic plan keeps today's ramps,** so fights on it don't change.
+- **Escalation past the time limit stays shared** and stat-based, in `difficulty.tres`, so the limit keeps its meaning: retreat, die, or narrowly succeed.
+- **The brief's difficulty scales the plan's curve,** once the galactic map sets it.
+
 ### Knobs
 
-- enemy speed curve
-- spawn rate
+- enemy speed curve (part of the difficulty curve, above)
+- spawn rate (likewise)
 - group size
 - aggro range
 - asteroid amount
@@ -160,6 +191,10 @@ The prototype now does the following; any of it can still change.
 
 - **Whole plans or pieces:** whether a plan stays one file holding all of its choices, picked whole, or is put together from pieces of each kind picked separately. Whole plans are easier to tell apart while playing and to show on the galactic map; pieces give more variety from fewer files. Stage 1 made plans whole files; to be settled in stage 3.
 - Which pieces to build first.
+- **How far to lean on numbers:** measured before stage 3 (see Settled during the build), and tuned by playing.
+- **Small waves' size and frequency,** and whether some plans have only small waves.
+- **The kill target and numbers:** a plan that grows by numbers brings the kill target sooner. In the first comparison, waves and spawning that grew faster won at a median 3:06 to 3:15 against 3:58. So more pressure also meant an earlier win. Options: the kill target belongs to the plan, or scales with how many enemies the plan sends, or counts something other than kills.
+- **How types are ranked from easy to hard** for growing and swarm waves: a tier in the faction's file for each type, or worked out from each type's stats.
 - How strong easing off should be, and whether hunters giving up feels fair or strange.
 - Whether pilots need to estimate the next wave, once wave timing varies.
 - Announcing a fight's character to the player. It stays hidden for now, at the designer's choice, until the galactic map can show it.
@@ -169,7 +204,9 @@ The prototype now does the following; any of it can still change.
 
 1. **The brief and the plan,** with the classic plan only. No fight changes, checked against traces. Plans are recorded in fight logs.
 2. **Grey Goo as a faction:** a `FactionDefinition` holding the weights from `enemy_spawning.tres`. Still no fight changes.
-3. **A few pieces of each kind,** picked at fight start by the faction's weights, with the harness options, `--plans` and reports by piece. The designer plays them and cuts or tunes them.
+3. **A few pieces of each kind,** picked at fight start by the faction's weights, with the harness options, `--plans` and reports by piece. The designer plays them and cuts or tunes them. They include:
+   - the difficulty curve moving into the plan, with the classic plan keeping today's ramps;
+   - small, unannounced waves beside the large ones, with each plan's timing for both.
 4. **Live pacing.**
 5. **Hooks for the galactic map,** when the map is built: the brief set from outside a fight.
 

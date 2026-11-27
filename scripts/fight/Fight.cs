@@ -223,6 +223,7 @@ public partial class Fight : Node3D
 
 		Camera.Target = Vnp;
 		Camera.SnapToTarget();
+		ReportSpawnsBeyondDespawn();
 		GetNode<GroundGrid>("Ground").Camera = Camera;
 
 		var indicator = GetNode<GatewayIndicator>("Hud/GatewayIndicator");
@@ -472,6 +473,21 @@ public partial class Fight : Node3D
 			$"camera: {cameraMode} (F1)";
 	}
 #endif
+
+	/// <summary>
+	/// Enemies spawn past the screen's edge, and are removed beyond DespawnDistance. A zoom so wide that the first
+	/// is past the second would remove enemies as they spawned, so the fight would seem empty until the VNP came
+	/// near where they were meant to be. Reported once, as the fight starts.
+	/// </summary>
+	private void ReportSpawnsBeyondDespawn()
+	{
+		float farthest = Camera.FarthestOnScreen(PlaneMath.ToPlane(Camera.Focus)) + Tuning.EnemySpawning.SpawnMargin
+			+ (Director.Plan.Definition?.SpawnExtraDistance ?? 0f);
+		if (farthest > Tuning.EnemySpawning.DespawnDistance)
+			GD.PushError($"Enemies can spawn up to {farthest:0} units from the VNP, past DespawnDistance "
+				+ $"({Tuning.EnemySpawning.DespawnDistance:0}, in enemy_spawning.tres), so some are removed as they spawn. "
+				+ "Lower ViewHeight in camera.tres, or raise DespawnDistance.");
+	}
 
 	private void OnVnpDestroyed() => End(Outcome.Loss);
 

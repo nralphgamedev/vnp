@@ -1,0 +1,6 @@
+# Difficulty from numbers rather than stats: no Grey Goo health or damage ramp, groups spawning faster through the
+# fight (0.75 more a minute instead of 0.25), and each wave two groups larger than the last instead of one.
+difficulty.RampGreyGooHealthPerMinute = 0
+difficulty.RampGreyGooDamagePerMinute = 0
+difficulty.RampSpawnRatePerMinute = 0.75
+director/plans/classic.tres:WaveGroupsAddedPerWave = 2

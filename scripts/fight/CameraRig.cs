@@ -4,6 +4,10 @@ using System;
 /// <summary>
 /// Follows a target from high above the plane. Reads its settings from Tuning every frame,
 /// so switching between perspective and orthographic takes effect straight away.
+///
+/// It works out its own height, from how much of the arena the screen shows (ViewHeight) and its lens (Fov), so
+/// the lens never zooms. The Camera node's own fov in the fight scene is overwritten every frame and does
+/// nothing: set the lens in res://tuning/camera.tres.
 /// </summary>
 public partial class CameraRig : Camera3D
 {
@@ -22,11 +26,43 @@ public partial class CameraRig : Camera3D
 	private readonly Vector2[] _steadyCorners = new Vector2[4];
 	private bool _cornersReady;
 
+	// The top of the screen looks at most this far from straight down, so it stays well below the horizon, where
+	// the screen's edge still lands on the plane and "just off screen" exists.
+	private const float MaxTopAngle = 70f;
+	private const float MaxTilt = 60f;
+
 	public override void _Ready()
 	{
 		// Run after the VNP has moved this frame, so the camera never trails a frame behind.
 		ProcessPriority = UpdateOrder.Camera;
 		Current = true;
+		ReportUnsafeSettings();
+	}
+
+	/// <summary>The tilt in use, in degrees: the tuning's, kept between 0 and MaxTilt.</summary>
+	private static float SafeTilt => Mathf.Clamp(Tuning.Camera.Tilt, 0f, MaxTilt);
+
+	/// <summary>The lens in use, in degrees: the tuning's, kept between 1 and the widest that keeps the top of
+	/// the screen MaxTopAngle from straight down.</summary>
+	private static float SafeFov => Mathf.Clamp(Tuning.Camera.Fov, 1f, 2f * (MaxTopAngle - SafeTilt));
+
+	/// <summary>How far the camera is from the point it looks at, for its lens to show ViewHeight there.</summary>
+	private static float ViewDistance => Tuning.Camera.ViewHeight * 0.5f / Mathf.Tan(Mathf.DegToRad(SafeFov) * 0.5f);
+
+	/// <summary>How high above the plane the camera sits, worked out from the zoom, the lens and the tilt.</summary>
+	public static float Height => ViewDistance * Mathf.Cos(Mathf.DegToRad(SafeTilt));
+
+	/// <summary>Reports, once, settings the camera can't use as they are. Printing is slow, so never per frame.</summary>
+	private static void ReportUnsafeSettings()
+	{
+		CameraTuning camera = Tuning.Camera;
+		if (camera.ViewHeight <= 0f)
+			GD.PushError($"camera.tres: ViewHeight {camera.ViewHeight} must be above 0.");
+		if (camera.Tilt != SafeTilt)
+			GD.PushError($"camera.tres: Tilt {camera.Tilt} is outside 0 to {MaxTilt}; using {SafeTilt}.");
+		if (camera.Fov != SafeFov)
+			GD.PushError($"camera.tres: Fov {camera.Fov} is outside 1 to {2f * (MaxTopAngle - SafeTilt)} at a tilt of "
+				+ $"{SafeTilt}, past which the top of the screen nears the horizon; using {SafeFov}.");
 	}
 
 	/// <summary>
@@ -68,30 +104,29 @@ public partial class CameraRig : Camera3D
 
 	private void Apply()
 	{
-		float tilt = Mathf.DegToRad(Tuning.Camera.Tilt);
-		float height = Tuning.Camera.Height;
-		float distance = height / Mathf.Cos(tilt);
+		float tilt = Mathf.DegToRad(SafeTilt);
+		float distance = ViewDistance;
+		float height = Height;
 
 		// Sit above the focus and slightly toward the bottom of the screen, looking back at it.
 		// Pitching by -(90 - tilt) keeps the top of the screen pointing along -Z.
 		Vector3 steady = Focus + new Vector3(0f, height, height * Mathf.Tan(tilt));
 		GlobalPosition = steady;
-		RotationDegrees = new Vector3(-(90f - Tuning.Camera.Tilt), 0f, 0f);
+		RotationDegrees = new Vector3(-(90f - SafeTilt), 0f, 0f);
 
 		Near = 1f;
 		Far = distance * 4f;
 
 		if (Tuning.Camera.Orthographic)
 		{
-			// Match the height the perspective camera shows at the focus,
-			// so switching projection keeps the same framing.
+			// The same height as the perspective camera shows at the focus, so switching projection keeps the framing.
 			Projection = ProjectionType.Orthogonal;
-			Size = 2f * distance * Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f);
+			Size = Tuning.Camera.ViewHeight;
 		}
 		else
 		{
 			Projection = ProjectionType.Perspective;
-			Fov = Tuning.Camera.Fov;
+			Fov = SafeFov;
 		}
 
 		// Measure the screen from the steady camera, then add the shake, which only changes what is drawn.
@@ -109,15 +144,14 @@ public partial class CameraRig : Camera3D
 	private void MeasureSteadyCorners()
 	{
 		float aspect = ReferenceAspect();
-		float tilt = Mathf.DegToRad(Tuning.Camera.Tilt);
-		float height = Tuning.Camera.Height;
+		float tilt = Mathf.DegToRad(SafeTilt);
+		float height = Height;
 		var position = new Vector3(Focus.X, height, Focus.Z + height * Mathf.Tan(tilt));
 		Basis basis = Basis.FromEuler(new Vector3(-(Mathf.Pi * 0.5f - tilt), 0f, 0f));
 		Vector3 right = basis.X, up = basis.Y, forward = -basis.Z;
-		float distance = height / Mathf.Cos(tilt);
 		float halfHeight = Tuning.Camera.Orthographic
-			? distance * Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f)
-			: Mathf.Tan(Mathf.DegToRad(Tuning.Camera.Fov) * 0.5f);
+			? Tuning.Camera.ViewHeight * 0.5f
+			: Mathf.Tan(Mathf.DegToRad(SafeFov) * 0.5f);
 
 		for (int i = 0; i < 4; i++)
 		{

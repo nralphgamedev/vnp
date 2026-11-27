@@ -1,0 +1,6 @@
+# Difficulty from numbers, steeper than numbers_a: no Grey Goo health or damage ramp, groups spawning 1.25 more a
+# minute instead of 0.25, and each wave three groups larger than the last instead of one.
+difficulty.RampGreyGooHealthPerMinute = 0
+difficulty.RampGreyGooDamagePerMinute = 0
+difficulty.RampSpawnRatePerMinute = 1.25
+director/plans/classic.tres:WaveGroupsAddedPerWave = 3

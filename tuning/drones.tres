@@ -7,7 +7,7 @@
 script = ExtResource("1_script")
 StartingCount = 10
 Cap = 20
-Health = 16.0
+Health = 20.0
 HitRadius = 0.7
 Speed = 32.0
 Acceleration = 90.0

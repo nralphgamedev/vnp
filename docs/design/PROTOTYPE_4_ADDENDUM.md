@@ -137,6 +137,11 @@ An entry belongs here only if, without it, the AI would do something differently
 - **The damage breakdown collapses,** at the designer's request: each damage source is one line, and clicking it shows or hides its split by enemy type. Every source starts collapsed. A source shows "+" while collapsed and "-" while open, since the game's font has no triangle characters. This changes phase 3's breakdown, which always showed the split. Only the mouse opens them; like scrolling the panels, it has no controller or keyboard control yet.
 - **Result panels scroll:** the damage breakdown and upgrade list grow until they would leave the screen, then scroll by mouse wheel or scroll bar. The damage breakdown stops above the weapon icons. Scrolling by controller or keyboard isn't built.
 
+- **The camera's zoom and lens are separate,** after the designer found that field of view did little but zoom, and that a wide one stopped enemies appearing. `ViewHeight` (`camera.tres`) sets how much of the arena the screen shows. `Fov` now changes only how strong the perspective looks: the camera works out its own height to keep `ViewHeight`. This changes phase 1's camera, which had a set height that `Fov` zoomed from.
+  - **Why wide lenses broke spawning:** past about 150 degrees at the 15 degree tilt, the top of the screen looked above the horizon, so "just off screen" no longer existed. Well before that, enemies spawned beyond `DespawnDistance` and were removed straight away.
+  - **Guards:** `Fov` and `Tilt` are clamped, with an error, so the top of the screen stays at least 20 degrees below the horizon. A zoom wide enough to spawn enemies past `DespawnDistance` is reported as an error when the fight starts.
+  - **The scene's Camera node:** its own `fov` is overwritten every frame, so only `camera.tres` counts.
+
 ## Settled from the spec's open list
 
 - **Drones and growth for every type,** decided by the designer: only the basic goo splits, and drones a Grey Goo type destroys without absorbing them (a Lancer hit, a Quiller spike) add nothing to its growth. A type grows only from drones it absorbs (and the Devourer from what it consumes). This was already the built default.
