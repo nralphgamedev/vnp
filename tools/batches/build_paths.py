@@ -20,7 +20,7 @@ PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file
 # Equipping a weapon is a bigger commitment than one stat upgrade, so it counts as this many.
 EQUIP_WEIGHT = 2
 # Focused: the most-invested weapon has at least this share of all weapon investment.
-FOCUS_SHARE = 0.75
+FOCUS_SHARE = 2 / 3
 # A second weapon first equipped at or after this fight time, in seconds, makes a "focus, then late second" build.
 LATE_SECOND_SECONDS = 180.0
 
