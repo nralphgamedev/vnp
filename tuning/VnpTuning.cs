@@ -31,7 +31,7 @@ public partial class VnpTuning : Resource
 	/// and Orbital Shards harvesting, from asteroids and debris alike, up to its maximum health. It has no other
 	/// healing, so harvesting is how it stays alive and running only bleeds it. 0 is none, as before. The Harvest
 	/// repair upgrade (tuning/upgrades/harvesting/repair.tres) adds to it. For scale,
-	/// a fight harvests about 200 mass a minute when played well.</summary>
+	/// a fight harvests about 300 mass a minute when played well.</summary>
 	[Export] public float RepairPerMass;
 
 	/// <summary>How close an enemy projectile must pass to the VNP's center to hit it.</summary>

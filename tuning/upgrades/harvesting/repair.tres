@@ -10,5 +10,5 @@ Description = "Harvesting repairs the VNP: +{amount} health for every unit of ma
 Category = 2
 Effect = 4
 Stat = 8
-Amount = 0.05
+Amount = 0.0333
 Limit = 4
