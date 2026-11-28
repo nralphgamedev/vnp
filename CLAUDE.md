@@ -9,15 +9,15 @@ It builds on the earlier specs (each design spec with its addendum) and the dev 
 - Phase 1, one complete fight: @docs/design/PROTOTYPE_1_SPEC.md and @docs/design/PROTOTYPE_1_ADDENDUM.md
 - Phase 2, feedback and more weapons and upgrades: @docs/design/PROTOTYPE_2_SPEC.md and @docs/design/PROTOTYPE_2_ADDENDUM.md
 - Phase 3, a second enemy type and ways to see what worked: @docs/design/PROTOTYPE_3_SPEC.md and @docs/design/PROTOTYPE_3_ADDENDUM.md
-- Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md
-- Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md
+- Automated playtesting, pilots and batches (stages 1 to 5 built; stage 6, an editor button, only if wanted): @docs/dev/AUTOMATED_PLAYTESTING_SPEC.md and @docs/dev/AUTOMATED_PLAYTESTING_ADDENDUM.md
+- Run review: detectors, maps, Claude's reviews and automatic calibration (all four stages built): @docs/dev/RUN_REVIEW_SPEC.md and @docs/dev/RUN_REVIEW_ADDENDUM.md
 - Performance: the requirement below, how it is measured, its tests and what is open: @docs/dev/PERFORMANCE_SPEC.md
-- Pilots that plan: threats enemies declare, path scoring, two training targets, and Arbiter, a generic decision library meant to serve other behavior and other games (planned): @docs/dev/PILOT_SPEC.md
-- Fight Director: fight plans picked from a brief, live pacing, factions as data, built for the galactic map to reuse (stages 1 to 3 built): @docs/dev/FIGHT_DIRECTOR_SPEC.md
+- Pilots that plan: threats enemies declare, path scoring, two training targets, and Arbiter, a generic decision library meant to serve other behavior and other games (all but calibrating to the designer built): @docs/dev/PILOT_SPEC.md and @docs/dev/PILOT_ADDENDUM.md
+- Fight Director: fight plans picked from a brief, live pacing, factions as data, built for the galactic map to reuse (stages 1 to 3 built): @docs/dev/FIGHT_DIRECTOR_SPEC.md and @docs/dev/FIGHT_DIRECTOR_ADDENDUM.md
 
-A design spec is the designer's intent, as given, and is never edited. Its addendum records what changed in building and testing, and wins where they disagree; a newer phase's spec and addendum win over an older one's (see "Specs and addenda" below).
+A design spec is the designer's intent, as given, and is never edited; a dev spec is the plan as agreed with the designer, and isn't edited to record what the build did. Each one's addendum records what changed in building and testing, and wins where they disagree; a newer phase's spec and addendum win over an older one's (see "Specs and addenda" below).
 
-Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also recorded in the current design spec's addendum. The rule against editing applies to the design specs only; the dev specs are still kept up to date in place.
+Docs are split by who needs them (`docs/README.md`): `docs/design/` holds the game's specs, which the designer reads and decides; `docs/dev/` holds development-only docs, such as the testing tools' specs and the calibration journal, which design doesn't need. A new doc goes in the folder that fits, and a dev change that alters how the game plays is also recorded in the current design spec's addendum.
 
 ## Technical rules
 
@@ -76,6 +76,7 @@ The designer wants a concise history of what they intended kept apart from what 
 - **What stays out:** test measurements (batch reports keep them), process stories, anything the code already shows, and repeats of the spec where nothing changed.
 - **Keep the reason** in every entry, even when it is short, so a bare override isn't "fixed" back.
 - **Group entries by the spec section they change,** and rewrite an entry when its behaviour changes again rather than adding a second one; git history keeps the old one.
+- **Dev specs work the same way,** at the designer's request, after their "Settled during the build" sections grew into running logs of tuning numbers, measurements and every version tried. A dev spec (`docs/dev/*_SPEC.md`) is the plan as agreed with the designer: it may be edited while it is being drafted and agreed, and later only when the designer changes the plan itself. What the build did goes in its addendum beside it (`docs/dev/*_ADDENDUM.md`), under the same test and rules as the design addenda. A dev spec without an addendum gets one when its first change is recorded.
 
 ## Unattended work on calibration branches
 

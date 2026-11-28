@@ -7,6 +7,8 @@ The automated playtesting spec (`docs/dev/AUTOMATED_PLAYTESTING_SPEC.md`) built 
 
 Phase 4 adds six Grey Goo types with attacks of their own, and the full game will have dozens of enemy types and hundreds of weapons and upgrades.
 
+What the build did, where it differs, and choices made for the open items are in `PILOT_ADDENDUM.md`, which wins where the two disagree.
+
 This spec rebuilds how pilots decide, so that a new enemy or weapon describes itself as data and pilots handle it without new pilot code. It sets two ways to train pilots: to play like the designer, and to play as well as possible. And it builds the general parts as a library that isn't tied to pilots or to VNP. Everything in the automated playtesting and run review specs still applies unless this file changes it.
 
 ## What this is for
@@ -182,121 +184,6 @@ Every change to the library has to keep it usable outside pilots and outside VNP
 - Git history keeps all of it.
 - The automated playtesting spec keeps its notes on the old pilot, as the record of what was learned. Most of that, such as how the designer plays and what failed, feeds the scoring terms.
 
-## Settled during the build
-
-The prototype now does the following; any of it can still change.
-
-- **Arbiter (stage 1):**
-  - **Where it lives:** `arbiter/`, with `Arbiter.csproj`, a README saying what belongs in it, and a `.gdignore`.
-  - **How it builds:** `VNP.csproj` references it and leaves its folder out of its own compile, and it is in `VNP.sln`, so all three of the game's builds build it.
-  - **Checked on its own:** `arbiter/checks/` is a small program, with no game, that checks its geometry and perception. The stage check runs it, which also proves the library builds without VNP or Godot.
-  - **The decision core and motion planning** moved to stage 2, to be built with the goals and terms that use them rather than ahead of them.
-- **Perception (stage 1):** Arbiter describes what an agent perceives as a `Situation`, which the game clears and fills before each decision:
-  - **Bodies:** position, velocity, size, the game's ID and kind, and tags whose meaning the game decides (VNP's are in `ThreatTags`: hurts by touch, drains drones, shoots).
-  - **Hazards:** an area (a circle, capsule, cone or ring, moving at a velocity), when it lands, how long it lasts, how much it hurts, whether per second, and whom: the agent, its allies, or both.
-  - **Zones:** where the agent's own effects work: a reach around it, a band such as an orbit, or a trap left in place.
-
-  Areas give a distance that is negative inside, so a planner can ask both whether a path is hit and how close it comes.
-- **The hooks (stage 1):** two hooks, both required by the build (a type or weapon without one doesn't compile), plus one on the projectiles:
-  - **Enemies:** `EnemyBehavior.DeclareThreats`.
-    - **Grey Goo:** declares its body, tagged as hurting by touch, with a hazard to the VNP that lasts as long as it does. A type that drains drones adds the same area draining drones each second. Its touch cooldown isn't declared, since a player can't see it.
-    - **The basic enemy:** declares only its body, tagged as one that shoots. It gives no warning before firing, so its shots are declared as they fly.
-  - **Shots:** `Projectiles.DeclareThreats` declares every enemy shot as a moving point, harmful until it fizzles, to the VNP or a drone.
-  - **Weapons:** `VnpWeapon.DeclareZones`.
-    - the Pulse Laser, Scatter Shot, Seeker Missiles and Shockwave declare their reach;
-    - Orbital Shards declare the band their shards sweep;
-    - Mine Layer declares each mine as a trap the width of its blast.
-
-  The first pilot read mines through `IPilotLure` until its code was removed (stage 7).
-- **The decision core (stage 2):** `Arbiter.Decision`.
-  - **Terms:** named terms, each worked out for every option and added up by its weight. Weights can change from one choice to the next. A term at weight 0 isn't worked out.
-  - **Noise:** optional, drawn from the game's randomness through `IRandom`, so fights stay repeatable.
-  - **Records and explaining:** every option's value for every term is kept, for explaining now and fitting later. `Explain` prints the best few options with the terms that made them.
-- **Path planning (stage 2):** `Arbiter.PathPlanner`.
-  - **Candidates:** a direction at each of a few strengths (full, half and a fifth) and letting go, held over the look-ahead. Each is simulated with the agent's own acceleration, deceleration and control lag, which for VNP is the stick's swing.
-  - **Assessment:** against the hazards the agent noticed, each path gets three values:
-    - **harm:** a hit counts once; harm per second counts for the time inside;
-    - **closeness:** each hazard counts from 0 at the keep-clear distance to 1 touching;
-    - **danger to allies:** taken as riding within an ally radius of the path.
-  - **Noticing:** `Situation.Overlook` drops fleeting hazards (shots, attacks being readied) by a notice chance; lasting ones are always noticed.
-  - **Cost:** it looks only at its **attention**'s worth of the nearest hazards, and checks each only against the paths it could come near. A body's touch and drain share one area, so they are measured once.
-- **The planning pilot (stage 2):** `pilots/Pilot.Planning.cs`, flown by every skill level (it was chosen by a `Planner` setting until the first pilot's code was removed).
-  - **Judgements:** the first pilot's, kept in the same order: affording a fight, regrouping, withdrawing, the harvest target, committing, holding still.
-  - **Moving:** instead of adding wants up, each want is a term on whole paths:
-    - harm, as a share of its health now, so the same hit matters more at low health;
-    - closeness to hazards;
-    - danger to its drones, by how much it relies on them;
-    - getting within beam reach of its harvest target, so a path that overshoots scores worse;
-    - keeping its fighting distance from where the enemy will be, with ApproachEnemies for closing in;
-    - circling, or holding still;
-    - backing off;
-    - leading chasers across declared traps;
-    - exploring;
-    - keeping moving round a rock, for Mine Layer;
-    - a small cost for turning sharply.
-
-    Committing and holding still at a rock set the weights as the first pilot's overrides did.
-  - **New settings in the skill levels:** `LookAheadSeconds`, `PathDirections`, `Attention`, `HarmWeight`, `DroneDangerWeight`, `TurnCost`, `OrbitShare` and `CommitWeight`. Its notice chance is the existing `DodgeChance`.
-  - **Attention for enemies and rocks too:** it keeps track of the nearest enemies and considers the nearest rocks, up to its attention, and weighs danger for that many rocks at most.
-  - **`explain`:** each line starts `PLANNER` and the goal, then the judgements, then the best three paths with their terms.
-- **Cost (stage 2):**
-  - **The harvest choice, for both pilots:** it now works out each rock's best possible score first, which danger can only lower. It then weighs danger from the best down, stopping once no rock left could win. Both pilots' fights traced identically before and after. The first pilot's slowest 1% in the tenfold crowd fell from about 7 ms to 0.7 ms.
-  - **The planning pilot:** about 0.2 ms for its slowest 1% in the late fight, and 1.65 ms in the tenfold crowd. Before attention, it was 15 to 27 ms there.
-- **First comparison (stage 2):** 50 expert fights each, on the same seeds, with the Designer build.
-
-  | | First pilot | Planner |
-  |---|---|---|
-  | **Grey Goo only:** won | 40% | 52% |
-  | **Grey Goo only:** destroyed by the 8:00 cap | 15 | 0 |
-  | **Grey Goo only:** touched a contact enemy, a minute | 0.50 | 0.07 |
-  | **Grey Goo only:** indecision, a minute | 0.46 | 0.15 |
-  | **The phase 3 mix:** won | 68% | 92% |
-  | **The phase 3 mix:** alive at 5:00 | 22 of 50 | 49 of 50 |
-  | **The phase 3 mix:** median time destroyed | 4:43 | 6:03 |
-  | **Gap to the designer's 18 fights** (phase 3 mix) | 0.168 | 0.308 |
-
-  - **Results:** the planner beats the first pilot.
-  - **Gap:** it is farther from the designer, since it outlives them: 98% alive at 5:00 against their 39%, with more health from 3:00. Its drones still collapse after 3:00, like the first pilot's.
-  - **Detectors that worsened:** creeping, from 0.01 to 0.09 a minute, and drones not rebuilt, from 0.20 to 0.26.
-  - **Tuning it down didn't help:** minding harm less (`HarmWeight` 4) or noticing less (`DodgeChance` 0.6) barely changed its survival. Its advantage is structural: it predicts where Goos and shots will be.
-- **The planner replaced the first pilot (stage 2):** at the designer's choice, on results alone, against the spec's rule of results and the calibration gap both.
-  - **Why the gap could wait:** the gap measures closeness to the designer's fights on the phase 3 mix, which phase 4 no longer plays. And the first pilot couldn't react to the Lancer without the per-type code this rebuild avoids.
-  - **The gap moves to stage 5:** calibrating the designer-like pilot against the designer's recorded Grey Goo fights.
-  - **Meanwhile:** batches run a pilot that survives better than the designer, so balance reads easier than it is.
-  - **What changed:** `Planner` was turned on in every skill level, with variant `first_pilot` flying the first pilot for comparison, until its code was removed (stage 7).
-- **The first pilot's code removed (stage 7):** at the designer's go-ahead, once the planner had replaced it.
-  - **Removed:** the first pilot's `Decide`, which added its wants up into one direction, and the steering only it used: `Dodge`, `KeepClearOfTouch`, `FightMove`, `CircleTarget`, `LeadAcrossSpots` with `IPilotLure` (and Mine Layer's `CollectLureSpots`). Also the `Planner` switch and the two settings only the first pilot read, `DodgeWeight` and `TouchLookAhead`. The planning pilot notices shots by `DodgeChance` and predicts contact enemies along its paths instead.
-  - **Kept:** every judgement the planner makes, in `Pilot.cs`: affording a fight, pressure, regrouping and withdrawing, the weapon profiles' blend, the harvest choice with clusters and danger, committing and holding still, remembering material and exploring. Also `EnemyAhead` and the upgrade picks.
-  - **Variants:** `first_pilot` was deleted. `no_low_health_care` lost its `TouchLookAhead` lines and keeps `LowHealthBelow`. The others change settings the planner still reads, so they stay. `calibrate_pilot.py` no longer searches `DodgeWeight`.
-  - **Checked:** four 2½-minute expert fights, one starting with Mine Layer, traced identically before and after at every checkpoint, with the first pilot's one random draw at the start (which way it circled) kept for the comparison.
-  - **Seeds:** that draw was then removed, so a seed now plays out differently from the same seed before this change, as after any tuning change. Replay commands in older batch reports no longer match.
-  - **Cost:** `Pilot.cs` went from 921 lines to 565.
-- **Upgrade picks on the decision core (stage 4):** the decision core's second user.
-  - **The decision:** `Pilot.ChooseUpgrade` is an `Arbiter.Decision` named "upgrade", the offered upgrades its options, with three terms: `liking` (the build's weight for the upgrade, its own or its category's, at weight 1), `owned` (1 if it improves something already owned, weighted by `FavourOwned`) and `new weapon` (1 if it gives a new weapon, weighted by `NewWeaponWeight`). The noise is the build's `Randomness` plus the skill level's `PickNoise`, drawn through the decision as before. A reroll still follows `RerollBelow`, on the chosen option's total.
-  - **Picks unchanged:** four expert and novice fights with the Designer, Greedy, Weapon focus and Random builds, one with a reroll, traced identically before and after.
-  - **Explaining:** with `explain=`, the harness prints each pick as a `PICK` line: every option with its total and the terms that made it. Arbiter's explanations now include the noise each option got (`NoiseOf`), so the terms add up to the total.
-  - **Training tools begin:** `arbiter/training/fit_choices.py` fits a decision's term weights to recorded choices, as softmax choices over the same weighted sums the core scores, with terms optionally pulled toward a group's weight. It is plain Python, free of VNP's words. `calibrate_build.py` now describes each of the designer's level-up choices in the upgrade decision's terms (`liking:<upgrade>`, grouped by category, `owned`, `new weapon`) and fits them with it, giving exactly the weights the old fit gave.
-  - **Guards for staying general,** chosen by the designer from the starting ideas (see Staying general):
-    - **the build boundary,** as before: Arbiter can't reference VNP's code or Godot;
-    - **no game words:** the stage check fails if Arbiter's code or training tools name VNP's things (the VNP, drones, Goo types, asteroids, debris, harvesting, VNP's weapon names, pilots, Godot). Generic words that VNP also uses, such as mine or weapon, are allowed, and the README may name VNP as where it came from;
-    - **its purpose, written down:** the README says what belongs in it, `CLAUDE.md` asks for each change to be checked against it, and the check-stage review asks the same.
-    - **Not chosen:** a sample agent that isn't VNP's, built and run by the stage check. It stays an option if the guards above miss something.
-- **The ceiling pilot (stage 6):** `pilots/skill_levels/ceiling.tres`, flown with the Greedy build (the open item's default).
-  - **Skill settings:** the expert's, with perfect noticing (`DodgeChance` 1), no wander, no pick noise of its own, and the longest look-ahead and most paths within budget: 1.5 s, 24 directions, attention 96. Its reaction time stays the expert's, so it plays at a person's speed. At 2 s and 32 directions its slowest 1% of decisions took 2.9 ms in the late fight, which with the rest of game logic would pass the 4 ms budget; at 1.5 s and 24, 1.4 ms.
-  - **Tuned for results:** `calibrate_pilot.py --target results` scores a candidate by its shortfall: 1 less half the win rate and half the average share of the cap survived. It searches the planner's own weights as well as the judgements. Run with 100 seeds a candidate, confirming on seeds 201 on, over two passes, it kept one change, `HarvestAtCap` 0.9 to 1.0. Every other setting was as good as it gets a step either way, so the expert's settings already sit near the best for results; what holds the ceiling pilot back is behaviour, not settings. The search now remembers what it has measured, since fights repeat exactly, so a later pass doesn't play the same candidate again.
-  - **Results:** on 400 fresh seeds (301 to 700), Greedy build, it won 92% against the expert's 90%, and was alive at 5:00 in 357 fights against 319. The headroom over the designer-like pilot is small in wins and clear in survival.
-  - **Reports:** a batch with more than one pilot (`--pilots expert,ceiling`) adds a Pilots compared section: each pilot's results, each starting weapon's win rate for each pilot with the gap, and upgrades by lift (how much more often fights that took one were won) for each pilot, the ones whose lift grows most with the better pilot first.
-  - **What it showed so far:** Mine Layer wins nearly every fight with either pilot (99 to 100%), so its strength isn't a pilot effect; Orbital Shards is the weakest start with either (72 to 75%). An apparent Orbital Shards gap in the first, smaller comparison (77% against 64%) was chance: on the same seeds each pilot won some the other lost, 16 against 8, and on another 50 seeds the ceiling pilot did slightly better.
-  - **A behaviour to fix, for both pilots:** reviewing a ceiling pilot loss with the overview maps (seed 74, Orbital Shards) showed it losing its drones at 1:10 and then being chased for four minutes by Goos about 8 units away, never able to stop and rebuild. Across 1,000 expert fights, the drones-not-rebuilt detector fires 0.37 times a minute against the designer's 0.03, and drones left fighting 0.78 against 0.23. Since enemies chase at 90% of the VNP's speed, regrouping by moving away rarely shakes them off. Not changed yet.
-- **Idle enemies, for Dense:** reviewing the designer's Dense fight against a pilot on the same seed showed the pilot picking fights with idle groups 30 units away from the first second, waking them (and their neighbours, by group aggro), and losing 8 of its 10 drones in 30 seconds; the designer harvested and had 20 drones at 1:00. A player can tell idle enemies apart (they are drawn darker), so pilots now may too (`EnemySwarm.IsChasingOf`):
-  - **Fights only with enemies coming for it:** an idle enemy is never its fight target.
-  - **Idle enemies count for less threat** (`IdleThreatShare` in the skill levels, 0.3), so a calm field doesn't make it withdraw.
-  - **Result:** on that seed, 24 drones and level 9 at 1:00 instead of 2 and 4. Across 100 Dense fights drones at 1:00 rose only a little (3.9 to 4.5): the rest is the drones themselves, which attack any enemy within their engage range, idle or not; Beam drones, which must close to about 2.4 units, lose most. Drone behaviour was left as it is, at the designer's choice.
-- **Recorded and drawn (stage 1):** every picture of a recording holds the hazards and zones, as a pilot would perceive them around the VNP.
-  - **On strips:** hazards are drawn yellow if they hurt the VNP and pink if they hurt drones, dimmer if not yet landed, each with a line to where it moves in the next second. Weapons' reach shows as faint rings.
-  - **Size:** this added about half to a recording in a dense fight, about 830 KB for a 5-minute fight instead of 560 KB.
-  - **Checked:** the full recording check fails if bodies that hurt by touch, drains, enemy shots, or any weapon's zones go missing.
-
 ## Tuning values
 
 | Value | Where |
@@ -332,15 +219,15 @@ Build one stage at a time, and stop after each so the designer can try it.
    - the decision core and motion planning in Arbiter, built with the goals and terms that use them;
    - the current wants rebuilt as goals and scoring terms, with `explain`;
    - built beside the current pilot, chosen by a setting, and compared in batches on the same seeds;
-   - it replaces the current pilot only once it matches or beats it on results and on the calibration gap. (Done, on results alone, at the designer's choice: see Settled during the build.)
+   - it replaces the current pilot only once it matches or beats it on results and on the calibration gap. (Done, on results alone, at the designer's choice; see the addendum.)
 3. **The first declared attack:** the Lancer (phase 4's stage 3). This tests the design: the pilot dodges a forming Lancer with no code for it.
-4. **The second user, and staying general:** (done, see Settled during the build)
+4. **The second user, and staying general:** (done; see the addendum)
    - upgrade picks moved onto the decision core;
    - `calibrate_build.py` fitting the Designer build's weights to picks made on the core;
    - the guards for staying general, as settled with the designer.
 5. **Calibrating to the designer's Grey Goo fights,** for the designer-like target, with automatic calibration, once the designer has played a few recorded Grey Goo fights. (Fitting weights to recorded moments was planned here; deferred at the designer's choice, see Like the designer.)
-6. **The ceiling pilot,** and reports with both targets side by side. (Done, see Settled during the build.)
-7. **Removing the old pilot's code.** (Done, see Settled during the build.)
+6. **The ceiling pilot,** and reports with both targets side by side. (Done; see the addendum.)
+7. **Removing the old pilot's code.** (Done; see the addendum.)
 
 ## Out of scope
 

@@ -15,6 +15,8 @@ The game itself: the phase specs, taken from the game design document (GDD), des
 
 Development only: the testing tools and how the game is checked, which design doesn't need to know about to play or decide the game.
 
+Each spec is the plan as agreed, and its `_ADDENDUM.md` beside it records what the build did, where it differs and why; the addendum wins where they disagree. They work as the design specs and addenda do (CLAUDE.md, Specs and addenda). The performance spec has no addendum yet.
+
 - `AUTOMATED_PLAYTESTING_SPEC.md`: pilots, batches, fight logs and reports.
 - `RUN_REVIEW_SPEC.md`: detectors, recordings, maps and calibration.
 - `PERFORMANCE_SPEC.md`: the performance requirement, how it is measured, its tests and what they found.
