@@ -24,6 +24,7 @@ These launchers stay at the top so the commands don't change. Everything else is
 
 - `batch.py`: runs a batch: every combination of pilots, builds, weapons and tuning variants on a set of seeds, in parallel. Writes the batch folder in `playtests/batches/`.
 - `batch_report.py`: writes `report.md` from a batch folder's logs. `batch.py` runs it after each batch.
+- `build_paths.py`: how each fight's loadout was built over time, for the report's Build paths section: investment per weapon from the order of level-up picks, Drone Weapon time, damage by minute, and each fight's build shape.
 - `batch_report_html.py`: writes `report.html`, the same report with charts.
 
 ## `calibration/`

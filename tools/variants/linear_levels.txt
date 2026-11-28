@@ -1,0 +1,2 @@
+# Each level needs 75 more than the last, as before the gentler curve: for comparing.
+levels.ExperienceIncreaseDecay = 1

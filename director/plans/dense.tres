@@ -1,21 +1,27 @@
-[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="FightPlanDefinition" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://director/FightPlanDefinition.cs" id="1_script"]
-[ext_resource type="Resource" path="res://director/waves/dense_large.tres" id="2_large"]
+[ext_resource type="Resource" path="res://director/waves/dense_lancers.tres" id="2_small"]
 [ext_resource type="Resource" path="res://director/curves/numbers.tres" id="3_curve"]
+[ext_resource type="Script" path="res://enemies/EnemyDefinition.cs" id="4_enemy_script"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/devourer/devourer.tres" id="5_devourer"]
 
 [resource]
 script = ExtResource("1_script")
 Id = "dense"
 Name = "Dense"
-KillTarget = 200
-StartingGroups = 35
+KillTarget = 300
+StartingGroups = 60
 SpawnInterval = 6.0
 SpawnExtraDistance = 28.0
 FieldExtraDistance = 60.0
-KeepAlive = 100
-KeepAlivePerMinute = 20.0
+KeepAlive = 150
+KeepAlivePerMinute = 15.0
 RefillSeconds = 0.5
 GroupStrength = 0.8
-LargeWaves = ExtResource("2_large")
+GroupWeightScales = Dictionary[ExtResource("4_enemy_script"), float]({
+ExtResource("5_devourer"): 0.2
+})
+WanderLegScale = 2.0
+SmallWaves = ExtResource("2_small")
 Curve = ExtResource("3_curve")

@@ -516,6 +516,99 @@ def write_report(folder):
     out.append(table(['Upgrade', 'Fights offered', 'Fights taken', 'Taken when offered', 'Win rate taken',
                       'Win rate not taken'], rows))
 
+    # ───────────── Build paths ─────────────
+    # How loadouts were built over time, not only how they ended: one weapon built up all fight and a second bought
+    # late ends the same as two mixed from the start (tools/batches/build_paths.py).
+    import build_paths
+    upgrade_info = build_paths.load_upgrades()
+    paths = [(l, build_paths.path_of(l, upgrade_info)) for l in all_logs]
+    if paths:
+        out.append('\n## Build paths\n')
+        out.append(f"How each fight's loadout was built, from the order of its level-up picks. A weapon's investment is "
+                   f'{build_paths.EQUIP_WEIGHT} for equipping it (or starting with it) and one for each of its upgrades. '
+                   f'**Single weapon:** the second slot never filled. **Focused:** one weapon has at least '
+                   f'{build_paths.FOCUS_SHARE:.0%} of the investment. **Focus, then late second:** the second weapon '
+                   f'came at {clock(build_paths.LATE_SECOND_SECONDS)} or later. **Mixed:** the rest. The rules are in '
+                   f'tools/batches/build_paths.py. Every pilot, build and variant is added together.\n')
+        rows = []
+        for shape in build_paths.SHAPES:
+            group = [l for l, p_ in paths if p_['shape'] == shape]
+            if not group:
+                continue
+            wins_ = [l for l in group if won(l)]
+            alive5 = sum(1 for l in group if (s := at(l, 300)) is not None and s['health'] > 0)
+            rows.append([shape, len(group), pct(len(group), len(paths)), pct(len(wins_), len(group)),
+                         clock(median([l['outcome']['killTargetTime'] for l in wins_])), f'{alive5} of {len(group)}'])
+        out.append(table(['Shape', 'Fights', 'Share', 'Win rate', 'Median time to win', 'Alive at 5:00'], rows))
+
+        # The main weapon, by investment, with its shape.
+        by_main = {}
+        for l, p_ in paths:
+            main = max(p_['invest'], key=p_['invest'].get) if p_['invest'] else '-'
+            by_main.setdefault((main, p_['shape']), []).append(l)
+        rows = []
+        for (main, shape), group in sorted(by_main.items(), key=lambda kv: -len(kv[1])):
+            if len(group) < 5:
+                continue
+            rows.append([main, shape, len(group), pct(sum(map(won, group)), len(group)),
+                         f'{sum(1 for l in group if (s := at(l, 300)) is not None and s["health"] > 0)} of {len(group)}'])
+        if rows:
+            out.append('\n**By main weapon,** the one with the most investment, and shape (at least 5 fights each):\n')
+            out.append(table(['Main weapon', 'Shape', 'Fights', 'Win rate', 'Alive at 5:00'], rows))
+
+        # Drone Weapons: time in use and share of the drones' damage.
+        drone_rows = []
+        drones = sorted({d for _, p_ in paths for d in p_['droneTime']})
+        all_drone_damage = sum(sum(p_['droneDamage'].values()) for _, p_ in paths) or 1
+        for d in drones:
+            used = [(l, p_) for l, p_ in paths if p_['droneTime'].get(d, 0) > 0]
+            share_time = mean([p_['droneTime'][d] / max(1.0, p_['end']) for _, p_ in used])
+            main_group = [l for l, p_ in paths if p_['mainDrone'] == d]
+            drone_rows.append([d, len(used), f'{share_time:.0%}' if share_time is not None else '-',
+                               pct(sum(p_['droneDamage'].get(d, 0) for _, p_ in paths), all_drone_damage),
+                               len(main_group), pct(sum(map(won, main_group)), len(main_group))])
+        if drone_rows:
+            out.append('\n**Drone Weapons:** fights that used each, the share of those fights it was in use, its share of '
+                       'all drone damage, and fights where it was in use longest, with their win rate.\n')
+            out.append(table(['Drone Weapon', 'Fights used', 'Share of fight in use', 'Share of drone damage',
+                              'Fights mostly on it', 'Win rate'], drone_rows))
+
+        # Damage by minute: each source's share of each minute's damage.
+        minutes = {}
+        for l, _ in paths:
+            for minute, damage in build_paths.damage_by_minute(l):
+                bucket = minutes.setdefault(min(minute, 7), {})
+                for source, amount in damage.items():
+                    bucket[source] = bucket.get(source, 0.0) + amount
+        if minutes:
+            totals = {}
+            for bucket in minutes.values():
+                for source, amount in bucket.items():
+                    totals[source] = totals.get(source, 0.0) + amount
+            top = sorted(totals, key=lambda s_: -totals[s_])[:8]
+            cols = sorted(minutes)
+            rows = [[s_] + [pct(minutes[m].get(s_, 0.0), sum(minutes[m].values()) or 1) for m in cols] for s_ in top]
+            out.append("\n**Damage by minute:** each source's share of all damage dealt in that minute, across fights "
+                       'still going (the last column is 7:00 and after).\n')
+            out.append(table(['Source'] + [f'{m - 1}:00-{m}:00' if m < 7 else '6:00 on' for m in cols], rows))
+
+            # For late-second builds: how much of their damage the second weapon did, minute by minute.
+            late = [(l, p_) for l, p_ in paths if p_['shape'] == 'focus, then late second']
+            if len(late) >= 5:
+                share = {}
+                for l, p_ in late:
+                    second = max(p_['equipped'], key=p_['equipped'].get)
+                    for minute, damage in build_paths.damage_by_minute(l):
+                        m = min(minute, 7)
+                        weapon_total = sum(v for k, v in damage.items() if k in p_['equipped'])
+                        if weapon_total > 0:
+                            share.setdefault(m, []).append(damage.get(second, 0.0) / weapon_total)
+                out.append(f"\n**Late second weapons** ({len(late)} fights): the second weapon's share of the two "
+                           f"weapons' damage, on average, minute by minute.\n")
+                out.append(table(['Minute'] + [f'{m - 1}:00-{m}:00' if m < 7 else '6:00 on' for m in sorted(share)],
+                                 [['Second weapon'] + [f'{mean(share[m]):.0%}' for m in sorted(share)]]))
+        out.append('')
+
     # ───────────── Fights worth watching ─────────────
     out.append('\n## Fights worth watching\n')
     out.append('The best fight of each combination (the fastest win, or the longest-lasting if none won) and the '

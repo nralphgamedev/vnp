@@ -48,7 +48,7 @@
 script = ExtResource("1_script")
 ExperienceForFirstLevel = 150.0
 ExperienceIncreasePerLevel = 75.0
-ExperienceForLevelMax = 900.0
+ExperienceIncreaseDecay = 0.95
 OptionsPerOffer = 3
 FreeRerolls = 1
 OneDroneWeaponChoicePerFight = true

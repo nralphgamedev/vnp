@@ -80,6 +80,9 @@ public partial class FightLog : Node
 	private List<string> _startingWeapons;
 	private string _startingDroneWeapon;
 	private readonly List<Dictionary<string, object>> _timeline = new();
+	// Each damage source's running total, every minute of fight time and once more as the log is written, so reports
+	// can tell when a weapon did its work, not only how much in all.
+	private readonly List<Dictionary<string, object>> _damageByMinute = new();
 	private readonly List<float[]> _input = new();
 	private readonly List<double> _frameMs = new();
 	// The designer's fights, in a window: each frame's whole time by the clock, and Godot's render CPU and GPU
@@ -247,6 +250,10 @@ public partial class FightLog : Node
 
 	private void Sample(double now)
 	{
+		// On each whole minute, the running damage of every source.
+		int second = (int)Math.Round(now);
+		if (second > 0 && second % 60 == 0 && Math.Abs(now - second) < 0.05)
+			SampleDamage(second);
 		int[] counts = _fight.Enemies.CountByType();
 		var enemies = new Dictionary<string, object>();
 		for (int t = 0; t < counts.Length; t++)
@@ -263,6 +270,19 @@ public partial class FightLog : Node
 			["kills"] = _fight.Kills,
 		});
 	}
+
+	/// <summary>Each damage source's damage so far, at a fight time in seconds.</summary>
+	private Dictionary<string, object> DamageSnapshot(double time) => new()
+	{
+		["time"] = Math.Round(time, 1),
+		["damage"] = _fight.Stats.Damage.ToDictionary(d => d.Source.Id, d => (object)Math.Round(d.Total, 1)),
+	};
+
+	private void SampleDamage(double time) => _damageByMinute.Add(DamageSnapshot(time));
+
+	/// <summary>The minute snapshots, with one more at the end of the fight, so the last part of a minute counts.</summary>
+	private List<Dictionary<string, object>> DamageByMinuteWithEnd() =>
+		new List<Dictionary<string, object>>(_damageByMinute) { DamageSnapshot(_fight.Elapsed) };
 
 	/// <summary>Writes the log for a fight that has just ended. Called by the fight.</summary>
 	/// <summary>
@@ -484,6 +504,7 @@ public partial class FightLog : Node
 				},
 			},
 			["timeline"] = new List<Dictionary<string, object>>(_timeline),
+			["damageByMinute"] = DamageByMinuteWithEnd(),
 			["review"] = _review?.ToLog(_fight.Elapsed),
 			["maps"] = _recorder?.ToLog(),
 			["input"] = _recordInput

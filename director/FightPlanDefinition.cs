@@ -49,6 +49,11 @@ public partial class FightPlanDefinition : Resource
 	/// which enemies are removed.</summary>
 	[Export] public float FieldExtraDistance;
 
+	/// <summary>Starting groups are placed on screen as well as off it, in every plan: anywhere from this far beyond
+	/// their aggro range out to FieldExtraDistance (or SpawnExtraDistance) beyond the screen, so a fight starts among
+	/// enemies that haven't noticed the VNP yet, rather than with an empty screen.</summary>
+	[Export] public float StartClearance = 12f;
+
 	/// <summary>Enemies the director keeps alive at the least: while fewer are, it adds a group every RefillSeconds,
 	/// spread like the starting groups, so the field stays dense however many are killed. 0 for none. Capped by
 	/// the faction's MaxAlive.</summary>
@@ -59,6 +64,14 @@ public partial class FightPlanDefinition : Resource
 
 	/// <summary>Seconds between groups added to keep the population up.</summary>
 	[Export] public float RefillSeconds = 0.5f;
+
+	/// <summary>Multiplies the faction's group weights for this plan's groups between waves, by type: 0.5 makes a
+	/// type half as common. A type not listed keeps its weight. Waves use the faction's wave weights as they are.</summary>
+	[Export] public Godot.Collections.Dictionary<EnemyDefinition, float> GroupWeightScales;
+
+	/// <summary>How long idle enemies head one way before picking a new direction, as a multiple of the usual 1.5 to
+	/// 4 seconds: 2 makes each leg twice as long, so idle groups roam twice as far each way.</summary>
+	[Export] public float WanderLegScale = 1f;
 
 	/// <summary>Health and debris of the groups between waves, as a multiple of their type's: 1 as usual, less for
 	/// fragile enemies that come in large numbers, such as the horde plan's. Their damage is unchanged.</summary>

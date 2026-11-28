@@ -35,6 +35,8 @@ public partial class EnemySwarm : Node3D
 		public float SpeedScale;        // Its speed as a multiple of its type's, from escalation when it spawned.
 		public float Strength;          // Its health and debris as a multiple of its type's, from its plan or wave: 1, or
 		                                // less for fragile horde enemies. A split's halves keep it.
+		public int Group;               // Which spawned group it belongs to; a split's halves keep it. It flocks with its
+		                                // own group only, so neighbouring groups don't merge into one blob.
 		public bool Pack;               // Its wave's formation holds it to its group while chasing (WaveFormation.Pack).
 		public float ApproachAngle;     // Radians its line of approach is turned off straight, fading as it closes in
 		                                // (WaveFormation.Loose); 0 for straight.
@@ -121,6 +123,7 @@ public partial class EnemySwarm : Node3D
 	// Extra search distance for lookups made after enemies have moved this frame.
 	private const float GridSlack = 1f;
 	private int _lastId;
+	private int _lastGroup;
 	private FactionDefinition _faction;
 
 	public override void _Ready()
@@ -362,6 +365,10 @@ public partial class EnemySwarm : Node3D
 	/// <summary>Whether an enemy absorbs drones that touch it, as the basic goo does.</summary>
 	public bool AbsorbsDronesOf(int index) => _types[_enemies[index].Type].AbsorbsDrones;
 
+	/// <summary>Whether an enemy is coming for its target rather than idling. A player can see this: idle enemies are
+	/// drawn darker (Draw). One that never chases, such as the Devourer, counts as idle.</summary>
+	public bool IsChasingOf(int index) => _enemies[index].Aggro && _types[_enemies[index].Type].Chases;
+
 	/// <summary>Which enemy type an enemy is, by the type's ID.</summary>
 	public string TypeIdOf(int index) => _types[_enemies[index].Type].Definition.Id;
 
@@ -487,8 +494,10 @@ public partial class EnemySwarm : Node3D
 	/// <summary>
 	/// An enemy type picked at random, by the weights given, or -1 if none has a weight. With a filter, only from
 	/// the easiest tier among the weighted types, or only from those above it; if the filter leaves none, from any.
+	/// <paramref name="scales"/>, if given, multiplies each type's weight, such as a plan's GroupWeightScales.
 	/// </summary>
-	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights, TierFilter filter = TierFilter.Any)
+	private int PickType(Godot.Collections.Dictionary<EnemyDefinition, float> weights, TierFilter filter = TierFilter.Any,
+		Godot.Collections.Dictionary<EnemyDefinition, float> scales = null)
 	{
 		if (weights == null)
 			return -1;
@@ -502,18 +511,20 @@ public partial class EnemySwarm : Node3D
 			}
 		}
 		float total = 0f;
-		foreach ((EnemyDefinition definition, float weight) in weights)
+		foreach ((EnemyDefinition definition, float rawWeight) in weights)
 		{
+			float weight = Scaled(definition, rawWeight, scales);
 			if (definition != null && weight > 0f && _typeIndex.ContainsKey(definition) && Passes(definition, filter, easiest))
 				total += weight;
 		}
 		if (total <= 0f)
-			return filter == TierFilter.Any ? -1 : PickType(weights);
+			return filter == TierFilter.Any ? -1 : PickType(weights, TierFilter.Any, scales);
 
 		float roll = Rng.Range(0f, total);
 		int picked = -1;
-		foreach ((EnemyDefinition definition, float weight) in weights)
+		foreach ((EnemyDefinition definition, float rawWeight) in weights)
 		{
+			float weight = Scaled(definition, rawWeight, scales);
 			if (definition == null || weight <= 0f || !_typeIndex.TryGetValue(definition, out int index)
 				|| !Passes(definition, filter, easiest))
 				continue;
@@ -524,6 +535,18 @@ public partial class EnemySwarm : Node3D
 		}
 		return picked;
 	}
+
+	/// <summary>A type's weight times its scale, if there is one for it.</summary>
+	private static float Scaled(EnemyDefinition definition, float weight,
+		Godot.Collections.Dictionary<EnemyDefinition, float> scales) =>
+		scales != null && definition != null && scales.TryGetValue(definition, out float scale) ? weight * scale : weight;
+
+	/// <summary>The fight's plan, for what it changes about groups: their type weights and how long they wander one
+	/// way. Read each time, since the plan cheat can change it as the fight starts.</summary>
+	private FightPlanDefinition Plan => Fight?.Director.Plan.Definition;
+
+	/// <summary>Seconds an idle enemy heads one way before picking a new direction, by the plan's WanderLegScale.</summary>
+	private float WanderLeg() => Rng.Range(1.5f, 4f) * (Plan?.WanderLegScale ?? 1f);
 
 	private bool Passes(EnemyDefinition definition, TierFilter filter, int easiest) => filter switch
 	{
@@ -539,12 +562,17 @@ public partial class EnemySwarm : Node3D
 	/// <summary>
 	/// A type for one group of a wave, by the wave's makeup: from every type by the wave weights (Mixed), from the
 	/// easiest tier (Swarm), or from a harder tier with the chance <paramref name="hardShare"/> and the easiest
-	/// otherwise (Growing). -1 if the faction has no wave types.
+	/// otherwise (Growing), or the one type <paramref name="themed"/> (Themed). -1 if the faction has no wave types.
 	/// </summary>
-	public int PickWaveType(WaveMakeup makeup, float hardShare)
+	public int PickWaveType(WaveMakeup makeup, float hardShare, EnemyDefinition themed = null)
 	{
 		switch (makeup)
 		{
+			case WaveMakeup.Themed:
+				// Its one type, if the fight knows it; otherwise drawn as Mixed.
+				if (themed != null && _typeIndex.TryGetValue(themed, out int index))
+					return index;
+				return PickType(_faction.WaveGroupWeights);
 			case WaveMakeup.Swarm:
 				return PickType(_faction.WaveGroupWeights, TierFilter.Easiest);
 			case WaveMakeup.Growing:
@@ -590,15 +618,21 @@ public partial class EnemySwarm : Node3D
 	/// <paramref name="ahead"/> direction, the spot is within <paramref name="aheadSpread"/> radians of it, across,
 	/// rather than in any direction. <paramref name="strength"/> multiplies its health and debris.</summary>
 	public void SpawnScattered(Vector2 vnpPosition, float extraDistance, bool respectMaxAlive, Vector2 ahead, float aheadSpread,
-		float strength)
+		float strength, float onScreenClearance = -1f)
 	{
-		int type = PickType(_faction.GroupWeights);
+		int type = PickType(_faction.GroupWeights, TierFilter.Any, Plan?.GroupWeightScales);
 		if (type < 0)
 			return;
 		if (respectMaxAlive && Count + _types[type].Definition.GroupSize > _faction.MaxAlive)
 			return;
 		Vector2 direction = ahead == Vector2.Zero ? Rng.Direction() : ahead.Rotated(Rng.Range(-0.5f, 0.5f) * aheadSpread);
-		Vector2 home = vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, extraDistance));
+		float farthest = OffScreenDistance(vnpPosition, direction, extraDistance);
+		// On screen if asked, anywhere from beyond its aggro range (and its group's spread) plus the clearance, so it
+		// doesn't notice the VNP at once, out to the farthest it could be; otherwise just off screen, as usual.
+		Vector2 home = onScreenClearance >= 0f
+			? vnpPosition + direction * Rng.Range(Mathf.Min(farthest, _types[type].Definition.AggroRange * (Fight?.EnemyAggroScale ?? 1f)
+				+ SpawnSpread + onScreenClearance), farthest)
+			: vnpPosition + direction * OffScreenDistance(vnpPosition, direction, Rng.Range(0f, extraDistance));
 		SpawnGroupAt(home, type, hunting: false, strength);
 	}
 
@@ -615,6 +649,7 @@ public partial class EnemySwarm : Node3D
 		EnemyBehavior behavior = _types[type];
 		// The type's group size, unless a count is given, such as one for a stream.
 		int size = count > 0 ? count : behavior.Definition.GroupSize;
+		int group = ++_lastGroup;
 		for (int i = 0; i < size; i++)
 		{
 			Vector2 direction = Rng.Direction();
@@ -625,7 +660,7 @@ public partial class EnemySwarm : Node3D
 				Position = home + Rng.InsideCircle(spread),
 				Home = home,
 				WanderDirection = direction,
-				WanderTimer = Rng.Range(1.5f, 4f),
+				WanderTimer = WanderLeg(),
 				Yaw = PlaneMath.YawFacing(direction),
 				TrackDirection = direction,
 				OrbitSign = Rng.Sign(),
@@ -633,6 +668,7 @@ public partial class EnemySwarm : Node3D
 				Hunting = hunting,
 				SpeedScale = Fight?.EnemySpeedScale ?? 1f,
 				Strength = strength,
+				Group = group,
 				Pack = pack,
 			};
 			// Each loose enemy comes in from its own angle. No number is drawn otherwise.
@@ -674,13 +710,14 @@ public partial class EnemySwarm : Node3D
 			Position = at,
 			Home = at,
 			WanderDirection = direction,
-			WanderTimer = Rng.Range(1.5f, 4f),
+			WanderTimer = WanderLeg(),
 			Yaw = PlaneMath.YawFacing(direction),
 			TrackDirection = direction,
 			OrbitSign = Rng.Sign(),
 			Aggro = true,
 			SpeedScale = Fight?.EnemySpeedScale ?? 1f,
 			Strength = 1f,
+			Group = ++_lastGroup,
 		};
 		_types[type].Spawned(ref enemy);
 		return enemy;
@@ -760,8 +797,26 @@ public partial class EnemySwarm : Node3D
 		_splits.Clear();
 	}
 
+	/// <summary>
+	/// Group aggro: every idle enemy that chases within <paramref name="radius"/> of <paramref name="at"/> notices the
+	/// VNP too, and chases it while it is within that enemy's LoseAggroRange. One step only: an enemy alerted this way
+	/// doesn't alert others, since it is already aggro when it next looks.
+	/// </summary>
+	private void Alert(Vector2 at, float radius)
+	{
+		float radiusSquared = radius * radius;
+		for (int j = 0; j < Count; j++)
+		{
+			ref Enemy other = ref _enemies[j];
+			if (!other.Aggro && other.Health > 0f && _types[other.Type].Chases
+				&& other.Position.DistanceSquaredTo(at) <= radiusSquared)
+				other.Aggro = true;
+		}
+	}
+
 	private void Simulate(float dt, Vector2 vnpPosition, Vector2 vnpVelocity, bool vnpAlive)
 	{
+		float alertRadius = Tuning.EnemySpawning.AlertRadius;
 		_grid.Clear();
 		float maxRadius = 0f;
 		for (int i = 0; i < Count; i++)
@@ -849,6 +904,9 @@ public partial class EnemySwarm : Node3D
 			bool aggro = distance <= noticeRange && behavior.Chases;
 			if (enemy.Aggro && !aggro)
 				enemy.Home = enemy.Position; // Gave up: roam around here from now on.
+			// Noticed the VNP by sight just now: it alerts idle enemies near it (AlertRadius).
+			if (aggro && !enemy.Aggro && alertRadius > 0f)
+				Alert(enemy.Position, alertRadius);
 			enemy.Aggro = aggro;
 
 			// Where this enemy wants to go on its own.
@@ -876,19 +934,24 @@ public partial class EnemySwarm : Node3D
 				if (enemy.WanderTimer <= 0f)
 				{
 					enemy.WanderDirection = Rng.Direction();
-					enemy.WanderTimer = Rng.Range(1.5f, 4f);
+					enemy.WanderTimer = WanderLeg();
 				}
 
 				// Its own whim counts for less than the flock's pull, so idle groups travel together.
-				// The pull back toward home builds up gradually past half the wander radius, rather than
-				// switching on at the edge, which made enemies sitting on the edge flip back and forth.
-				Vector2 fromHome = enemy.Position - enemy.Home;
-				float homeDistance = fromHome.Length();
-				float halfRadius = type.WanderRadius * 0.5f;
-				float homePull = Mathf.Clamp((homeDistance - halfRadius) / halfRadius, 0f, 1.5f);
+				// The pull back toward home (scaled by WanderHomePull) builds up gradually past half the wander
+				// radius, rather than switching on at the edge, which made enemies sitting on the edge flip back and
+				// forth. At 0 there is none, and idle groups roam freely.
 				goal = enemy.WanderDirection * type.WanderWeight;
-				if (homeDistance > 0.001f)
-					goal -= fromHome / homeDistance * homePull;
+				float pullScale = Tuning.EnemySpawning.WanderHomePull;
+				if (pullScale > 0f)
+				{
+					Vector2 fromHome = enemy.Position - enemy.Home;
+					float homeDistance = fromHome.Length();
+					float halfRadius = type.WanderRadius * 0.5f;
+					float homePull = Mathf.Clamp((homeDistance - halfRadius) / halfRadius, 0f, 1.5f) * pullScale;
+					if (homeDistance > 0.001f)
+						goal -= fromHome / homeDistance * homePull;
+				}
 			}
 
 			Vector2 steer = goal + Flocking(i, type, speed, aggro ? (enemy.Pack ? 1f : type.ChaseFlocking) : 1f);
@@ -912,7 +975,8 @@ public partial class EnemySwarm : Node3D
 			}
 			else if (aggro && enemy.Velocity.LengthSquared() > 0.25f)
 				enemy.Yaw = Mathf.RotateToward(enemy.Yaw, PlaneMath.YawFacing(enemy.Velocity), turnStep);
-			else if (!aggro && enemy.Velocity.Length() > type.WanderSpeed * enemy.SpeedScale * 0.5f)
+			// Idle enemies drift at about half their wander speed, by their WanderWeight, so the bar sits well below that.
+			else if (!aggro && enemy.Velocity.Length() > type.WanderSpeed * enemy.SpeedScale * 0.2f)
 			{
 				// Idle: turn slowly, and ignore small changes of course, so nudges from flockmates
 				// do not show as twitching.
@@ -963,7 +1027,9 @@ public partial class EnemySwarm : Node3D
 				separation += awayDirection * (1f - gap / separationRadius);
 			}
 
-			if (neighbor.Type != enemy.Type || gapSquared > neighborRadiusSquared)
+			// Alignment and cohesion with its own group only: groups of a type that drift together keep apart rather
+			// than merging into one blob, which, woken together by group aggro, came at the VNP all at once.
+			if (neighbor.Group != enemy.Group || gapSquared > neighborRadiusSquared)
 				continue;
 			flockmates++;
 			flockVelocity += neighbor.Velocity;

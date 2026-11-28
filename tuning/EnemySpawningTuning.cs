@@ -19,6 +19,16 @@ public partial class EnemySpawningTuning : Resource
 	/// so enemies left behind do not use up the cap.</summary>
 	[Export] public float DespawnDistance;
 
+	/// <summary>How strongly idle enemies are pulled back to where they spawned (or last gave up a chase), as a
+	/// multiple: 1 keeps groups near home, within each type's WanderRadius; 0, the designer's choice, lets idle groups
+	/// roam freely, still keeping together.</summary>
+	[Export] public float WanderHomePull;
+
+	/// <summary>Group aggro: when an idle enemy notices the VNP by sight, every idle enemy within this many units of
+	/// it notices too, and chases while the VNP is within its LoseAggroRange. One step only: those alerted don't alert
+	/// others. 0 for none. At 18, a group's spotter alerts its own group and any group touching it.</summary>
+	[Export] public float AlertRadius;
+
 	/// <summary>Seconds of "WAVE INCOMING" warning before a wave arrives.</summary>
 	[ExportGroup("Waves")]
 	[Export] public float WaveWarningSeconds;

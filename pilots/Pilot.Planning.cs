@@ -142,9 +142,14 @@ public partial class Pilot
 			float closeness = Mathf.Clamp(1f - distance / Mathf.Max(1f, Skill.ThreatRange), 0f, 1f);
 			nearestAnyThreat = Mathf.Min(nearestAnyThreat, distance);
 			float weight = enemies.AbsorbsDronesOf(e) ? Mathf.Lerp(1f, Skill.DroneEaterThreat, droneReliance) : 1f;
+			// An idle enemy, which hasn't noticed it, counts for less than one coming for it.
+			if (!enemies.IsChasingOf(e))
+				weight *= Skill.IdleThreatShare;
 			threat += weight * closeness * closeness;
 			away += offset / distance * weight * closeness;
-			bool worthApproaching = !enemies.AbsorbsDronesOf(e) || droneReliance < 0.25f;
+			// It picks fights only with enemies coming for it: an idle one is left alone, as the designer does, since
+			// going for it wakes it and, through group aggro, its neighbours.
+			bool worthApproaching = (!enemies.AbsorbsDronesOf(e) || droneReliance < 0.25f) && enemies.IsChasingOf(e);
 			if (worthApproaching && distance < nearestDistance)
 			{
 				nearestDistance = distance;

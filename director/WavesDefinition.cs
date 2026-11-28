@@ -50,6 +50,8 @@ public enum WaveMakeup
 	Growing,
 	/// <summary>Only the easiest tier.</summary>
 	Swarm,
+	/// <summary>Only ThemedType, whatever its weight.</summary>
+	Themed,
 }
 
 /// <summary>
@@ -69,8 +71,12 @@ public partial class WavesDefinition : Resource
 	[ExportGroup("Size")]
 	[Export] public int Groups;
 
-	/// <summary>Groups added to each wave after the first.</summary>
+	/// <summary>Groups added each time the waves grow, after the first.</summary>
 	[Export] public int GroupsAddedPerWave;
+
+	/// <summary>How many waves pass between each growth: 1 grows every wave; 6 keeps the same size for six waves,
+	/// then adds GroupsAddedPerWave.</summary>
+	[Export] public int WavesPerGroupAdded = 1;
 
 	/// <summary>Health and debris of the waves' enemies, as a multiple of their type's: 1 as usual, less for fragile
 	/// enemies that come in large numbers. Their damage is unchanged.</summary>
@@ -124,6 +130,9 @@ public partial class WavesDefinition : Resource
 
 	[ExportGroup("Makeup")]
 	[Export] public WaveMakeup Makeup;
+
+	/// <summary>Themed: the one enemy type the waves are made of. It must be one of the faction's types.</summary>
+	[Export] public EnemyDefinition ThemedType;
 
 	/// <summary>Growing: the share of groups drawn from harder tiers at the start of the fight.</summary>
 	[Export] public float HardShareStart;

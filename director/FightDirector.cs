@@ -121,7 +121,7 @@ public sealed class FightDirector
 			_startingGroupsSpawned = true;
 			for (int i = 0; i < plan.StartingGroups; i++)
 				swarm.SpawnScattered(vnpPosition, FieldExtraDistance(plan), respectMaxAlive: false, Vector2.Zero, 0f,
-					plan.GroupStrength);
+					plan.GroupStrength, plan.StartClearance);
 		}
 
 		// Keep the field dense: a group at a time while the population is below what the plan keeps alive.
@@ -251,7 +251,7 @@ public sealed class FightDirector
 			: waves.Formation;
 		for (int g = 0; g < groups; g++)
 		{
-			int type = swarm.PickWaveType(waves.Makeup, hardShare);
+			int type = swarm.PickWaveType(waves.Makeup, hardShare, waves.ThemedType);
 			if (type < 0)
 				return;
 			float angle = waves.Arrival switch

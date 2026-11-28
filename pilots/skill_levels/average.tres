@@ -15,6 +15,7 @@ ThreatRange = 38.0
 StrengthPerDrone = 0.08
 StrengthPerLevel = 0.1
 Caution = 0.5
+IdleThreatShare = 0.3
 DroneEaterThreat = 2.5
 TouchAvoidDistance = 4.0
 LowHealthBelow = 0.35

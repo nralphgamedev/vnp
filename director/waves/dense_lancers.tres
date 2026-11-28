@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WavesDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://director/WavesDefinition.cs" id="1_script"]
+[ext_resource type="Resource" path="res://enemies/grey_goo/lancer/lancer.tres" id="2_lancer"]
+
+[resource]
+script = ExtResource("1_script")
+Id = "dense_lancers"
+Groups = 1
+GroupsAddedPerWave = 1
+WavesPerGroupAdded = 6
+Timing = 0
+FirstSeconds = 30.0
+IntervalSeconds = 30.0
+Arrival = 0
+Formation = 2
+Makeup = 3
+ThemedType = ExtResource("2_lancer")

@@ -18,7 +18,7 @@ public sealed class WaveStream
 	public float LastTime { get; private set; }
 
 	/// <summary>How many groups the next wave has.</summary>
-	public int NextGroups => Definition.Groups + Definition.GroupsAddedPerWave * Sent;
+	public int NextGroups => Definition.Groups + Definition.GroupsAddedPerWave * (Sent / Mathf.Max(1, Definition.WavesPerGroupAdded));
 
 	// The shortest gap between waves, except for Steady, which keeps the formula fights had before plans.
 	private const float MinGap = 1f;

@@ -78,9 +78,12 @@ public partial class Fight : Node3D
 	{
 		get
 		{
-			float needed = Tuning.Levels.ExperienceForFirstLevel + Tuning.Levels.ExperienceIncreasePerLevel * (Level - 1);
-			// Late levels keep a steady pace: none needs more than the cap.
-			return Tuning.Levels.ExperienceForLevelMax > 0f ? Mathf.Min(needed, Tuning.Levels.ExperienceForLevelMax) : needed;
+			// The increase shrinks by ExperienceIncreaseDecay each level, so the sum of increases so far is a geometric
+			// series; at 1 it is the same every level.
+			float decay = Tuning.Levels.ExperienceIncreaseDecay;
+			int levels = Level - 1;
+			float increases = decay >= 1f || decay <= 0f ? levels : (1f - Mathf.Pow(decay, levels)) / (1f - decay);
+			return Tuning.Levels.ExperienceForFirstLevel + Tuning.Levels.ExperienceIncreasePerLevel * increases;
 		}
 	}
 

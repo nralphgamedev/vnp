@@ -63,6 +63,18 @@ public partial class LevelUpMenu : Control
 		_pilotRerolled = false;
 		if (_options.Count == 0)
 			return;
+		// Once every other upgrade is used up and New drones is all that is left, it is taken without asking, and
+		// the drones it built show over the VNP in the Drones card colour.
+		if (_options.TrueForAll(o => o.Effect == UpgradeEffect.BuildDrones))
+		{
+			int before = Fight.DronesBuiltByUpgrades;
+			Fight.Stats.UpgradeTaken(_options[0]);
+			Fight.ApplyUpgrade(_options[0]);
+			int built = Fight.DronesBuiltByUpgrades - before;
+			if (built > 0)
+				Fight.DamageNumbers.AddLabel(Fight.Vnp.PlanePosition, $"+{built}", Tuning.Look.DronesCardColor);
+			return;
+		}
 		_title.Text = $"LEVEL {level}";
 		_selected = 0;
 		_lastOption = 0;

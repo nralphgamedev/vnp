@@ -58,6 +58,12 @@ public partial class PilotDefinition : Resource
 	/// its drones: with drones at their cap, it counts this many times as much as another enemy.</summary>
 	[Export] public float DroneEaterThreat;
 
+	/// <summary>How much an idle enemy, one that hasn't noticed the VNP (drawn darker), counts toward threat, against
+	/// one coming for it: 1 counts idle enemies fully, as pilots once did; lower lets a pilot harvest calmly beside
+	/// a field of idle groups, as the designer does, while still minding them a little, since they wake if it comes
+	/// close.</summary>
+	[Export] public float IdleThreatShare = 1f;
+
 	/// <summary>How far from the edge of an enemy that damages by touch, such as Grey Goo, it starts steering clear,
 	/// whatever else it wants. Added after the designer's logs showed them taking almost no damage from Goos,
 	/// while pilots took about a fifth of theirs from them.</summary>

@@ -6,5 +6,7 @@
 script = ExtResource("1_script")
 SpawnMargin = 10.0
 DespawnDistance = 180.0
+WanderHomePull = 0.0
+AlertRadius = 18.0
 WaveWarningSeconds = 3.0
 WaveBannerSeconds = 2.0
