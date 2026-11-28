@@ -103,7 +103,7 @@ Real screenshots stay available for when how something looks on screen matters, 
 
 Moved here from the automated playtesting spec, where it was kept as an option.
 
-- **Targets from the designer's logs:** win rate, level at 5:00, time to the kill target, damage taken per minute, drones lost to Goos per minute, time spent holding still, and now each detector's rate, on the designer's own starting weapons. As built, the search scores by health, drones, kills, level and survival at the same fight times (`compare_to_designer.py`'s gap); detector rates are not among its targets yet (see Automatic calibration (stage 4), under Settled during the build).
+- **Targets from the designer's logs:** win rate, level at 5:00, time to the kill target, damage taken per minute, drones lost to Goos per minute, time spent holding still, and now each detector's rate, on the designer's own starting weapons. As built, the search scores by health, drones, kills, level and survival at the same fight times (`compare_to_designer.py`'s gap); detector rates are not among its targets yet (see the addendum).
 - **Search:** a script tries values for the expert pilot's settings (such as caution, dodging, harvest weight, `PressureFall` and the regroup thresholds) as tuning variants, plays each candidate on those starting weapons, and keeps the closest match to the targets.
 - **Running it:** unattended, overnight or in the background. Batches run together while iterating stay under a minute.
 - **Data:** it gets more reliable as the designer's logs grow. A handful of fights is too few to set targets.

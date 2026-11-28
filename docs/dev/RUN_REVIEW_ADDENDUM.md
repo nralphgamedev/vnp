@@ -40,6 +40,7 @@ An entry belongs here only if, without it, the AI would do something differently
 ## Calibration
 
 - **Tools:** `tools/calibration/`: `compare_to_designer.py` gives one number, the gap, the average difference from the designer's fights at the same fight times; `calibrate_pilot.py` tries each setting raised and lowered on the same seeds and keeps a change only if it also wins on a second set of seeds (`--target results` scores wins and survival instead, for the ceiling pilot). It runs unattended on a `calibration/` branch under CLAUDE.md's rules, with every step in `docs/dev/calibration/JOURNAL.md`.
+- **Calibrating on one plan:** `--plan` runs the search's batches on that plan only and compares only with the designer's fights on it; `--asteroids`, `--weapons` and `--drone-weapons` set the batches up like those fights. Why: plans play very differently, so comparing a pilot's fights on every plan with the designer's on one measures the plans, not the pilot.
 - **Compare at the same fight times,** not per minute over whole fights: the designer's higher rates came from long endless runs, where kills come fastest.
 - **Iterating on the expert first,** at the designer's suggestion; average and novice are made from it later.
 - **Not built:** detector rates as calibration targets. When calibration resumes, choose which detectors to target, since some measure style rather than faults (indecision fires on the designer's deliberate weaving).

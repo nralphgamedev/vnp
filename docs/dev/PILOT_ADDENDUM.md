@@ -40,6 +40,11 @@ An entry belongs here only if, without it, the AI would do something differently
 - **Tuned for results:** `calibrate_pilot.py --target results` searches its settings, the planner's weights included, by wins and survival. The expert's settings already sat near the best; what holds both pilots back is behaviour, not settings.
 - **Reports:** a batch with more than one pilot gets a Pilots compared section.
 
+## Calibration
+
+- **Against the designer's Dense fights,** at the designer's request: the search kept a higher `AffordableThreat` and `BackOffWeight` on the expert, so it takes on more before backing off and backs off more firmly when it does. The expert's settings now come from those fights, not from the phase 3 mix it was first calibrated on.
+- **Running still pays in Dense:** after calibration the expert harvested about as much of the time as the designer, but moved away more, fought less and took far less damage; a pilot that never harvested still survived as often, and only won far less. Dense's field doesn't hunt, so nothing punishes keeping away.
+
 ## Settled from the spec's open list
 
 - **The guards for staying general:** above.

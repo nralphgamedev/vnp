@@ -73,6 +73,7 @@ SEARCH = {
     'TouchAvoidWeight': ('scale', 1.3),
     'RegroupBelow': ('add', 0.05, 0.0, 0.6),
     'WithdrawMargin': ('scale', 1.4),
+    'IdleThreatShare': ('add', 0.1, 0.0, 1.0),
 }
 
 
@@ -141,6 +142,11 @@ class Search:
         cmd = [sys.executable, os.path.join(ROOT, 'tools', 'batches', 'batch.py'), '--pilots', self.args.pilot,
                '--builds', self.args.build, '--seeds', str(self.args.seeds), '--first-seed', str(first_seed),
                '--variants', ','.join(variants), '--name', 'autocal']
+        # Fights set up like the designer's, when asked: one plan, asteroid amount and starting weapons.
+        for option, value in (('--plans', self.args.plan), ('--asteroids', self.args.asteroids),
+                              ('--weapons', self.args.weapons), ('--drone-weapons', self.args.drone_weapons)):
+            if value:
+                cmd += [option, value]
         out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         m = re.search(r'Report: (.+?)[\\/]report\.md', out)
         if not m:
@@ -156,6 +162,9 @@ class Search:
                 gaps[v] = shortfall(mine, cap)
             return gaps
         human = compare_to_designer.designer_logs(None, self.args.since)
+        if self.args.plan:
+            # Only the designer's fights on that plan, so the pilot is compared with fights like its own.
+            human = [l for l in human if l['settings'].get('fightPlan') == self.args.plan]
         designer = compare_to_designer.profile(human)
         for v in variants:
             mine = [l for l in logs if (l['settings'].get('tuningVariant') or 'base') == v]
@@ -246,6 +255,11 @@ def main():
     parser.add_argument('--min-step', type=float, default=0.25)
     parser.add_argument('--target', choices=['designer', 'results'], default='designer',
                         help='play like the designer (the default), or play as well as possible')
+    parser.add_argument('--plan', default=None,
+                        help="one Fight Director plan: batches play only it, and only the designer's fights on it count")
+    parser.add_argument('--asteroids', default=None, help='asteroid amounts for the batches, as batch.py takes them')
+    parser.add_argument('--weapons', default=None, help='starting VNP Weapons for the batches, as batch.py takes them')
+    parser.add_argument('--drone-weapons', default=None, help='starting Drone Weapons for the batches, as batch.py takes them')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
     search = Search(args)

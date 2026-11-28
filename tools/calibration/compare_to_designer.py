@@ -13,7 +13,7 @@ fights misleads, since fights that last longer reach the fastest part of endless
 Prints a table, then one number, the gap: the average difference from the designer across those measures and
 times, each as a fraction of the designer's value. Smaller is closer. Calibration tries to bring it down.
 
-Uses every designer fight log that has a timeline, in playtests/human/ (each fight in its own folder, or loose
+Uses every designer fight log that has a timeline, lasted over a minute and used no free rerolls, in playtests/human/ (each fight in its own folder, or loose
 from before). Editor-only testing tool: nothing here is part of the game.
 """
 import glob
@@ -56,8 +56,10 @@ def designer_logs(fingerprints=None, since=None):
         if since and os.path.basename(p) < since:
             continue
         log = json.load(open(p, encoding='utf-8'))
-        # Very short fights, such as one restarted at once, say nothing about how the designer plays.
-        if log.get('timeline') and log['outcome']['time'] > 60 and (
+        # Very short fights, such as one restarted at once, say nothing about how the designer plays; nor do fights
+        # with free rerolls, whose upgrade picks are better than normal play allows.
+        if log.get('timeline') and log['outcome']['time'] > 60 and not (
+                log['settings'].get('cheats') or {}).get('freeRerolls') and (
                 fingerprints is None or log['settings'].get('tuningFingerprint') in fingerprints):
             logs.append(log)
     return logs
